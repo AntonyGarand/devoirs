@@ -1,0 +1,34 @@
+/* Design system — 1. Jetons (couleurs, rayons, typographie) et base */
+/* ===================== Base ===================== */
+:root {
+  --bg: #fef6e4; --ink: #2b2d42; --card: #fff; --muted: #7a7f99; --line: #e7e1d3;
+  --A: #ef476f; --Aa: #ffe1e8; --B: #118ab2; --Bb: #dff3fb; --C: #06a77d; --Cc: #dcf7ee;
+  --yel: #ffd166; --org: #f78c40; --pur: #9b5de5; --red: #d62828;
+  --radius: 22px;
+}
+* { box-sizing: border-box }
+html, body { margin: 0 }
+body {
+  font-family: "Segoe UI Rounded", "Arial Rounded MT Bold", "Nunito", "Segoe UI", system-ui, sans-serif;
+  background: var(--bg); color: var(--ink);
+  background-image: radial-gradient(#f3e6c8 1.5px, transparent 1.5px); background-size: 26px 26px;
+  font-size: 18px; line-height: 1.45;
+}
+a { color: var(--B) }
+button { font-family: inherit; cursor: pointer; color: inherit }
+[hidden] { display: none !important }
+h1, h2, h3 { line-height: 1.2 }
+
+/* Jetons sémantiques (à utiliser dans tout nouveau code) */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px;
+  --fs-sm: .9rem; --fs-md: 1.05rem; --fs-lg: 1.3rem; --fs-xl: 1.6rem; --fs-xxl: 2.6rem;
+  --touch: 48px;                 /* cible tactile minimale */
+  --good: var(--C); --bad: var(--red); --focus: #3a86ff;
+  --shadow-card: 0 6px 0 var(--line), 0 10px 30px rgba(0,0,0,.05);
+  /* Couleurs des matières */
+  --subj-maths: #f78c40; --subj-francais: #ef476f; --subj-anglais: #118ab2; --subj-univers: #06a77d; --subj-sciences: #9b5de5;
+}
+:focus-visible { outline: 4px solid var(--focus); outline-offset: 2px }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important } }
+

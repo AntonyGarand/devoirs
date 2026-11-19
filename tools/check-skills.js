@@ -1,17 +1,22 @@
 #!/usr/bin/env node
 /* Vérifie que chaque habileté génère des questions valides (sans navigateur).
    Usage : node tools/check-skills.js [fichier-habiletés.js ...]
-   Sans argument : tous les fichiers de js/skills/. */
+   Sans argument : toutes les matières (js/<matière>/subject.js + skills/*.js)
+   et les exemples du guide de style. */
 'use strict';
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
 const root = path.join(__dirname, '..');
-const fakeEl = () => ({ style: {}, classList: { add() {}, remove() {}, toggle() {} }, appendChild() {}, remove() {}, set innerHTML(v) { this._h = v; }, get innerHTML() { return this._h || ''; }, set textContent(v) { this._h = M_esc(v); }, get textContent() { return String(this._h || '').replace(/<[^>]*>/g, ''); } });
-const M_esc = (v) => String(v).replace(/</g, '&lt;');
+const esc = (v) => String(v).replace(/</g, '&lt;');
+const fakeEl = () => ({
+  style: {}, dataset: {}, classList: { add() {}, remove() {}, toggle() {} }, appendChild() {}, remove() {}, addEventListener() {}, setAttribute() {},
+  set innerHTML(v) { this._h = v; }, get innerHTML() { return this._h || ''; },
+  set textContent(v) { this._h = esc(v); }, get textContent() { return String(this._h || '').replace(/<[^>]*>/g, ''); },
+});
 const ctx = {
-  console, setTimeout, clearTimeout, Promise, Math, JSON, Date, Array, Object, String, Number, Set, Map,
+  console, setTimeout, clearTimeout, Promise, Math, JSON, Date, Array, Object, String, Number, Set, Map, Intl,
   localStorage: { getItem: () => null, setItem() {} },
   document: { createElement: fakeEl, head: fakeEl(), body: fakeEl(), querySelector: () => null, querySelectorAll: () => [], addEventListener() {}, removeEventListener() {} },
   performance: { now: () => Date.now() },
@@ -20,40 +25,50 @@ const ctx = {
 ctx.window = ctx;
 vm.createContext(ctx);
 const load = (f) => vm.runInContext(fs.readFileSync(f, 'utf8'), ctx, { filename: f });
-load(path.join(root, 'js/core.js'));
-load(path.join(root, 'js/viz.js'));
+['core', 'formats', 'session', 'ui', 'viz'].forEach((f) => load(path.join(root, 'js', f + '.js')));
 
-let files = process.argv.slice(2);
-if (!files.length) files = fs.readdirSync(path.join(root, 'js/skills')).map((f) => path.join(root, 'js/skills', f));
-files.forEach((f) => load(path.resolve(f)));
+const subjects = fs.readdirSync(path.join(root, 'js'), { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
+subjects.forEach((s) => { const f = path.join(root, 'js', s, 'subject.js'); if (fs.existsSync(f)) load(f); });
 
-let errors = 0;
-const fail = (id, msg, q) => { errors++; if (errors < 40) console.log(`✗ ${id}: ${msg}`, q ? JSON.stringify({ ...q, viz: undefined, showMe: undefined }).slice(0, 300) : ''); };
+let files = process.argv.slice(2).map((f) => path.resolve(f));
+if (!files.length) subjects.forEach((s) => { const d = path.join(root, 'js', s, 'skills'); if (fs.existsSync(d)) fs.readdirSync(d).filter((f) => f.endsWith('.js')).sort().forEach((f) => files.push(path.join(d, f))); });
+files.forEach((f) => load(f));
+load(path.join(root, 'js', 'styleguide.js'));
+
 const M = ctx.M;
+let errors = 0;
+const show = (q) => JSON.stringify(q, (k, v) => (typeof v === 'function' ? undefined : v)).slice(0, 300);
+const fail = (id, msg, q) => { errors++; if (errors < 40) console.log(`✗ ${id}: ${msg}`, q ? show(q) : ''); };
+
+function checkQuestion(id, q) {
+  if (!q || typeof q.prompt !== 'string' || !q.prompt) return fail(id, 'prompt manquant', q), false;
+  const name = q.format || q.input;
+  const f = M.formats[name];
+  if (!f) return fail(id, `format inconnu : ${name}`, q), false;
+  const e = f.validate && f.validate(q);
+  if (e) return fail(id, e, q), false;
+  const text = q.prompt + (q.explain || '') + (q.hint || '') + JSON.stringify(q.choices || '') + JSON.stringify(q.steps || '') + JSON.stringify(q.passage || '');
+  if (/undefined|NaN|\[object Object\]/.test(text)) return fail(id, 'texte contient undefined/NaN/[object Object]', q), false;
+  return true;
+}
+
+const ids = new Set();
 for (const s of M.skills) {
+  if (ids.has(s.id)) fail(s.id, 'id en double'); ids.add(s.id);
   for (const k of ['id', 'domain', 'title', 'gen', 'pda']) if (!s[k]) fail(s.id, `champ manquant : ${k}`);
-  if (!M.DOMAINS.find((d) => d.id === s.domain)) fail(s.id, `domaine inconnu ${s.domain}`);
+  if (!M.domainById[s.domain]) fail(s.id, `domaine inconnu ${s.domain}`);
   for (let lvl = 0; lvl <= 2; lvl++) {
     for (let n = 0; n < 300; n++) {
       let q;
       try { q = s.gen({ lvl }); } catch (e) { fail(s.id, 'gen() a planté : ' + e.message); break; }
-      if (!q || typeof q.prompt !== 'string' || !q.prompt) { fail(s.id, 'prompt manquant', q); break; }
-      if (!['number', 'choice', 'order'].includes(q.input)) { fail(s.id, 'input invalide', q); break; }
-      if (q.answer === undefined || q.answer === null || Number.isNaN(q.answer)) { fail(s.id, 'answer manquant', q); break; }
-      if (q.input === 'number' && (!Number.isInteger(q.answer) || q.answer < 0)) { fail(s.id, 'answer number non entier ≥ 0', q); break; }
-      if (q.input === 'choice') {
-        if (!Array.isArray(q.choices) || q.choices.length < 2) { fail(s.id, 'choices < 2', q); break; }
-        const hits = q.choices.filter((c) => String(c.value) === String(q.answer)).length;
-        if (hits !== 1) { fail(s.id, `la bonne réponse apparaît ${hits} fois dans choices`, q); break; }
-        const vals = q.choices.map((c) => String(c.value));
-        if (new Set(vals).size !== vals.length) { fail(s.id, 'choices en double', q); break; }
-      }
-      if (q.input === 'order') {
-        if (!Array.isArray(q.answer) || !Array.isArray(q.choices) || q.answer.length !== q.choices.length) { fail(s.id, 'order : answer/choices incohérents', q); break; }
-      }
-      if (/undefined|NaN/.test(q.prompt + (q.explain || '') + (q.hint || '') + JSON.stringify(q.choices || ''))) { fail(s.id, 'texte contient undefined/NaN', q); break; }
+      if (!checkQuestion(s.id, q)) break;
     }
   }
 }
-console.log(`${M.skills.length} habiletés vérifiées — ${errors ? errors + ' erreur(s)' : 'OK'}`);
+for (const [name, mk] of Object.entries(M.FORMAT_SAMPLES || {})) checkQuestion('exemple:' + name, mk());
+for (const name of Object.keys(M.formats)) if (!(M.FORMAT_SAMPLES || {})[name]) fail('guide', `pas d'exemple pour le format ${name}`);
+
+const bySubj = {};
+M.skills.forEach((s) => { const sj = M.subjectOf(s) || '?'; bySubj[sj] = (bySubj[sj] || 0) + 1; });
+console.log(`${M.skills.length} habiletés vérifiées (${Object.entries(bySubj).map(([k, v]) => k + ' ' + v).join(', ')}) — ${errors ? errors + ' erreur(s)' : 'OK'}`);
 process.exit(errors ? 1 : 0);

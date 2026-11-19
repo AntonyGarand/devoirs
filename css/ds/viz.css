@@ -1,0 +1,77 @@
+/* Design system — 4. Visuels mathématiques partagés (cadres de dix, base 10, droite) */
+/* ===================== Cadres de dix ===================== */
+.frames { display: flex; flex-wrap: wrap; gap: 14px }
+.frame { display: grid; grid-template-columns: repeat(5, 52px); grid-template-rows: repeat(2, 52px); gap: 5px; padding: 7px; background: #fff; border: 4px solid var(--ink); border-radius: 14px }
+.cell { position: relative; border: 2px solid #e3dfd3; border-radius: 10px; background: #fff; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 28px; transition: transform .1s }
+.cell:active { transform: scale(.9) }
+.cell.void { border-color: transparent; background: transparent; pointer-events: none }
+.cell .dot { width: 36px; height: 36px; border-radius: 50% }
+.cell.kA .dot { background: var(--A); box-shadow: inset -4px -4px 0 rgba(0,0,0,.15) }
+.cell.kB .dot { background: var(--B); box-shadow: inset -4px -4px 0 rgba(0,0,0,.15) }
+.cell.emo.kA { background: var(--Aa) }
+.cell.emo.kB { background: var(--Bb) }
+.cell.kE { border: 3px dashed #c7c2b4; background: transparent }
+.cell.x > .dot, .cell.x > .e { opacity: .3 }
+.cell.x::after { content: "✕"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--red); font-size: 42px; font-weight: 900 }
+.cell .lbl { position: absolute; top: -9px; left: -9px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 800; min-width: 22px; height: 22px; border-radius: 11px; display: flex; align-items: center; justify-content: center; padding: 0 4px; z-index: 2 }
+.cell .lbl.g { background: var(--C) }
+.cell .lbl.r { background: var(--red) }
+.cell.flash { animation: pop .35s }
+@media (max-width: 520px) { .frame { grid-template-columns: repeat(5, 42px); grid-template-rows: repeat(2, 42px) } .cell { font-size: 22px } .cell .dot { width: 28px; height: 28px } }
+
+/* ===================== Blocs base 10 ===================== */
+.bgroups { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap }
+.bop { font-size: 2.4rem; font-weight: 900; color: var(--muted); align-self: center }
+.bgroup { background: #fff; border: 3px solid var(--line); border-radius: 16px; padding: 10px; display: flex; flex-direction: column; gap: 8px; min-width: 90px }
+.bgroup.hidden { align-items: center; justify-content: center; min-height: 160px; border-style: dashed }
+.bgroup.reveal { animation: pop .5s }
+.qbig { font-size: 3.6rem; font-weight: 900; color: #c7c2b4 }
+.bitems { display: flex; gap: 10px; align-items: flex-end }
+.tens { display: flex; gap: 4px }
+.ones { display: grid; grid-template-columns: repeat(5, 18px); gap: 3px; align-content: end }
+.rod { display: flex; flex-direction: column; gap: 1px; padding: 2px; border: none; border-radius: 4px; background: rgba(0,0,0,.25); position: relative }
+.rod i, .cube { display: block; width: 16px; height: 13px; border-radius: 2px }
+.cube { height: 16px; width: 18px; border: none; padding: 0; position: relative }
+.cA .rod i, .cA .cube, .cA .flat i { background: var(--A) }
+.cB .rod i, .cB .cube, .cB .flat i { background: var(--B) }
+.cC .rod i, .cC .cube, .cC .flat i { background: var(--C) }
+.cY .rod i, .cY .cube, .cY .flat i { background: #f4b400 }
+.cube.broken { outline: 2px solid var(--yel) }
+.rod.hl, .cube.hl { outline: 4px solid var(--yel); outline-offset: 1px }
+.rod.x, .cube.x { opacity: .3 }
+.rod.x::after, .cube.x::after { content: "✕"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--red); font-weight: 900; font-size: 22px }
+.cube.x::after { font-size: 16px }
+.blabel { font-size: .95rem; font-weight: 700; color: var(--muted) }
+/* statique */
+.b10 { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap }
+.b10-h { display: flex; gap: 6px; flex-wrap: wrap }
+.b10-t { display: flex; gap: 3px }
+.b10-u { display: grid; grid-template-columns: repeat(5, 14px); gap: 3px }
+.b10 .flat { display: grid; grid-template-columns: repeat(10, 9px); gap: 1px; padding: 2px; background: rgba(0,0,0,.25); border-radius: 3px }
+.b10 .flat i { display: block; width: 9px; height: 9px }
+.b10 .rod { padding: 2px; display: flex; flex-direction: column; gap: 1px }
+.b10 .rod i { width: 12px; height: 9px }
+.b10 .cube { display: block; width: 14px; height: 14px; border-radius: 2px }
+.b10.small .flat { grid-template-columns: repeat(10, 6px) } .b10.small .flat i { width: 6px; height: 6px }
+.b10.small .rod i { width: 8px; height: 6px } .b10.small .cube { width: 9px; height: 9px } .b10.small .b10-u { grid-template-columns: repeat(5, 9px) }
+
+/* ===================== Droite numérique ===================== */
+.nline { width: 100%; height: auto; display: block; user-select: none; min-width: 480px }
+.nline .axis { stroke: var(--ink); stroke-width: 4; stroke-linecap: round }
+.nline .tick { stroke: var(--ink); stroke-width: 2 }
+.nline .tl { font-size: 20px; font-weight: 800; fill: var(--ink); text-anchor: middle; pointer-events: none }
+.nline .tl.small { font-size: 15px; fill: var(--muted) }
+.nline .tl.mark { fill: var(--B) }
+.nline .start { fill: var(--yel) }
+.nline .hit { fill: transparent; cursor: pointer }
+.nline .hit:hover { fill: rgba(17,138,178,.07) }
+.nline .qmark { font-size: 30px; font-weight: 900; fill: var(--red) }
+.nline .qline { stroke: var(--red); stroke-width: 4; fill: none; stroke-linecap: round }
+.arc { fill: none; stroke-width: 4; stroke-linecap: round; pointer-events: none }
+.arc.f { stroke: var(--C) } .arc.b { stroke: var(--org) }
+.arc.new { stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: draw .45s forwards }
+@keyframes draw { to { stroke-dashoffset: 0 } }
+.alabel { font-size: 17px; font-weight: 900; text-anchor: middle; pointer-events: none }
+.alabel.f { fill: var(--C) } .alabel.b { fill: var(--org) }
+.frog { pointer-events: none }
+

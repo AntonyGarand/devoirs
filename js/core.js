@@ -98,11 +98,12 @@
   };
 
   /* ---------- Voix (lecture à voix haute) ---------- */
-  let frVoice = null;
+  const voices = {};
   function loadVoice() {
     try {
       const vs = speechSynthesis.getVoices();
-      frVoice = vs.find((v) => v.lang === 'fr-CA') || vs.find((v) => v.lang && v.lang.startsWith('fr')) || null;
+      voices.fr = vs.find((v) => v.lang === 'fr-CA') || vs.find((v) => v.lang && v.lang.startsWith('fr')) || null;
+      voices.en = vs.find((v) => v.lang === 'en-CA') || vs.find((v) => v.lang === 'en-US') || vs.find((v) => v.lang && v.lang.startsWith('en')) || null;
     } catch (e) {}
   }
   try {
@@ -111,21 +112,29 @@
       speechSynthesis.onvoiceschanged = loadVoice;
     }
   } catch (e) {}
-  M.say = function (text) {
+  /**
+   * Lit un texte. opts : { lang: 'fr-CA' (défaut) | 'en-CA', rate: 0.9, raw: false }
+   * raw = true : ne pas transformer les symboles (+, =, −) en mots (dictées, anglais).
+   */
+  M.say = function (text, opts = {}) {
     try {
       if (!('speechSynthesis' in window) || !text) return;
       speechSynthesis.cancel();
-      const t = String(text)
-        .replace(/\s−\s|\s-\s/g, ' moins ')
-        .replace(/\+/g, ' plus ')
-        .replace(/=/g, ' égale ')
-        .replace(/×/g, ' fois ')
-        .replace(/÷/g, ' divisé par ')
-        .replace(/[▢□]/g, ' combien ');
+      const lang = opts.lang || 'fr-CA';
+      let t = String(text);
+      if (!opts.raw && lang.startsWith('fr')) {
+        t = t.replace(/\s−\s|\s-\s/g, ' moins ')
+          .replace(/\+/g, ' plus ')
+          .replace(/=/g, ' égale ')
+          .replace(/×/g, ' fois ')
+          .replace(/÷/g, ' divisé par ')
+          .replace(/[▢□]/g, ' combien ');
+      }
       const u = new SpeechSynthesisUtterance(t);
-      u.lang = 'fr-CA';
-      if (frVoice) u.voice = frVoice;
-      u.rate = 0.9;
+      u.lang = lang;
+      const v = voices[lang.slice(0, 2)];
+      if (v) u.voice = v;
+      u.rate = opts.rate || 0.9;
       speechSynthesis.speak(u);
     } catch (e) {}
   };
@@ -219,14 +228,26 @@
   };
   M.updateStars = () => { const el = M.$('#starsTotal'); if (el) el.textContent = '⭐ ' + P.stars; };
 
-  /* ---------- Registre ---------- */
-  M.DOMAINS = [
-    { id: 'nombres', title: 'Les nombres', icon: '🔢', color: '#ef476f', soft: '#ffe1e8', pda: 'Arithmétique — Sens et écriture des nombres naturels (< 1000) et fractions' },
-    { id: 'operations', title: 'Les opérations', icon: '➕', color: '#f78c40', soft: '#ffe9d6', pda: 'Arithmétique — Sens des opérations et opérations sur les nombres' },
-    { id: 'geometrie', title: 'La géométrie', icon: '🔷', color: '#118ab2', soft: '#dff3fb', pda: 'Géométrie — Espace, solides, figures planes, frises' },
-    { id: 'mesure', title: 'La mesure', icon: '📏', color: '#06a77d', soft: '#dcf7ee', pda: 'Mesure — Longueurs et temps' },
-    { id: 'stats', title: 'Statistique et probabilité', icon: '📊', color: '#9b5de5', soft: '#efe4fb', pda: 'Statistique et Probabilité' },
-  ];
+  /* ---------- Registre : matières → domaines → habiletés ---------- */
+  /** Matières. Les fichiers de chaque matière ajoutent les leurs avec M.registerSubject. */
+  M.SUBJECTS = [];
+  M.subjectById = {};
+  /** def = { id, title, icon, color, soft, desc, order? } */
+  M.registerSubject = (def) => {
+    if (M.subjectById[def.id]) return;
+    def.order = def.order ?? M.SUBJECTS.length;
+    M.SUBJECTS.push(def);
+    M.subjectById[def.id] = def;
+  };
+  M.DOMAINS = [];
+  M.domainById = {};
+  /** def = { id, subject, title, icon, color, soft, pda } */
+  M.registerDomain = (def) => {
+    if (M.domainById[def.id]) return;
+    M.DOMAINS.push(def);
+    M.domainById[def.id] = def;
+  };
+  M.subjectOf = (skillOrLearn) => { const d = M.domainById[skillOrLearn.domain]; return d ? d.subject : null; };
   M.skills = [];
   M.skillById = {};
   M.learns = [];
@@ -237,6 +258,7 @@
    */
   M.registerSkill = (def) => {
     if (M.skillById[def.id]) console.warn('Habileté en double :', def.id);
+    if (!M.domainById[def.domain]) console.warn('Domaine inconnu :', def.domain, def.id);
     def.order = def.order ?? M.skills.length;
     M.skills.push(def);
     M.skillById[def.id] = def;
@@ -255,12 +277,13 @@
 
   /* ---------- Révision espacée ---------- */
   /** Choisit des habiletés pour une révision entrelacée (questions mélangées). */
-  M.reviewItems = function (count = 10) {
-    const practiced = M.skills.filter((s) => P.skills[s.id] && P.skills[s.id].n > 0);
+  M.reviewItems = function (count = 10, subject = null) {
+    const all = subject ? M.skills.filter((s) => M.subjectOf(s) === subject) : M.skills;
+    const practiced = all.filter((s) => P.skills[s.id] && P.skills[s.id].n > 0);
     let pool;
     if (practiced.length < 3) {
-      pool = M.shuffle(M.skills.filter((s) => s.starter)).slice(0, 5);
-      if (pool.length < 3) pool = M.shuffle(M.skills).slice(0, 5);
+      pool = M.shuffle(all.filter((s) => s.starter)).slice(0, 5);
+      if (pool.length < 3) pool = M.shuffle(all).slice(0, 5);
     } else {
       // Priorité : faible maîtrise, puis pratique ancienne (révision espacée)
       const scored = practiced.map((s) => ({
@@ -273,254 +296,6 @@
     const items = [];
     for (let i = 0; i < count; i++) items.push(pool[i % pool.length].id);
     return M.shuffle(items);
-  };
-
-  /* =====================================================================
-     Session de questions
-     Question = {
-       prompt: html  (peut contenir {?} → case-réponse en ligne),
-       say?: texte lu à voix haute,
-       viz?: (el) => void            // visuel interactif
-       showMe?: (el) => Promise|void // démonstration animée dans le même el
-       input: 'number' | 'choice' | 'order',
-       answer: nombre | valeur | [valeurs] (order),
-       choices?: [{label, value}]    // choice / order
-       unit?: 'cm'                   // suffixe pour number
-       hint?: html, explain?: html
-     }
-     ===================================================================== */
-  M.runSession = function (root, opts) {
-    const items = opts.items.slice();
-    const S = { i: 0, results: [], tok: 0 };
-    root.innerHTML = `
-      <div class="session">
-        <div class="s-top">
-          <a class="btn ghost" href="${opts.back || '#/'}">← Retour</a>
-          <div class="progress"><i></i></div>
-          <b class="s-count"></b>
-        </div>
-        <div class="card q-card">
-          <div class="q-head"><span class="q-skill"></span></div>
-          <div class="q-prompt-row"><div class="q-prompt"></div><button class="btn icon q-speak" title="Écouter">🔊</button></div>
-          <div class="q-body">
-            <div class="q-left"><div class="q-viz"></div><div class="q-tools"></div></div>
-            <div class="q-right">
-              <div class="q-input"></div>
-              <div class="q-feedback"></div>
-              <div class="q-explain"></div>
-              <button class="btn primary big q-next" hidden>Suivant ➜</button>
-            </div>
-          </div>
-        </div>
-      </div>`;
-    const el = (s) => M.$(s, root);
-    const vizEl = el('.q-viz');
-
-    function keyHandler(e) {
-      if (!S.q) return;
-      if (S.done) { if (e.key === 'Enter') { e.preventDefault(); next(); } return; }
-      if (S.q.input === 'number') {
-        if (/^[0-9]$/.test(e.key)) press(e.key);
-        else if (e.key === 'Backspace') press('del');
-        else if (e.key === 'Enter') { e.preventDefault(); press('ok'); }
-      } else if (S.q.input === 'choice' && /^[1-9]$/.test(e.key)) {
-        const b = M.$$('.choice-btn', root)[+e.key - 1];
-        if (b && !b.disabled) b.click();
-      }
-    }
-    document.addEventListener('keydown', keyHandler);
-    M.onCleanup(() => document.removeEventListener('keydown', keyHandler));
-
-    el('.q-speak').onclick = () => M.say(S.q.say || M.text(S.q.prompt.replace('{?}', '▢')));
-    el('.q-next').onclick = () => next();
-
-    function show() {
-      const id = items[S.i], sk = M.skillById[id];
-      const lvl = Math.min(2, M.progress.mastery(id));
-      let q;
-      try { q = sk.gen({ lvl }); } catch (e) { console.error('gen', id, e); q = { prompt: 'Oups, une erreur. Passe à la suivante.', input: 'choice', answer: 1, choices: [{ label: 'OK', value: 1 }] }; }
-      S.q = q; S.sk = sk; S.tries = 0; S.done = false; S.input = ''; S.tok++;
-      el('.progress i').style.width = (S.i / items.length) * 100 + '%';
-      el('.s-count').textContent = `${S.i + 1} / ${items.length}`;
-      const dom = M.DOMAINS.find((d) => d.id === sk.domain) || {};
-      el('.q-skill').innerHTML = `<span class="tag" style="background:${dom.soft};color:${dom.color}">${sk.icon || dom.icon} ${M.esc(sk.title)}</span>` + (sk.learn && M.learnById[sk.learn] ? ` <a class="learn-link" href="#/apprendre/${sk.learn}">📘 Apprendre</a>` : '');
-      renderPrompt();
-      el('.q-body').classList.toggle('noviz', !q.viz);
-      mountViz();
-      const tools = el('.q-tools');
-      tools.innerHTML = (q.showMe ? '<button class="btn yellow q-show">👀 Montre-moi</button>' : '') + (q.viz ? '<button class="btn q-reset">↺ Effacer</button>' : '') + (q.hint ? '<button class="btn q-hint">💡 Indice</button>' : '');
-      if (q.showMe) M.$('.q-show', tools).onclick = () => runShowMe();
-      if (q.viz) M.$('.q-reset', tools).onclick = () => mountViz();
-      if (q.hint) M.$('.q-hint', tools).onclick = () => { setFeedback('hint', '💡 ' + q.hint); };
-      setFeedback('', q.input === 'number' ? 'Écris ta réponse 👇' : q.input === 'order' ? 'Touche dans le bon ordre 👇' : 'Choisis ta réponse 👇');
-      el('.q-explain').innerHTML = '';
-      el('.q-next').hidden = true;
-      renderInput();
-    }
-
-    /* Chaque visuel est monté dans un nouvel élément enfant : les animations
-       d'une question précédente (qui vérifient el.isConnected) s'arrêtent
-       d'elles-mêmes et aucun gestionnaire de clic ne survit. */
-    function mountViz() {
-      vizEl.innerHTML = '';
-      vizEl.onclick = null;
-      S.vizInner = null;
-      if (!S.q.viz) return;
-      const inner = document.createElement('div');
-      vizEl.appendChild(inner);
-      S.vizInner = inner;
-      try { S.q.viz(inner); } catch (e) { console.error('viz', S.sk.id, e); }
-    }
-    function runShowMe() {
-      if (!S.q.showMe) return;
-      try { return S.q.showMe(S.vizInner || vizEl); } catch (e) { console.error('showMe', S.sk.id, e); }
-    }
-
-    function renderPrompt() {
-      if (!root.isConnected || !M.$('.q-prompt', root)) return;
-      const q = S.q;
-      const box = `<span class="ans-box${S.input ? ' filled' : ''}${S.done ? ' good' : ''}">${S.done && q.input === 'number' ? q.answer : S.input || '?'}</span>`;
-      el('.q-prompt').innerHTML = q.prompt.includes('{?}') ? q.prompt.replace('{?}', box) : q.prompt;
-      const inlineBox = q.prompt.includes('{?}');
-      const solo = M.$('.solo-box', root);
-      if (solo) solo.innerHTML = `${inlineBox ? '' : box}${q.unit ? `<span class="unit">${q.unit}</span>` : ''}`;
-    }
-
-    function renderInput() {
-      const q = S.q, host = el('.q-input');
-      if (q.input === 'number') {
-        host.innerHTML = `<div class="solo-box"></div>
-          <div class="pad">${['7', '8', '9', '4', '5', '6', '1', '2', '3'].map((k) => `<button class="key" data-k="${k}">${k}</button>`).join('')}
-          <button class="key del" data-k="del">⌫</button><button class="key" data-k="0">0</button><button class="key del" data-k="clr">✕</button>
-          <button class="key ok" data-k="ok">✓ Vérifier</button></div>`;
-        host.onclick = (e) => { const b = e.target.closest('.key'); if (b) press(b.dataset.k); };
-        renderPrompt();
-      } else if (q.input === 'choice') {
-        const cols = q.cols || (q.choices.length <= 2 ? 2 : q.choices.length === 3 ? 3 : 2);
-        host.innerHTML = `<div class="choices-grid" style="grid-template-columns:repeat(${cols},1fr)">${q.choices.map((c, i) => `<button class="choice-btn" data-i="${i}">${c.label}</button>`).join('')}</div>`;
-        host.onclick = (e) => {
-          const b = e.target.closest('.choice-btn');
-          if (!b || S.done || b.disabled) return;
-          const c = q.choices[+b.dataset.i];
-          if (String(c.value) === String(q.answer)) { b.classList.add('right'); correct(b); }
-          else { b.classList.add('wrong'); b.disabled = true; wrong(null, q.choices.length <= 2 ? 1 : 2); }
-        };
-      } else if (q.input === 'order') {
-        S.order = [];
-        const draw = () => {
-          host.innerHTML = `<div class="order-slots">${q.choices.map((_, i) => `<span class="slot">${S.order[i] != null ? q.choices[S.order[i]].label : ''}</span>`).join('')}</div>
-            <div class="choices-grid order" style="grid-template-columns:repeat(${Math.min(4, q.choices.length)},1fr)">${q.choices.map((c, i) => `<button class="choice-btn" data-i="${i}" ${S.order.includes(i) ? 'disabled' : ''}>${c.label}</button>`).join('')}</div>
-            <button class="btn small-undo">↺ Recommencer</button>`;
-        };
-        draw();
-        host.onclick = (e) => {
-          if (S.done) return;
-          if (e.target.closest('.small-undo')) { S.order = []; draw(); return; }
-          const b = e.target.closest('.choice-btn');
-          if (!b || b.disabled) return;
-          S.order.push(+b.dataset.i);
-          M.sfx.tap();
-          draw();
-          if (S.order.length === q.choices.length) {
-            const got = S.order.map((i) => String(q.choices[i].value));
-            if (got.join('|') === q.answer.map(String).join('|')) correct(host);
-            else { wrong(null, 2); if (!S.done) setTimeout(() => { S.order = []; draw(); }, 900); }
-          }
-        };
-      }
-    }
-
-    function press(k) {
-      if (S.done) return;
-      if (k === 'ok') {
-        if (S.input === '') { setFeedback('bad', 'Écris un nombre d\'abord 🙂'); return; }
-        const v = +S.input;
-        if (v === +S.q.answer) correct(el('.q-prompt'));
-        else wrong(v, 2);
-        return;
-      }
-      if (k === 'del') S.input = S.input.slice(0, -1);
-      else if (k === 'clr') S.input = '';
-      else if (S.input.length < 4) S.input = (S.input === '0' ? '' : S.input) + k;
-      M.sfx.tap();
-      renderPrompt();
-    }
-
-    function setFeedback(cls, html) {
-      const f = el('.q-feedback');
-      f.className = 'q-feedback ' + cls;
-      f.innerHTML = html;
-    }
-    function answerLabel() {
-      const q = S.q;
-      if (q.input === 'number') return q.answer + (q.unit ? ' ' + q.unit : '');
-      if (q.input === 'choice') { const c = q.choices.find((c) => String(c.value) === String(q.answer)); return c ? c.label : q.answer; }
-      return q.answer.map((v) => { const c = q.choices.find((c) => String(c.value) === String(v)); return c ? c.label : v; }).join(' → ');
-    }
-    function finish(first) {
-      S.done = true;
-      M.progress.record(S.sk.id, first);
-      S.results.push({ id: S.sk.id, first });
-      if (S.q.explain) el('.q-explain').innerHTML = `<div class="callout">🦫 ${S.q.explain}</div>`;
-      el('.q-next').hidden = false;
-      el('.q-next').textContent = S.i === items.length - 1 ? 'Voir mes résultats 🏆' : 'Suivant ➜';
-      M.$$('.key', root).forEach((k) => (k.disabled = true));
-      M.$$('.choice-btn', root).forEach((k) => (k.disabled = true));
-      renderPrompt();
-    }
-    function correct(fromEl) {
-      const first = S.tries === 0;
-      finish(first);
-      const msg = M.pick(M.BRAVO);
-      setFeedback('good', msg + (first ? ' ⭐' : ' 🎉'));
-      M.sfx.good();
-      M.confetti(first ? 50 : 20);
-      M.say(msg);
-      if (first) M.flyStar(fromEl || el('.q-prompt'));
-    }
-    function wrong(val, maxTries) {
-      S.tries++;
-      M.sfx.bad();
-      const p = el('.q-prompt');
-      p.classList.remove('shake'); void p.offsetWidth; p.classList.add('shake');
-      if (S.tries >= maxTries) {
-        finish(false);
-        setFeedback('bad', `La bonne réponse : <b>${answerLabel()}</b>`);
-        runShowMe();
-      } else {
-        let msg = 'Pas tout à fait… Essaie encore 💪';
-        if (val != null && typeof S.q.answer === 'number') msg = (val > S.q.answer ? 'C\'est un peu trop grand.' : 'C\'est un peu trop petit.') + ' Essaie encore 💪';
-        if (S.q.hint) msg += `<div class="hint-text">💡 ${S.q.hint}</div>`;
-        setFeedback('bad', msg);
-        S.input = '';
-        const tok = S.tok;
-        setTimeout(() => { if (tok === S.tok && !S.done) renderPrompt(); }, 400);
-      }
-    }
-    function next() {
-      if (S.i < items.length - 1) { S.i++; show(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
-      else end();
-    }
-    function end() {
-      const first = S.results.filter((r) => r.first).length, n = items.length;
-      const bySkill = {};
-      S.results.forEach((r) => { (bySkill[r.id] = bySkill[r.id] || { ok: 0, n: 0 }).n++; if (r.first) bySkill[r.id].ok++; });
-      root.innerHTML = `<div class="card end">
-        <div class="trophy">${first === n ? '🏆' : first >= n * 0.7 ? '🥇' : '🌱'}</div>
-        <h2>${first === n ? 'PARFAIT ! 🎉' : first >= n * 0.7 ? 'Bravo, super travail !' : 'Beau travail, continue !'}</h2>
-        <p class="lead">Tu as réussi <b>${first}</b> question${first > 1 ? 's' : ''} sur ${n} du premier coup.</p>
-        <div class="end-stars">${'⭐'.repeat(first)}${'☆'.repeat(n - first)}</div>
-        <div class="end-skills">${Object.entries(bySkill).map(([id, r]) => `<div class="end-skill"><span>${M.skillById[id].icon || ''} ${M.esc(M.skillById[id].title)}</span><span>${r.ok}/${r.n}</span>${M.starsHtml(M.progress.mastery(id))}</div>`).join('')}</div>
-        <div class="row-center">
-          <button class="btn primary big again">Encore ! 🔁</button>
-          <a class="btn big" href="${opts.back || '#/'}">Tableau de bord</a>
-        </div>
-      </div>`;
-      M.confetti();
-      M.say(M.$('h2', root).textContent + ' ' + M.$('.lead', root).textContent);
-      M.$('.again', root).onclick = () => M.runSession(root, { ...opts, items: opts.regen ? opts.regen() : M.shuffle(items) });
-    }
-    show();
   };
 
   M.starsHtml = (n) => `<span class="mstars" title="Maîtrise : ${n}/3">${'★'.repeat(n)}<span class="off">${'★'.repeat(3 - n)}</span></span>`;
