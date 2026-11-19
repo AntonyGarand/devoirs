@@ -24,6 +24,7 @@
     if (page === 'apprendre') return learnIndex();
     if (page === 'parents') return parents();
     if (page === 'style' && M.styleguide) return M.styleguide(app);
+    if (page === 'test' && M.selfTest) { app.innerHTML = '<p class="card">🧪 Test en cours…</p>'; return M.selfTest(app); }
     home();
   }
   window.addEventListener('hashchange', route);
@@ -92,12 +93,13 @@
   }
   function skillCard(s, d) {
     const m = M.progress.mastery(s.id), acc = M.progress.acc(s.id);
-    return `<div class="skill-card m${m}" style="border-top:6px solid ${d.color}">
-      <div class="top"><span class="ic">${s.icon || d.icon}</span><h3>${M.esc(s.title)}</h3></div>
-      <p>${s.desc || ''}</p>
+    const st = M.skillStatus(s);
+    return `<div class="skill-card m${m} ${st === true ? '' : 'off'}" style="border-top:6px solid ${d.color}">
+      <div class="top"><span class="ic">${s.icon || d.icon}</span><h3>${M.esc(s.title)}</h3>${s.enrichment ? '<span class="tag enrich" title="Enrichissement : au-delà du programme de 2e année">🌟</span>' : ''}</div>
+      <p>${s.desc || ''}</p>${st === true ? '' : `<div class="why-off">🔒 ${M.esc(st)}</div>`}
       <div class="top">${M.starsHtml(m)}<span class="muted" style="font-size:.85rem;font-weight:700;margin-left:auto">${acc == null ? 'Pas encore essayé' : Math.round(acc * 100) + ' % récemment'}</span></div>
       <div class="acts">
-        <a class="btn primary" href="#/pratique/${s.id}">▶ Pratiquer</a>
+        ${st === true ? `<a class="btn primary" href="#/pratique/${s.id}">${s.ungraded ? '💬 Discuter' : '▶ Pratiquer'}</a>` : ''}
         ${s.learn && M.learnById[s.learn] ? `<a class="btn" href="#/apprendre/${s.learn}" title="Apprendre">📘</a>` : ''}
       </div>
     </div>`;
@@ -106,6 +108,8 @@
   /* ---------- Pratique et révision ---------- */
   function practice(id) {
     const subj = M.subjectOf(M.skillById[id]);
+    const st = M.skillStatus(M.skillById[id]);
+    if (st !== true) { app.innerHTML = `<div class="learn-top"><a class="btn ghost" href="#/matiere/${subj}">← Retour</a></div>` + M.ui.callout('🔒 ' + M.esc(st), { tone: 'warn' }); return; }
     M.runSession(app, { items: Array(SESSION_LEN).fill(id), back: subj ? '#/matiere/' + subj : '#/' });
   }
   function review(subjectId) {
@@ -153,8 +157,11 @@
   function parents() {
     const rows = M.SUBJECTS.map((subj) => M.DOMAINS.filter((d) => d.subject === subj.id).map((d) => {
       const sk = M.skills.filter((s) => s.domain === d.id).sort((a, b) => a.order - b.order);
-      return sk.map((s, i) => `<tr>${i === 0 ? `<td rowspan="${sk.length}"><b>${subj.icon} ${d.icon} ${d.title}</b></td>` : ''}<td>${s.icon || ''} ${M.esc(s.title)}</td><td>${s.pda || ''}</td><td>${M.starsHtml(M.progress.mastery(s.id))}</td></tr>`).join('');
+      return sk.map((s, i) => `<tr>${i === 0 ? `<td rowspan="${sk.length}"><b>${subj.icon} ${d.icon} ${d.title}</b></td>` : ''}<td>${s.icon || ''} ${M.esc(s.title)}${s.enrichment ? ' 🌟' : ''}</td><td>${s.pda || ''}</td><td>${M.starsHtml(M.progress.mastery(s.id))}</td></tr>`).join('');
     }).join('')).join('');
+    const notes = [...M.DOMAINS, ...M.skills, ...M.learns].filter((x) => x.parentNote).map((x) => `<li><b>${x.icon || ''} ${M.esc(x.title)}</b> — ${x.parentNote}</li>`).join('');
+    const part = M.progress.data().participation || {};
+    const participation = Object.entries(part).filter(([id]) => M.skillById[id]).map(([id, n]) => `<li>${M.esc(M.skillById[id].title)} : ${n}</li>`).join('');
     app.innerHTML = `<div class="card doc">
       <h1>👪 Guide pour les parents</h1>
       <p>Ce site couvre les apprentissages de la <b>2<sup>e</sup> année du primaire</b> au Québec, selon le Programme de formation de l'école québécoise (PFEQ) et ses
@@ -184,15 +191,42 @@
       <h2>Correspondance avec le programme</h2>
       <table><thead><tr><th>Domaine</th><th>Habileté</th><th>Référence au programme</th><th>Maîtrise</th></tr></thead><tbody>${rows}</tbody></table>
 
+      ${notes ? `<h2>Notes aux parents</h2><ul>${notes}</ul>` : ''}
+      ${participation ? `<h2>Cartes de discussion</h2><p>Nombre de fois où une carte de réflexion a été faite (aucune réponse n'est enregistrée) :</p><ul>${participation}</ul>` : ''}
+
+      <h2>Voix de lecture</h2>
+      <div id="voiceDiag" class="row"></div>
+      <p class="muted">Sans voix française, la lecture à voix haute et les dictées ne fonctionnent pas; sans voix anglaise, les activités d'écoute en anglais sont verrouillées.
+      Windows : Paramètres → Heure et langue → Voix. Android : Paramètres → Synthèse vocale (Google). iPad/iPhone : Réglages → Accessibilité → Contenu énoncé → Voix.</p>
+
       <h2>Réglages</h2>
       <div class="row">
         <button class="btn" id="toggleSound">${M.sfx.on ? '🔊 Sons activés' : '🔇 Sons désactivés'}</button>
+        <button class="btn" id="toggleRead">${M.settings.get('autoRead') ? '🗣️ Lecture automatique : oui' : '🗣️ Lecture automatique : non'}</button>
         <button class="btn" id="resetProg">🗑️ Effacer la progression</button>
         <a class="btn" href="#/style">🎨 Guide de style</a>
       </div>
-      <p class="muted">La progression est enregistrée seulement dans ce navigateur, sur cet appareil.</p>
+      <p class="muted">La lecture automatique lit chaque consigne à voix haute (utile pour un lecteur débutant). La progression est enregistrée seulement dans ce navigateur, sur cet appareil.</p>
+      <div id="parentTools"></div>
     </div>`;
-    M.$('#toggleSound').onclick = (e) => { M.sfx.on = !M.sfx.on; e.target.textContent = M.sfx.on ? '🔊 Sons activés' : '🔇 Sons désactivés'; };
+    M.$('#toggleSound').onclick = (e) => { M.settings.set('sound', !M.sfx.on); e.target.textContent = M.sfx.on ? '🔊 Sons activés' : '🔇 Sons désactivés'; };
+    M.$('#toggleRead').onclick = (e) => { M.settings.set('autoRead', !M.settings.get('autoRead')); e.target.textContent = M.settings.get('autoRead') ? '🗣️ Lecture automatique : oui' : '🗣️ Lecture automatique : non'; };
+    M.voices.ready().then(() => {
+      const box = M.$('#voiceDiag');
+      if (!box) return;
+      box.innerHTML = [['fr-CA', 'Français', 'Bonjour ! Je suis la voix française.'], ['en-CA', 'Anglais', 'Hello! I am the English voice.']].map(([l, name, test]) => {
+        const st = M.voices.status(l);
+        const icon = st.state === 'exact' ? '✅' : st.state === 'fallback' ? '🟡' : '❌';
+        return `<span class="chip">${icon} ${name} : ${st.name ? M.esc(st.name) : 'aucune voix'}</span><button class="btn" data-say="${test}" data-lang="${l}">▶ Tester</button>`;
+      }).join('');
+    });
+    const toolsEl = M.$('#parentTools');
+    M.parentTools.forEach((t) => {
+      const sec = document.createElement('section');
+      sec.innerHTML = `<h2>${t.icon || '🧰'} ${M.esc(t.title)}</h2><div></div>`;
+      toolsEl.appendChild(sec);
+      try { t.render(sec.lastElementChild); } catch (e) { console.error('outil parent', t.id, e); }
+    });
     M.$('#resetProg').onclick = () => { if (confirm('Effacer toutes les étoiles et la progression ?')) { M.progress.reset(); parents(); } };
   }
 

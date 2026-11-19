@@ -97,48 +97,7 @@
     tone,
   };
 
-  /* ---------- Voix (lecture à voix haute) ---------- */
-  const voices = {};
-  function loadVoice() {
-    try {
-      const vs = speechSynthesis.getVoices();
-      voices.fr = vs.find((v) => v.lang === 'fr-CA') || vs.find((v) => v.lang && v.lang.startsWith('fr')) || null;
-      voices.en = vs.find((v) => v.lang === 'en-CA') || vs.find((v) => v.lang === 'en-US') || vs.find((v) => v.lang && v.lang.startsWith('en')) || null;
-    } catch (e) {}
-  }
-  try {
-    if ('speechSynthesis' in window) {
-      loadVoice();
-      speechSynthesis.onvoiceschanged = loadVoice;
-    }
-  } catch (e) {}
-  /**
-   * Lit un texte. opts : { lang: 'fr-CA' (défaut) | 'en-CA', rate: 0.9, raw: false }
-   * raw = true : ne pas transformer les symboles (+, =, −) en mots (dictées, anglais).
-   */
-  M.say = function (text, opts = {}) {
-    try {
-      if (!('speechSynthesis' in window) || !text) return;
-      speechSynthesis.cancel();
-      const lang = opts.lang || 'fr-CA';
-      let t = String(text);
-      if (!opts.raw && lang.startsWith('fr')) {
-        t = t.replace(/\s−\s|\s-\s/g, ' moins ')
-          .replace(/\+/g, ' plus ')
-          .replace(/=/g, ' égale ')
-          .replace(/×/g, ' fois ')
-          .replace(/÷/g, ' divisé par ')
-          .replace(/[▢□]/g, ' combien ');
-      }
-      const u = new SpeechSynthesisUtterance(t);
-      u.lang = lang;
-      const v = voices[lang.slice(0, 2)];
-      if (v) u.voice = v;
-      u.rate = opts.rate || 0.9;
-      speechSynthesis.speak(u);
-    } catch (e) {}
-  };
-  M.hush = () => { try { speechSynthesis.cancel(); } catch (e) {} };
+  /* Voix : voir services.js (M.say, M.voices) */
 
   /* ---------- Effets ---------- */
   M.confetti = function (n = 50) {
@@ -278,7 +237,9 @@
   /* ---------- Révision espacée ---------- */
   /** Choisit des habiletés pour une révision entrelacée (questions mélangées). */
   M.reviewItems = function (count = 10, subject = null) {
-    const all = subject ? M.skills.filter((s) => M.subjectOf(s) === subject) : M.skills;
+    const all = (subject ? M.skills.filter((s) => M.subjectOf(s) === subject) : M.skills)
+      .filter((s) => !s.enrichment && !s.ungraded && (!M.skillStatus || M.skillStatus(s) === true));
+    if (!all.length) return [];
     const practiced = all.filter((s) => P.skills[s.id] && P.skills[s.id].n > 0);
     let pool;
     if (practiced.length < 3) {

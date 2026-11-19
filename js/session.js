@@ -8,6 +8,8 @@
 (function () {
   'use strict';
   const M = window.M;
+  /** Contenus audio déjà joués automatiquement dans la série (autoplay: 'once'). */
+  M.heard = new Set();
 
   /** Message de réessai standard. */
   function retryMsg(q, val) {
@@ -31,11 +33,25 @@
     const wide = q.layout === 'wide' || fmt.layout === 'wide';
     const passage = q.passage ? (typeof q.passage === 'string' ? { html: q.passage } : q.passage) : null;
     const audio = q.audio ? (typeof q.audio === 'string' ? { text: q.audio } : q.audio) : null;
+    const ungraded = M.isUngraded(q);
+    const subj = sk ? M.subjectById[M.subjectOf(sk)] : null;
+    const isSteps = fmtName === 'steps';
+    // Texte : HTML ou jetons touchables ({w, s}; '¶' = paragraphe)
+    const passageBody = passage ? (passage.tokens
+      ? passage.tokens.map((t, i) => (t.w === '¶' ? '<span class="p-br"></span>' : `<span class="ptok" data-i="${i}">${M.esc(t.w)}</span>`)).join(' ')
+      : passage.html) : '';
+    const sceneHtml = q.scene ? `<div class="q-scene" role="img" aria-label="${M.esc(q.scene.map((x) => x.label || '').join(', '))}">${q.scene.map((x) => `<span title="${M.esc(x.label || '')}">${x.emoji || (x.art ? M.art.html(x.art, { size: 72 }) : '')}</span>`).join('')}</div>` : '';
+    const passageHtml = passage ? `<div class="q-passage ${isSteps ? 'sticky' : ''} ${passage.listenOnly ? 'listen-only' : ''}">
+        <div class="q-passage-head"><b>${passage.listenOnly ? '👂' : '📖'} ${passage.title ? M.esc(passage.title) : passage.listenOnly ? 'Écoute l\'histoire' : 'Lis le texte'}</b>
+        <span><button class="btn icon q-read" title="Écouter le texte">🔊</button>${isSteps && !passage.listenOnly ? '<button class="btn q-fold">🔼 Replier</button>' : ''}</span></div>
+        <div class="q-passage-text" ${passage.listenOnly ? 'hidden' : ''}>${passageBody}</div>
+        ${passage.listenOnly ? '<button class="btn q-see" hidden>👀 Voir le texte</button>' : ''}</div>` : '';
 
     host.innerHTML = `
       <div class="card q-card">
         ${sk ? `<div class="q-head"><span class="tag" style="background:${dom.soft || '#eee'};color:${dom.color || '#333'}">${sk.icon || dom.icon || ''} ${M.esc(sk.title)}</span>${sk.learn && M.learnById[sk.learn] ? ` <a class="learn-link" href="#/apprendre/${sk.learn}">📘 Apprendre</a>` : ''}</div>` : ''}
-        ${passage ? `<div class="q-passage"><div class="q-passage-head"><b>📖 ${passage.title ? M.esc(passage.title) : 'Lis le texte'}</b><button class="btn icon q-read" title="Écouter le texte">🔊</button></div><div class="q-passage-text">${passage.html}</div></div>` : ''}
+        ${sceneHtml}
+        ${passageHtml}
         ${audio ? `<div class="q-audio"><button class="btn blue big q-listen">🔊 Écoute</button><button class="btn q-slow" title="Plus lentement">🐢 Lentement</button></div>` : ''}
         <div class="q-prompt-row"><div class="q-prompt"></div><button class="btn icon q-speak" title="Écouter la consigne">🔊</button></div>
         <div class="q-body ${q.viz ? '' : 'noviz'} ${wide ? 'wide' : ''}">
@@ -62,13 +78,48 @@
     setInline('<span class="ans-box">?</span>');
 
     // Lecture
-    const sayPrompt = () => M.say(q.say || M.text(promptHtml.replace('{?}', '▢')));
+    const sayPrompt = () => (Array.isArray(q.say) ? M.say(q.say) : M.sayHtml(q.say || promptHtml, { lang: q.sayLang }));
     el('.q-speak').onclick = sayPrompt;
-    if (passage) el('.q-read').onclick = () => M.say(passage.say || M.text(passage.html), { lang: passage.lang });
+    const passageText = () => passage.say || (passage.tokens ? passage.tokens.filter((t) => t.w !== '¶').map((t) => t.w).join(' ') : M.text(passage.html));
+    if (passage) el('.q-read').onclick = () => M.say(passageText(), { lang: passage.lang, raw: (passage.lang || '').startsWith('en') });
+    const audioSegs = (rate) => (audio.seq || [audio.text]).map((t) => ({ text: t, lang: audio.lang, raw: true, rate }));
+    let autoplayed = false;
     if (audio) {
-      el('.q-listen').onclick = () => M.say(audio.text, { lang: audio.lang, raw: true });
-      el('.q-slow').onclick = () => M.say(audio.text, { lang: audio.lang, rate: 0.6, raw: true });
-      if (audio.autoplay !== false) setTimeout(() => { if (host.isConnected) M.say(audio.text, { lang: audio.lang, raw: true }); }, 350);
+      el('.q-listen').onclick = () => M.say(audioSegs(), { pause: audio.pause || 900 });
+      el('.q-slow').onclick = () => M.say(audioSegs(0.6), { pause: audio.pause || 900 });
+      const key = audio.key || (audio.seq || [audio.text]).join('|');
+      const once = audio.autoplay === 'once';
+      if (audio.autoplay !== false && !(once && M.heard.has(key))) {
+        autoplayed = true;
+        M.heard.add(key);
+        setTimeout(() => { if (host.isConnected) M.say(audioSegs(), { pause: audio.pause || 900 }); }, 350);
+      }
+    }
+    if (!autoplayed && M.settings.get('autoRead')) setTimeout(() => { if (host.isConnected) sayPrompt(); }, 300);
+
+    // Texte à jetons : toucher un mot le lit, sauf pendant une étape de marquage
+    let passageCtl = null;
+    if (passage && passage.tokens) {
+      const pEl = el('.q-passage-text');
+      const toks = [];
+      M.$$('.ptok', pEl).forEach((t) => (toks[+t.dataset.i] = t));
+      let tapFn = null;
+      passageCtl = {
+        el: pEl, tokens: toks, tokenData: passage.tokens,
+        setMarking(on) { pEl.classList.toggle('marking', !!on); },
+        onTap(fn) { tapFn = fn; },
+      };
+      pEl.onclick = (e) => {
+        const t = e.target.closest('.ptok');
+        if (!t) return;
+        if (tapFn) return tapFn(+t.dataset.i);
+        M.say(t.textContent.replace(/[.,!?;:«»"()]/g, ''), { lang: passage.lang, raw: true });
+      };
+    }
+    if (passage && passage.listenOnly) el('.q-see').onclick = (e) => { el('.q-passage-text').hidden = false; e.target.remove(); };
+    if (passage && el('.q-fold')) {
+      const fold = el('.q-fold');
+      fold.onclick = () => { const t = el('.q-passage-text'); t.hidden = !t.hidden; fold.textContent = t.hidden ? '📖 Relire' : '🔼 Replier'; };
     }
 
     // Visuel
@@ -108,12 +159,17 @@
       if (S.done) return;
       S.done = true;
       if (S.inst && S.inst.lock) S.inst.lock(); else M.$$('button, input, select', inputEl).forEach((b) => (b.disabled = true));
-      if (ok) {
-        const msg = M.pick(M.BRAVO);
+      if (passage && passage.listenOnly && el('.q-see')) el('.q-see').hidden = false;
+      if (ungraded) {
+        feedback('good', fmtName === 'reflect' ? 'Merci d\'en avoir parlé 💬' : 'Bien observé ! 👀');
+        M.sfx.pop();
+      } else if (ok) {
+        const cheer = subj && subj.cheers ? M.pick(subj.cheers) : null;
+        const msg = cheer ? cheer.text : M.pick(M.BRAVO);
         feedback('good', msg + (first ? ' ⭐' : ' 🎉'));
         M.sfx.good();
         M.confetti(first ? 50 : 20);
-        M.say(msg);
+        M.say(msg, cheer ? { lang: cheer.lang, raw: true } : {});
         if (first && opts.record !== false) M.flyStar(el('.q-prompt'));
       } else {
         feedback('bad', `La bonne réponse : <b>${answerLabel()}</b>`);
@@ -122,11 +178,11 @@
       }
       if (q.explain) el('.q-explain').innerHTML = `<div class="callout">🦫 ${q.explain}</div>`;
       if (opts.onNext) { const n = el('.q-next'); n.hidden = false; n.onclick = opts.onNext; }
-      if (opts.onResult) opts.onResult({ first, ok });
+      if (opts.onResult) opts.onResult({ first, ok, ungraded });
     }
 
     const ctx = {
-      q, host: inputEl, hasInline, setInline,
+      q, host: inputEl, hasInline, setInline, passage: passageCtl,
       get done() { return S.done; },
       get tries() { return S.tries; },
       feedback,
@@ -167,6 +223,7 @@
   M.runSession = function (root, opts) {
     const items = opts.items.slice();
     const S = { i: 0, results: [], current: null };
+    M.heard.clear();
     root.innerHTML = `
       <div class="session">
         <div class="s-top">
@@ -190,7 +247,11 @@
       S.current = M.renderQuestion(el('.s-card'), q, {
         skill: sk,
         nextLabel: S.i === items.length - 1 ? 'Voir mes résultats 🏆' : 'Suivant ➜',
-        onResult: ({ first }) => { M.progress.record(sk.id, first); S.results.push({ id: sk.id, first }); },
+        onResult: ({ first, ungraded }) => {
+          if (ungraded) { M.progress.participate(sk.id); return; }
+          M.progress.record(sk.id, first);
+          S.results.push({ id: sk.id, first });
+        },
         onNext: next,
       });
     }
@@ -200,7 +261,8 @@
     }
     function end() {
       if (S.current) S.current.destroy();
-      const first = S.results.filter((r) => r.first).length, n = items.length;
+      const first = S.results.filter((r) => r.first).length, n = S.results.length;
+      if (!n) { root.innerHTML = `<div class="card end"><div class="trophy">💬</div><h2>Merci !</h2><div class="row-center"><a class="btn big" href="${opts.back || '#/'}">Retour</a></div></div>`; return; }
       const bySkill = {};
       S.results.forEach((r) => { (bySkill[r.id] = bySkill[r.id] || { ok: 0, n: 0 }).n++; if (r.first) bySkill[r.id].ok++; });
       root.innerHTML = `<div class="card end">
