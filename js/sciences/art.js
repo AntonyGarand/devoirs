@@ -160,38 +160,7 @@
       <g${h('pied')}><ellipse cx="140" cy="410" rx="26" ry="12" fill="${BODY}" stroke="${LINE}" stroke-width="2"/><ellipse cx="220" cy="410" rx="26" ry="12" fill="${BODY}" stroke="${LINE}" stroke-width="2"/></g>`, cls);
   };
 
-  /** La Terre vue du pôle Nord, éclairée du côté du Soleil; maisons data-hot="jour" | "nuit". */
-  S.terre = function ({ sunLeft = true, hot = true, angle = null, houses = true, cls = 'sc-fig' } = {}) {
-    const cx = sunLeft ? 240 : 160, sx = sunLeft ? 36 : 364, r = 100;
-    const lit = sunLeft ? `M${cx} ${150 - r} A${r} ${r} 0 0 0 ${cx} ${150 + r} Z` : `M${cx} ${150 - r} A${r} ${r} 0 0 1 ${cx} ${150 + r} Z`;
-    const rays = M.range(0, 7).map((i) => { const a = (i * Math.PI) / 4; return `<line x1="${sx + 34 * Math.cos(a)}" y1="${150 + 34 * Math.sin(a)}" x2="${sx + 46 * Math.cos(a)}" y2="${150 + 46 * Math.sin(a)}" stroke="#f4b400" stroke-width="4" stroke-linecap="round"/>`; }).join('');
-    const beams = [110, 150, 190].map((y) => `<line x1="${sunLeft ? 84 : 316}" y1="${y}" x2="${sunLeft ? 128 : 272}" y2="${y}" stroke="#ffd166" stroke-width="3" stroke-dasharray="6 6"/>`).join('');
-    // angles (degrés) : 180 = face au Soleil s'il est à gauche
-    const dayA = sunLeft ? [150, 180, 210] : [-30, 0, 30], nightA = sunLeft ? [-30, 0, 30] : [150, 180, 210];
-    const house = (a, kind) => { const t = (a * Math.PI) / 180, x = cx + 66 * Math.cos(t), y = 150 + 66 * Math.sin(t); return `<g${hot ? ` data-hot="${kind}"` : ''}><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="24" fill="transparent"/><text x="${x.toFixed(1)}" y="${(y + 9).toFixed(1)}" text-anchor="middle" font-size="26">🏠</text></g>`; };
-    const marker = angle != null ? (() => { const t = (angle * Math.PI) / 180, x = cx + 84 * Math.cos(t), y = 150 + 84 * Math.sin(t); return `<g class="sc-me"><circle cx="${x}" cy="${y}" r="15" fill="#fff" stroke="#ef476f" stroke-width="3"/><text x="${x}" y="${y + 7}" text-anchor="middle" font-size="18">🏠</text></g>`; })() : '';
-    return V(400, 300, `<rect width="400" height="300" rx="16" fill="#0f1733"/>
-      ${[[20, 30], [380, 270], [60, 270], [350, 26], [200, 18], [210, 285], [120, 40], [300, 280]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.8" fill="#fff"/>`).join('')}
-      <circle cx="${sx}" cy="150" r="28" fill="#ffd166" stroke="#f4b400" stroke-width="3"/>${rays}${beams}
-      <circle cx="${cx}" cy="150" r="${r}" fill="#24345f"/>
-      <path d="${lit}" fill="#5cc8f0"/>
-      <path d="M${cx - 50} ${110} q20 -20 40 -6 q10 20 -10 30 q-30 6 -30 -24 Z M${cx + 20} ${170} q30 -10 40 10 q-10 26 -34 18 Z M${cx - 30} ${190} q14 -8 22 4 q-6 14 -20 8 Z" fill="#3fae49" opacity=".85"/>
-      <path d="M${cx} ${150 - r} A${r} ${r} 0 0 ${sunLeft ? 1 : 0} ${cx} ${150 + r} Z" fill="#0b1430" opacity=".55"/>
-      <circle cx="${cx}" cy="150" r="${r}" fill="none" stroke="#9fb3d9" stroke-width="2"/>
-      <circle cx="${cx}" cy="150" r="5" fill="#fff"/>
-      ${houses ? dayA.map((a) => house(a, 'jour')).join('') + nightA.map((a) => house(a, 'nuit')).join('') : ''}${marker}`, cls);
-  };
-
-  /** Arbre et son ombre. moment : 'matin' | 'midi' | 'soir'; shadowSide force le côté de l'ombre (+1 droite, −1 gauche, 0 aucune). */
-  S.arbre = function ({ moment = 'midi', shadowSide = null, cls = 'sc-choice-fig' } = {}) {
-    const sun = { matin: [26, 70], midi: [100, 16], soir: [174, 70] }[moment];
-    const side = shadowSide != null ? shadowSide : moment === 'matin' ? 1 : moment === 'soir' ? -1 : 0;
-    const len = moment === 'midi' ? 16 : 74;
-    const sh = side === 0 && moment !== 'midi' ? '' : `<ellipse cx="${100 + side * (len / 2 + 4)}" cy="122" rx="${len / 2 + 6}" ry="6" fill="#4b4b5a" opacity=".55"/>`;
-    return V(200, 140, `<rect width="200" height="140" rx="12" fill="#dff3fb"/><rect y="118" width="200" height="22" fill="#9ed36a"/>
-      <circle cx="${sun[0]}" cy="${sun[1]}" r="12" fill="#ffd166" stroke="#f4b400" stroke-width="2.5"/>
-      ${sh}<rect x="95" y="78" width="10" height="44" fill="#8a5a33"/><circle cx="100" cy="66" r="24" fill="#3fae49" stroke="#2f7a37" stroke-width="2"/>`, cls);
-  };
+  // S.terre, S.arbre (et S.ombre, S.erable) : voir sciences/ciel.js
 
   /** Paysage québécois : forêt, lac, champ, ville (data-hot = foret | eau | champ | ville). */
   S.paysage = function ({ hot = true, cls = 'sc-fig' } = {}) {

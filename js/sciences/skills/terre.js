@@ -20,7 +20,7 @@
       if (t === 'astres') {
         return {
           prompt: 'Le Soleil, la Terre et la Lune : associe chacun à ce qu\'il est.', format: 'match',
-          pairs: SC.ASTRES.map((a) => ({ left: a.label, right: `<span><b>${a.type}</b><br><small>${a.def}</small></span>` })),
+          pairs: SC.ASTRES.map((a) => ({ left: `${M.art.html('ciel-' + a.id, { size: 40, alt: a.label.replace(/^\S+ /, '') })} ${a.label.replace(/^\S+ /, '')}`, right: `<span><b>${a.type}</b><br><small>${a.def}</small></span>` })),
           hint: 'Une étoile fait sa propre lumière. On vit sur une planète. Un satellite tourne autour d\'une planète.',
           explain: 'Le <b>Soleil</b> est une étoile : il fait sa propre lumière. La <b>Terre</b> est une planète. La <b>Lune</b> est un satellite naturel : elle tourne autour de la Terre et elle est éclairée par le Soleil.',
         };

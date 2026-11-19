@@ -100,36 +100,62 @@
   /* Voix : voir services.js (M.say, M.voices) */
 
   /* ---------- Effets ---------- */
+  const reduced = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  /** Pluie de confettis (Web Animations : chute avec dérive, rotation 3D et balancement). */
   M.confetti = function (n = 50) {
+    if (reduced() || !document.body.animate) return;
     const colors = ['#ef476f', '#ffd166', '#06d6a0', '#118ab2', '#f78c40', '#9b5de5'];
+    const W = window.innerWidth, H = window.innerHeight;
     for (let i = 0; i < n; i++) {
       const c = document.createElement('div');
       c.className = 'confetti';
-      c.style.left = Math.random() * 100 + '%';
       c.style.background = M.pick(colors);
-      c.style.animationDuration = 1.2 + Math.random() * 1.4 + 's';
-      c.style.animationDelay = Math.random() * 0.3 + 's';
-      c.style.borderRadius = Math.random() < 0.5 ? '50%' : '3px';
+      const shape = Math.random();
+      c.style.borderRadius = shape < 0.35 ? '50%' : '3px';
+      if (shape > 0.75) { c.style.width = '7px'; c.style.height = '20px'; }
       document.body.appendChild(c);
-      setTimeout(() => c.remove(), 3000);
+      const x0 = Math.random() * W, drift = (Math.random() - 0.5) * 260, sway = 30 + Math.random() * 50;
+      const rx = 360 + Math.random() * 720, rz = (Math.random() - 0.5) * 900, dur = 1800 + Math.random() * 1600;
+      const kf = [0, 0.25, 0.5, 0.75, 1].map((k) => ({
+        transform: `translate(${x0 + drift * k + Math.sin(k * Math.PI * 3) * sway}px, ${-30 + (H + 60) * k}px) rotateX(${rx * k}deg) rotateZ(${rz * k}deg)`,
+        opacity: k > 0.85 ? 0 : 1,
+      }));
+      const an = c.animate(kf, { duration: dur, delay: Math.random() * 350, easing: 'cubic-bezier(.25,.46,.45,.94)', fill: 'both' });
+      an.onfinish = () => c.remove();
+      setTimeout(() => c.remove(), dur + 800);
     }
   };
+  /** Étoile qui vole en arc jusqu'au compteur d'étoiles, avec une traînée scintillante. */
   M.flyStar = function (fromEl) {
     const target = M.$('#starsTotal');
     if (!fromEl || !target) return;
+    const done = () => { M.updateStars(); target.classList.remove('pop'); void target.offsetWidth; target.classList.add('pop'); };
     const r = fromEl.getBoundingClientRect(), t = target.getBoundingClientRect();
+    if (reduced() || !document.body.animate) return done();
     const s = document.createElement('div');
     s.className = 'flystar';
     s.textContent = '⭐';
-    s.style.left = r.left + r.width / 2 - 24 + 'px';
-    s.style.top = r.top + 'px';
     document.body.appendChild(s);
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      s.style.left = t.left + 10 + 'px';
-      s.style.top = t.top + 'px';
-      s.style.fontSize = '1.3rem';
-    }));
-    setTimeout(() => { s.remove(); M.updateStars(); target.classList.remove('pop'); void target.offsetWidth; target.classList.add('pop'); }, 850);
+    const x0 = r.left + r.width / 2 - 24, y0 = r.top, x1 = t.left + 4, y1 = t.top - 8;
+    const cx = (x0 + x1) / 2 + 60, cy = Math.min(y0, y1) - 140; // point de contrôle : un bel arc vers le haut
+    const pt = (k) => { const m = 1 - k; return [m * m * x0 + 2 * m * k * cx + k * k * x1, m * m * y0 + 2 * m * k * cy + k * k * y1]; };
+    const N = 12, kf = [];
+    for (let i = 0; i <= N; i++) {
+      const k = i / N, [x, y] = pt(k), sc = i === 0 ? 0.3 : 1.25 - 0.75 * k;
+      kf.push({ transform: `translate(${x}px, ${y}px) scale(${sc}) rotate(${k * 360}deg)`, offset: k });
+    }
+    kf.splice(1, 0, { transform: `translate(${pt(0.06)[0]}px, ${pt(0.06)[1]}px) scale(1.5) rotate(20deg)`, offset: 0.06 });
+    const dur = 900;
+    s.animate(kf, { duration: dur, easing: 'cubic-bezier(.45,.05,.55,.95)', fill: 'forwards' }).onfinish = () => { s.remove(); done(); };
+    for (let j = 1; j <= 5; j++) {
+      setTimeout(() => {
+        const k = j / 6, [x, y] = pt(k), tr = document.createElement('div');
+        tr.className = 'star-trail'; tr.textContent = '✨';
+        document.body.appendChild(tr);
+        tr.animate([{ transform: `translate(${x + 14}px, ${y + 14}px) scale(1)`, opacity: 1 }, { transform: `translate(${x + 14}px, ${y + 30}px) scale(.2)`, opacity: 0 }], { duration: 600, easing: 'ease-out', fill: 'forwards' }).onfinish = () => tr.remove();
+      }, (dur * j) / 6);
+    }
+    setTimeout(() => { if (s.isConnected) { s.remove(); done(); } }, dur + 400);
   };
   M.BRAVO = ['Bravo !', 'Super !', 'Excellent !', 'Wow, bien joué !', 'Tu es un as !', 'Génial !', 'Champion !', 'Parfait !', 'Fantastique !', 'Bien raisonné !'];
 

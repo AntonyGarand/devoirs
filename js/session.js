@@ -150,7 +150,7 @@
       const f = el('.q-feedback');
       if (!f) return;
       f.className = 'q-feedback ' + cls;
-      f.innerHTML = html;
+      f.innerHTML = html ? `<div class="fb-in">${html}</div>` : '';
     }
     feedback('', fmt.instruction ? fmt.instruction(q) : 'Réponds 👇');
 

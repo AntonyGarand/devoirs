@@ -11,7 +11,7 @@
   const D = 'us-reperer';
 
   /** Html d'un plan déclaratif (data/plans.js). */
-  U.planHtml = (p, { north = false } = {}) => M.viz.plan({ title: p.titre, cols: p.cols, rows: p.rows, roads: p.roads, places: p.places, north });
+  U.planHtml = (p, { north = false } = {}) => M.viz.plan({ title: p.titre, cols: p.cols, rows: p.rows, roads: p.roads, places: p.places, ground: p.ground, water: p.water, north });
   /** Montre-moi : surligne l'élément de légende, puis le lieu. */
   const flash = (id) => async (el) => {
     const card = el.closest ? el.closest('.q-card') : null;

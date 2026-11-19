@@ -55,9 +55,11 @@
       const x = cells.filter((o) => o.crossed).length;
       return `Barrés : ${x} · Il reste : ${cells.length - x}`;
     }
+    let firstRender = true;
     function render(flash) {
       const frames = Math.max(1, Math.ceil(cells.length / 10));
-      let h = `<div class="viz-hint">${hint()}</div><div class="frames">`;
+      let h = `<div class="viz-hint">${hint()}</div><div class="frames${firstRender ? ' enter' : ''}">`;
+      firstRender = false;
       for (let f = 0; f < frames; f++) {
         h += '<div class="frame">';
         for (let i = 0; i < 10; i++) {
@@ -65,7 +67,7 @@
           if (!o) { h += '<div class="cell void"></div>'; continue; }
           const inner = o.kind === 'E' ? '' : opts.emoji ? `<span class="e">${opts.emoji}</span>` : '<span class="dot"></span>';
           const lbl = o.label ? `<span class="lbl ${o.lcls || ''}">${o.label}</span>` : '';
-          h += `<button class="cell k${o.kind} ${opts.emoji ? 'emo' : ''} ${o.crossed ? 'x' : ''} ${idx === flash ? 'flash' : ''}" data-i="${idx}">${inner}${lbl}</button>`;
+          h += `<button class="cell k${o.kind} ${opts.emoji ? 'emo' : ''} ${o.crossed ? 'x' : ''} ${idx === flash ? 'flash' : ''}" data-i="${idx}" style="--i:${idx}">${inner}${lbl}</button>`;
         }
         h += '</div>';
       }
@@ -253,7 +255,7 @@
     const arc = (h, isNew) => {
       const { x1, x2, mx, p } = geom(h), d = h.to - h.from, cls = d > 0 ? 'f' : 'b';
       const lab = Math.abs(x2 - x1) >= 26 ? `<text class="alabel ${cls}" x="${mx}" y="${Y - p - 8}">${d > 0 ? '+' : '−'}${Math.abs(d)}</text>` : '';
-      return `<path class="arc ${cls} ${isNew ? 'new' : ''}" pathLength="1000" d="M${x1} ${Y} Q${mx} ${Y - 2 * p} ${x2} ${Y}"/>${lab}`;
+      return `<path class="arc ${cls} ${isNew ? 'new' : ''}" pathLength="1" d="M${x1} ${Y} Q${mx} ${Y - 2 * p} ${x2} ${Y}"/>${lab}`;
     };
     const statusTxt = () => {
       if (!hasFrog) return '';
@@ -295,16 +297,23 @@
       L.pos = to;
       M.$('.arcs', el).insertAdjacentHTML('beforeend', arc(h, true));
       const { x1, x2, mx, p } = geom(h), frog = M.$('.frog', el), cy = Y - 2 * p;
-      const dur = Math.min(600, 260 + Math.abs(x2 - x1) * 0.6);
+      const dur = Math.min(720, 340 + Math.abs(x2 - x1) * 0.6);
       M.sfx.hop();
       return new Promise((res) => {
         const t0 = performance.now();
         const step = (now) => {
-          const t = Math.min(1, (now - t0) / dur), m = 1 - t;
+          const raw = Math.min(1, (now - t0) / dur);
+          const t = raw < 0.5 ? 2 * raw * raw : 1 - Math.pow(-2 * raw + 2, 2) / 2, m = 1 - t; // ease-in-out
+          if (!frog.isConnected) return res();
           frog.setAttribute('x', m * m * x1 + 2 * m * t * mx + t * t * x2);
           frog.setAttribute('y', m * m * Y + 2 * m * t * cy + t * t * Y - 6);
-          if (t < 1) requestAnimationFrame(step);
-          else { const st = M.$('.viz-status', el); if (st) st.innerHTML = statusTxt(); res(); }
+          if (raw < 1) requestAnimationFrame(step);
+          else {
+            const st = M.$('.viz-status', el); if (st) st.innerHTML = statusTxt();
+            const svg = frog.ownerSVGElement;
+            if (svg) { svg.insertAdjacentHTML('beforeend', `<ellipse class="nl-ripple" cx="${x2}" cy="${Y}" rx="22" ry="7"/>`); const rp = svg.lastElementChild; setTimeout(() => rp.remove(), 650); }
+            res();
+          }
         };
         requestAnimationFrame(step);
       });

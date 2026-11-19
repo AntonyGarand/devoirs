@@ -151,8 +151,10 @@ Règles communes :
 | `M.viz.counters / blocks / base10Html / numberLine` | Cadres de dix, blocs base 10, droite numérique |
 | `M.viz.barModel(el,spec) / barModelHtml(spec)` | Modèle en barres (tout, comparaison, groupes; inconnue en jaune) |
 | `M.viz.timeline(spec)` | Ligne du temps SVG (événements et graduations `data-hot`) |
-| `M.viz.plan(spec)` | Plan/carte : lieux `data-hot`, légende, quadrillage lettre-chiffre, rose des vents |
+| `M.viz.plan(spec)` | Plan/carte vue d'oiseau : lieux `data-hot` en tuiles en relief, légende qui fait sauter le lieu, quadrillage lettre-chiffre, rose des vents animée. `ground: 'grass' | 'floor' | 'tiles'`, `water`, `decor` (arbres et fleurs dessinés, jamais en emoji), `alive` (autos sur les rues, nuages qui passent) |
 | `M.art.register(name, fn, emoji) / M.art.html(name)` | Dessins SVG partagés (avec repli emoji) |
+| `js/art-lib.js` : `pl-*`, `ciel-*`; `M.art.svg(name, {x,y,w,h})` | Bibliothèque d'illustrations (bâtiments, mobilier, Soleil, Terre, Lune) dans un style commun; `M.art.svg` imbrique un dessin dans un autre SVG. Préférer un dessin à un emoji pour tout symbole de plan ou de scène. |
+| `M.SC.svg.terre / ombre / arbre / erable`, `M.SC.earthAngle` | Scènes du ciel (sciences) : la Terre tourne sans être redessinée, ciel selon l'heure, saisons animées |
 
 Services (`services.js`) : `M.voices.status(lang)`, `M.say(text|segments, opts) → Promise`, `M.sayHtml(html)`, `M.settings`,
 `M.userData.get/set(ns, key)` (+ `fixture` pour les tests), `M.registerParentTool({id,subject,title,icon,render})`,
@@ -168,7 +170,12 @@ spécifiques. Les boutons, cartes, couleurs et espacements viennent toujours des
   Chaque matière a sa couleur (`--subj-*`).
 - **Typographie** : consignes 1,45 rem gras; nombres et réponses en très gros; texte à lire 1,3 rem, interligne 1,8.
 - **Cibles tactiles** ≥ 48 px; tout est utilisable au clavier (chiffres, Entrée, 1-9 pour les choix) et au toucher.
-- **Mouvement** : animations courtes, désactivées si l'appareil demande moins de mouvement.
+- **Mouvement** (`css/ds/motion.css`) : jetons `--ease-out`, `--ease-spring`, `--dur-1…4`. On anime `transform` et `opacity`
+  seulement. Les entrées (pages, cartes en cascade, carte-question, visuels) jouent au montage d'un élément, jamais à chaque
+  re-rendu interne : un visuel qui se redessine à chaque toucher marque son premier rendu (ex. `.frames.enter`,
+  `.st-chart.grow`, `.barmodel.no-enter` pour Montre-moi). Les décalages en cascade passent par `style="--i:n"`.
+  Confettis et étoile volante utilisent les Web Animations. Avec « moins de mouvement », tout s'affiche directement,
+  sans boucle, et les autos et nuages des plans ne sont pas dessinés.
 - **Largeur** : tout fonctionne de 360 px (téléphone) à 1100 px.
 - **Images** : emoji et SVG en ligne seulement (aucun fichier externe, aucun droit d'auteur).
 

@@ -250,7 +250,7 @@
       cats.forEach((c, i) => {
         const x = L + i * BW + (BW - bar) / 2, h = (c.value / max) * PH;
         s += `<g data-i="${i}" data-part="bars"><rect x="${L + i * BW}" y="${T - 6}" width="${BW}" height="${PH + 6}" fill="transparent"/>`;
-        if (c.value > 0) s += `<rect x="${f1(x)}" y="${f1(T + PH - h)}" width="${bar}" height="${f1(h)}" rx="3" fill="${c.color}" stroke="rgba(0,0,0,.25)" stroke-width="2"/>`;
+        if (c.value > 0) s += `<rect x="${f1(x)}" y="${f1(T + PH - h)}" width="${bar}" height="${f1(h)}" rx="3" fill="${c.color}" stroke="rgba(0,0,0,.25)" stroke-width="2" class="st-bar" style="--i:${i}"/>`;
         s += '</g>';
         s += `<g data-part="cats"><text x="${f1(x + bar / 2)}" y="${T + PH + (sm ? 28 : 36)}" text-anchor="middle" font-size="${sm ? 22 : 30}">${c.icon || ''}</text>`;
         if (!sm) s += `<text x="${f1(x + bar / 2)}" y="${T + PH + 64}" text-anchor="middle" font-size="17" font-weight="800" fill="${INK}">${c.label}</text>`;
@@ -276,7 +276,7 @@
       cats.forEach((c, i) => {
         const y0 = T + i * RH + (RH - bh) / 2, w = (c.value / max) * PW;
         s += `<g data-i="${i}" data-part="bars"><rect x="${L}" y="${T + i * RH}" width="${PW + 8}" height="${RH}" fill="transparent"/>`;
-        if (c.value > 0) s += `<rect x="${L}" y="${f1(y0)}" width="${f1(w)}" height="${bh}" rx="3" fill="${c.color}" stroke="rgba(0,0,0,.25)" stroke-width="2"/>`;
+        if (c.value > 0) s += `<rect x="${L}" y="${f1(y0)}" width="${f1(w)}" height="${bh}" rx="3" fill="${c.color}" stroke="rgba(0,0,0,.25)" stroke-width="2" class="st-bar" style="--i:${i}"/>`;
         s += '</g>';
         s += `<g data-part="cats"><text x="${sm ? 22 : 26}" y="${f1(y0 + bh / 2 + (sm ? 8 : 10))}" text-anchor="middle" font-size="${sm ? 20 : 27}">${c.icon || ''}</text>`;
         if (!sm) s += `<text x="50" y="${f1(y0 + bh / 2 + 6)}" font-size="17" font-weight="800" fill="${INK}">${c.label}</text>`;
@@ -287,7 +287,7 @@
         if (reveal.includes(i)) s += bubble(x(c.value) + (sm ? 18 : 24), y0 + bh / 2, c.value);
       });
     }
-    return `<svg class="st-chart" viewBox="0 0 ${W} ${H}" style="max-width:${Math.round(W * (sm ? 1 : 1.12))}px" xmlns="http://www.w3.org/2000/svg">${s}</svg>`;
+    return `<svg class="st-chart${guide < 0 && !reveal.length ? ' grow' : ''}${o.horizontal ? ' horiz' : ''}" viewBox="0 0 ${W} ${H}" style="max-width:${Math.round(W * (sm ? 1 : 1.12))}px" xmlns="http://www.w3.org/2000/svg">${s}</svg>`;
   };
 
   /**
@@ -300,7 +300,7 @@
     const rows = o.cats.map((c, i) => {
       const k = Math.floor(c.value / per);
       let pics = '';
-      for (let j = 0; j < k; j++) pics += `<span class="st-pp">${o.sym}${reveal.includes(i) ? `<i>${(j + 1) * per}</i>` : ''}</span>`;
+      for (let j = 0; j < k; j++) pics += `<span class="st-pp" style="--i:${i * 2 + j}">${o.sym}${reveal.includes(i) ? `<i>${(j + 1) * per}</i>` : ''}</span>`;
       return `<div class="st-prow${o.hl === i || reveal.includes(i) ? ' hl' : ''}" data-i="${i}"><div class="st-pcat"><span class="st-pic">${c.icon}</span>${c.label}</div><div class="st-ppics">${pics}</div></div>`;
     }).join('');
     const u = M.plural(per, o.unit[0], o.unit[1]);
