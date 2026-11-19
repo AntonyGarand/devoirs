@@ -141,3 +141,14 @@
 .skill-card.off { opacity: .6 }
 .skill-card .why-off { font-size: .85rem; font-weight: 800; color: var(--red) }
 .tag.enrich { background: #fff6d6; color: #8a6d00 }
+
+/* Petits écrans */
+@media (max-width: 560px) {
+  .compare { grid-template-columns: 1fr }
+  .cmp-vs { transform: rotate(90deg); justify-self: center }
+  .flash-face { font-size: 1.3rem; padding: 10px; text-align: center }
+  .choices-grid.order { grid-template-columns: repeat(2, minmax(0, 1fr)) !important }
+  .order-slots .slot { min-width: 52px; font-size: 1.05rem }
+}
+.flash-face { overflow-wrap: anywhere }
+body { overflow-x: clip }  /* clip (et non hidden) : garde position: sticky fonctionnel */

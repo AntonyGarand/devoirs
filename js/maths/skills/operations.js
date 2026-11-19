@@ -80,13 +80,7 @@
   /* ------------------------------------------------------------------
      Petits utilitaires
      ------------------------------------------------------------------ */
-  const NAMES = [['Léa', 'f'], ['Félix', 'm'], ['Florence', 'f'], ['Thomas', 'm'], ['Zoé', 'f'], ['William', 'm'], ['Rosalie', 'f'], ['Samuel', 'm'], ['Emma', 'f'], ['Olivier', 'm'], ['Alice', 'f'], ['Jacob', 'm'], ['Maëlle', 'f'], ['Antoine', 'm'], ['Charlotte', 'f'], ['Nathan', 'm'], ['Béatrice', 'f'], ['Éloi', 'm']];
-  function person(not) {
-    let p, g = 0;
-    do { p = pick(NAMES); } while (not && p[0] === not.n && g++ < 50);
-    const f = p[1] === 'f';
-    return { n: p[0], f, il: f ? 'elle' : 'il', Il: f ? 'Elle' : 'Il' };
-  }
+  // Prénoms : M.people (services.js)
   const MINUS = '−';
   const op = (s) => `<span class="op">${s}</span>`;
   const sym = (s) => (s === '-' ? MINUS : s);
@@ -657,7 +651,7 @@
   }
 
   /** Visuels réutilisés par la page Apprendre (js/learn/operations.js). */
-  M.opViz = { balance: balanceViz, groups: groupsViz, share: shareViz, compare: compareViz };
+  M.opViz = { balance: balanceViz, groups: groupsViz, share: shareViz, compare: compareViz, bag: bagViz };
 
   /* ------------------------------------------------------------------
      Modèles + / − jusqu'à 20 (cadres de dix + droite numérique)
@@ -1063,131 +1057,8 @@
     },
   });
 
-  /* ==================================================================
-     8. Situations-problèmes
-     ================================================================== */
-  const PROBS = {
-    ajout: [
-      { e: '🍎', t: (p, a, b) => `Au verger, ${p.n} cueille ${a} pommes. Ensuite, ${p.il} en cueille ${b} autres. Combien de pommes a-t-${p.il} maintenant ?` },
-      { e: '🍭', t: (p, a, b) => `À la cabane à sucre, ${p.n} mange ${a} tires sur la neige. Puis, ${p.il} en mange encore ${b}. Combien de tires a-t-${p.il} mangées en tout ?` },
-      { e: '🐟', t: (p, a, b) => `À la pêche sur la glace, ${p.n} attrape ${a} poissons le matin. L'après-midi, ${p.il} en attrape ${b} autres. Combien de poissons a-t-${p.il} attrapés en tout ?` },
-      { e: '🧒', t: (p, a, b) => `Il y a ${a} élèves dans l'autobus scolaire. À l'arrêt suivant, ${b} élèves montent. Combien d'élèves y a-t-il maintenant dans l'autobus ?` },
-      { e: '🧤', t: (p, a, b) => `Dans la boîte des objets perdus, il y a ${a} mitaines. Le concierge en ajoute ${b}. Combien de mitaines y a-t-il maintenant ?` },
-    ],
-    retrait: [
-      { e: '🍪', t: (p, a, b) => `${p.n} a ${a} biscuits dans sa boîte à lunch. ${p.Il} en mange ${b}. Combien de biscuits lui reste-t-il ?` },
-      { e: '🦆', t: (p, a, b) => `Il y a ${a} canards sur le lac. ${b} canards s'envolent. Combien de canards reste-t-il sur le lac ?` },
-      { e: '⛄', t: (p, a, b) => `Il y a ${a} bonshommes de neige dans la cour d'école. Le soleil en fait fondre ${b}. Combien de bonshommes de neige reste-t-il ?` },
-      { e: '🃏', t: (p, a, b) => `${p.n} a ${a} cartes de hockey. ${p.Il} en donne ${b} à sa cousine. Combien de cartes lui reste-t-il ?` },
-      { e: '🎈', t: (p, a, b) => `${p.n} a ${a} ballons pour sa fête. Oh non ! ${b} ballons s'envolent. Combien de ballons lui reste-t-il ?` },
-    ],
-    reunion: [
-      { e: '🏒', t: (p, a, b) => `L'équipe de hockey de ${p.n} marque ${a} buts en première période et ${b} buts en deuxième période. Combien de buts l'équipe a-t-elle marqués en tout ?` },
-      { e: '🍁', t: (p, a, b) => `${p.n} ramasse ${a} feuilles d'érable rouges et ${b} feuilles jaunes. Combien de feuilles a-t-${p.il} ramassées en tout ?` },
-      { e: '🧤', t: (p, a, b) => `Dans le vestiaire, il y a ${a} mitaines rouges et ${b} mitaines bleues. Combien de mitaines y a-t-il en tout ?` },
-      { e: '⛸️', t: (p, a, b) => `Sur la patinoire, ${a} filles et ${b} garçons patinent. Combien d'enfants patinent en tout ?` },
-    ],
-    compare: [
-      { e: '🃏', t: (p, q, a, b, plus) => `${p.n} a ${a} cartes de hockey. ${q.n} en a ${b}. ` + (plus ? `Combien ${p.n} a-t-${p.il} de cartes de plus que ${q.n} ?` : `Combien ${q.n} a-t-${q.il} de cartes de moins que ${p.n} ?`) },
-      { e: '❄️', t: (p, q, a, b, plus) => `${p.n} lance ${a} balles de neige. ${q.n} en lance ${b}. ` + (plus ? `Combien de balles de neige ${p.n} a-t-${p.il} lancées de plus que ${q.n} ?` : `Combien de balles de neige ${q.n} a-t-${q.il} lancées de moins que ${p.n} ?`) },
-      { e: '🐟', t: (p, q, a, b, plus) => `À la pêche sur la glace, ${p.n} attrape ${a} poissons et ${q.n} en attrape ${b}. ` + (plus ? `Combien de poissons ${p.n} a-t-${p.il} attrapés de plus que ${q.n} ?` : `Combien de poissons ${q.n} a-t-${q.il} attrapés de moins que ${p.n} ?`) },
-      { e: '🍁', t: (p, q, a, b, plus) => `${p.n} a ${a} feuilles d'érable. ${q.n} en a ${b}. ` + (plus ? `Combien ${p.n} a-t-${p.il} de feuilles de plus que ${q.n} ?` : `Combien ${q.n} a-t-${q.il} de feuilles de moins que ${p.n} ?`) },
-    ],
-    ajoutInc: [
-      { e: '⭐', t: (p, a, c) => `${p.n} a ${a} autocollants. Son enseignante lui en donne d'autres. Maintenant, ${p.il} en a ${c}. Combien d'autocollants a-t-${p.il} reçus ?` },
-      { e: '🪑', t: (p, a, c) => `Pour la fête de la classe, il faut ${c} chaises. Il y en a déjà ${a}. Combien de chaises faut-il encore apporter ?` },
-    ],
-    retraitInc: [
-      { e: '🍬', t: (p, a, c) => `${p.n} avait ${a} bonbons. ${p.Il} en mange quelques-uns. Maintenant, ${p.il} en a ${c}. Combien de bonbons a-t-${p.il} mangés ?` },
-      { e: '🧒', t: (p, a, c) => `Il y avait ${a} élèves dans l'autobus scolaire. À l'arrêt, des élèves descendent. Il en reste ${c}. Combien d'élèves sont descendus ?` },
-    ],
-    deux: [
-      { e: '🍭', sub2: true, t: (p, a, b, c) => `À la cabane à sucre, il y a ${a} tires sur la neige. Le cuisinier en prépare ${b} autres. Puis, les enfants en mangent ${c}. Combien de tires reste-t-il ?` },
-      { e: '🧒', sub2: true, t: (p, a, b, c) => `Il y a ${a} élèves dans l'autobus scolaire. Au premier arrêt, ${b} élèves montent. Au deuxième arrêt, ${c} élèves descendent. Combien d'élèves y a-t-il maintenant dans l'autobus ?` },
-      { e: '🐟', sub2: true, t: (p, a, b, c) => `${p.n} attrape ${a} poissons le matin et ${b} poissons l'après-midi. ${p.Il} en remet ${c} dans le lac. Combien de poissons lui reste-t-il ?` },
-      { e: '🃏', sub2: false, t: (p, a, b, c) => `${p.n} a ${a} cartes de hockey. ${p.Il} en donne ${b} à son frère, puis ${p.il} en gagne ${c} à la récréation. Combien de cartes a-t-${p.il} maintenant ?` },
-      { e: '🧤', sub2: false, t: (p, a, b, c) => `Dans la boîte des objets perdus, il y a ${a} mitaines. Des parents viennent en chercher ${b}. Ensuite, le concierge en trouve ${c} autres. Combien de mitaines y a-t-il dans la boîte maintenant ?` },
-    ],
-  };
-  const story = (e, t) => `<div class="op-story"><span class="op-em">${e}</span>${t}</div>`;
-  M.registerSkill({
-    id: 'problemes', domain: D, title: 'Petits problèmes', icon: '📖', starter: true, learn: 'sens-operations',
-    desc: 'Des histoires à résoudre : ajouter, enlever, réunir, comparer.',
-    pda: 'Sens des opérations A.1, A.2 a–b — situations d\'ajout, de retrait, de réunion, de comparaison, composition de transformations',
-    gen({ lvl }) {
-      const kinds = lvl === 0 ? ['ajout', 'retrait', 'reunion', 'ajout', 'retrait'] : lvl === 1 ? ['ajout', 'retrait', 'reunion', 'compare', 'compare', 'ajoutInc', 'retraitInc'] : ['compare', 'ajoutInc', 'retraitInc', 'deux', 'deux', 'deux'];
-      const kind = pick(kinds);
-      const max = lvl === 0 ? 10 : 20;
-      const tpl = pick(PROBS[kind]);
-      const p = person();
-      const em = tpl.e;
-      if (kind === 'ajout' || kind === 'reunion') {
-        const a = rnd(2, max - 2), b = rnd(2, max - a), s = a + b;
-        const st = addStrat(a, b);
-        return withViz({
-          prompt: story(em, tpl.t(p, a, b)), say: M.text(tpl.t(p, a, b)),
-          input: 'number', answer: s,
-          hint: kind === 'ajout' ? 'On en ajoute : la quantité augmente. C\'est une addition.' : 'On réunit deux groupes : c\'est une addition.',
-          explain: `${kind === 'ajout' ? 'On ajoute' : 'On réunit les deux groupes'} : ${a} + ${b} = <b>${s}</b>. (${st.name} : ${st.txt})`,
-        }, (el) => M.viz.counters(el, { a, b, op: 'add', unknown: 'r', emoji: em }));
-      }
-      if (kind === 'retrait') {
-        const a = rnd(4, max), b = rnd(2, a - 1), r = a - b;
-        const st = subStrat(a, b);
-        return withViz({
-          prompt: story(em, tpl.t(p, a, b)), say: M.text(tpl.t(p, a, b)),
-          input: 'number', answer: r,
-          hint: 'On en enlève : la quantité diminue. C\'est une soustraction.',
-          explain: `On enlève : ${a} − ${b} = <b>${r}</b>. (${st.name} : ${st.txt})`,
-        }, (el) => M.viz.counters(el, { a, b, op: 'sub', unknown: 'r', emoji: em }));
-      }
-      if (kind === 'compare') {
-        const q = person(p);
-        const a = rnd(5, 15), b = rnd(2, a - 1), d = a - b, plus = Math.random() < 0.5;
-        const txt = tpl.t(p, q, a, b, plus);
-        return withViz({
-          prompt: story(em, txt), say: M.text(txt),
-          input: 'number', answer: d,
-          hint: `Place les objets de ${p.n} et de ${q.n} face à face. Combien n'ont pas de partenaire ?`,
-          explain: `On compare : ${a} − ${b} = <b>${d}</b>. On peut aussi penser : ${b} + ? = ${a}. ${plus ? `${p.n} en a ${d} de plus.` : `${q.n} en a ${d} de moins.`}`,
-        }, (el) => compareViz(el, { a, b, na: p.n, nb: q.n, emoji: em }));
-      }
-      if (kind === 'ajoutInc' || kind === 'retraitInc') {
-        let a, b, c;
-        if (kind === 'ajoutInc') { a = rnd(2, 12); b = rnd(2, 20 - a); c = a + b; }
-        else { a = rnd(6, 20); c = rnd(2, a - 2); b = a - c; }
-        const txt = tpl.t(p, a, c);
-        return withViz({
-          prompt: story(em, txt), say: M.text(txt),
-          input: 'number', answer: b,
-          hint: kind === 'ajoutInc' ? `On connaît le début (${a}) et la fin (${c}). Combien pour aller de ${a} à ${c} ?` : `On connaît le début (${a}) et ce qui reste (${c}). Combien en a-t-on enlevé ?`,
-          explain: kind === 'ajoutInc' ? `${a} + ? = ${c}. De ${a} à ${c}, il y a <b>${b}</b> (${c} − ${a} = ${b}).` : `${a} − ? = ${c}. De ${c} à ${a}, il y a <b>${b}</b> (${a} − ${c} = ${b}).`,
-        }, kind === 'ajoutInc'
-          ? (el) => M.viz.counters(el, { a, b, op: 'add', unknown: 'b', emoji: em, hint: `Il y en a ${a}. Remplis les cases jusqu'à ${c}. Combien en ajoutes-tu ?` })
-          : (el) => M.viz.counters(el, { a, b, op: 'sub', unknown: 'b', emoji: em, hint: `Barre des objets jusqu'à ce qu'il en reste ${c}. Combien en as-tu barré ?` }));
-      }
-      // deux étapes
-      let a, b, c, r, parts, cross, txt, exp, hint;
-      if (tpl.sub2) {
-        a = rnd(4, 12); b = rnd(2, 20 - a); c = rnd(2, a + b - 1); r = a + b - c;
-        parts = [{ n: a, k: 'A' }, { n: b, k: 'B' }];
-        cross = range(a + b - 1, a + b - c);
-        hint = `Deux étapes : d'abord ${a} + ${b}, puis on enlève ${c}.`;
-        exp = `Étape 1 : ${a} + ${b} = ${a + b}. Étape 2 : ${a + b} − ${c} = <b>${r}</b>.`;
-      } else {
-        a = rnd(6, 15); b = rnd(2, a - 2); c = rnd(2, 20 - (a - b)); r = a - b + c;
-        parts = [{ n: a, k: 'A' }, { n: c, k: 'B' }];
-        cross = range(a - 1, a - b);
-        hint = `Deux étapes : d'abord ${a} − ${b}, puis on ajoute ${c}.`;
-        exp = `Étape 1 : ${a} − ${b} = ${a - b}. Étape 2 : ${a - b} + ${c} = <b>${r}</b>.`;
-      }
-      txt = tpl.t(p, a, b, c);
-      return withViz({
-        prompt: story(em, txt), say: M.text(txt),
-        input: 'number', answer: r, hint, explain: exp,
-      }, (el) => bagViz(el, { parts, emoji: em, cross, hint: 'Les objets rouges : au début. Les bleus : ceux qui arrivent. Touche un objet pour le barrer quand il s\'en va.' }));
-    },
-  });
+  /* 8. Situations-problèmes : l'habileté « problemes » (même id) est maintenant dans le domaine
+     « Comprendre et résoudre » (js/maths/skills/problemes.js), écrite sur le générateur M.pb. */
 
   /* ==================================================================
      9. Groupes égaux (sens de la multiplication)

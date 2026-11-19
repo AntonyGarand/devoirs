@@ -212,7 +212,7 @@
       const draw = (reveal) => {
         const seq = reveal ? q.answer.map(idxOf) : slots;
         host.innerHTML = `<div class="order-slots">${seq.map((ci, k) => `<span class="slot ${reveal ? 'good' : ''} ${fixed.has(k) ? 'fixed' : ''}">${ci != null ? q.choices[ci].label : ''}</span>`).join('')}</div>
-          <div class="choices-grid order" style="grid-template-columns:repeat(${Math.min(4, n)},1fr)">${q.choices.map((c, i) => `<button class="choice-btn" data-i="${i}" ${slots.includes(i) || reveal ? 'disabled' : ''}>${choiceInner(q, c, i)}</button>`).join('')}</div>
+          <div class="choices-grid order" style="grid-template-columns:repeat(${q.cols || Math.min(4, n)},minmax(0,1fr))">${q.choices.map((c, i) => `<button class="choice-btn" data-i="${i}" ${slots.includes(i) || reveal ? 'disabled' : ''}>${choiceInner(q, c, i)}</button>`).join('')}</div>
           ${reveal ? '' : '<button class="btn small-undo">↺ Recommencer</button>'}`;
       };
       draw();
@@ -464,6 +464,8 @@
         if (it) { sel = +it.dataset.i; M.sfx.tap(); const s = q.items[sel].say; if (s) M.say(s, { lang: q.items[sel].lang || q.lang, raw: true }); draw(); return; }
         const bin = e.target.closest('.sort-bin');
         if (!bin) return;
+        const bdef = q.bins.find((b) => same(b.id, bin.dataset.bin));
+        if (bdef && bdef.say) M.say(bdef.say, { lang: bdef.lang || q.lang, raw: true });
         if (sel == null) { ctx.feedback('hint', 'Touche d\'abord un élément ☝️'); return; }
         if (same(q.items[sel].bin, bin.dataset.bin)) {
           placed[sel] = q.items[sel].bin; sel = null; M.sfx.pop(); draw();
@@ -921,6 +923,7 @@
           if (q.check) {
             const ol = M.$('.pr-check', host);
             ol.hidden = false;
+            ctx.feedback('', 'Explique ce que tu as observé 👇');
             const li = M.$('.step', ol);
             li.classList.remove('todo'); li.classList.add('now');
             runSub(li, q.check, ctx, (first, ok) => { li.classList.remove('now'); li.classList.add(ok ? 'ok' : 'miss'); setTimeout(() => ctx.complete(first, ok), 300); });

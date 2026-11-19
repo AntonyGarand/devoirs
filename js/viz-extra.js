@@ -24,7 +24,7 @@
   V.barModelHtml = function (spec, opts = {}) {
     const rows = spec.rows || [];
     const hasLabels = rows.some((r) => r.label || r.emoji);
-    const LBL = hasLabels ? 110 : 10, H = 46, GAP = 30, TOP = spec.total ? 56 : 14, MIN = 54, AREA = 560;
+    const LBL = hasLabels ? 110 : 10, H = 46, GAP = 30, TOP = spec.total ? 56 : 14, MIN = 54, AREA = spec.compact || opts.compact ? 300 : 440;
     const known = (s) => (s.v == null ? null : s.v);
     const sums = rows.map((r) => r.segs.reduce((a, s) => a + (known(s) ?? 0), 0));
     const unknownGuess = (() => { const vals = rows.flatMap((r) => r.segs.map(known)).filter((v) => v != null); return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 5; })();

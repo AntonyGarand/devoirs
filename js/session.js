@@ -82,7 +82,7 @@
     el('.q-speak').onclick = sayPrompt;
     const passageText = () => passage.say || (passage.tokens ? passage.tokens.filter((t) => t.w !== '¶').map((t) => t.w).join(' ') : M.text(passage.html));
     if (passage) el('.q-read').onclick = () => M.say(passageText(), { lang: passage.lang, raw: (passage.lang || '').startsWith('en') });
-    const audioSegs = (rate) => (audio.seq || [audio.text]).map((t) => ({ text: t, lang: audio.lang, raw: true, rate }));
+    const audioSegs = (rate) => (audio.seq || [audio.text]).map((t) => ({ text: t, lang: audio.lang, raw: true, rate: rate || audio.rate }));
     let autoplayed = false;
     if (audio) {
       el('.q-listen').onclick = () => M.say(audioSegs(), { pause: audio.pause || 900 });
@@ -144,6 +144,7 @@
     if (q.viz) M.$('.q-reset', tools).onclick = mountViz;
     if (q.hint) M.$('.q-hint', tools).onclick = () => feedback('hint', '💡 ' + q.hint);
     if (!tools.innerHTML) tools.remove();
+    else if (!q.viz) el('.q-right').insertBefore(tools, el('.q-feedback')); // indice / montre-moi visibles même sans visuel
 
     function feedback(cls, html) {
       const f = el('.q-feedback');
@@ -178,6 +179,7 @@
       }
       if (q.explain) el('.q-explain').innerHTML = `<div class="callout">🦫 ${q.explain}</div>`;
       if (opts.onNext) { const n = el('.q-next'); n.hidden = false; n.onclick = opts.onNext; }
+      if (typeof q.onResult === 'function') { try { q.onResult({ first, ok, ungraded }); } catch (e) { console.error(e); } }
       if (opts.onResult) opts.onResult({ first, ok, ungraded });
     }
 

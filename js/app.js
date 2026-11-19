@@ -68,6 +68,7 @@
     const subj = M.subjectById[id];
     const sk = skillsOf(id);
     let h = `<div class="learn-top"><a class="btn ghost" href="#/">← Accueil</a><h1>${subj.icon} ${subj.title}</h1></div>`;
+    if (typeof subj.banner === 'function') { try { h += subj.banner() || ''; } catch (e) { console.error(e); } }
     if (sk.length) {
       h += `<section class="card review-card">
         <div class="emoji">🔁</div>

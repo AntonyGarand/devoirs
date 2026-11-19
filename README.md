@@ -1,78 +1,37 @@
-# Mes devoirs de maths — 2e année (Québec)
+# Mes devoirs — 2e année (Québec)
 
-Site de pratique et d'apprentissage des mathématiques pour un enfant de **2e année du primaire** au Québec, aligné sur la
-[Progression des apprentissages (PDA) — Mathématique — Primaire](https://cdn-contenu.quebec.ca/cdn-contenu/education/pfeq/primaire/progressions-apprentissages/PFEQ-progression-apprentissages-mathematique-primaire.pdf) du PFEQ.
+Site de pratique et d'apprentissage pour un enfant de **2e année du primaire** au Québec, aligné sur le
+Programme de formation de l'école québécoise (PFEQ) et ses Progressions des apprentissages.
 
-- **Tableau de bord** : toutes les habiletés de 2e année, regroupées par domaine (nombres, opérations, géométrie, mesure, statistique et probabilité), avec la maîtrise de chacune (★ à ★★★).
-- **Pratiquer** : séries de 8 questions, avec un visuel à manipuler, des indices, une démonstration (👀 Montre-moi) et une explication.
-- **Apprendre** : petites leçons interactives sur les notions clés.
-- **Révision du jour** : 10 questions entrelacées, qui priorisent ce qui est le moins maîtrisé ou pratiqué il y a longtemps.
-- **Parents** : méthodologie, correspondance avec la PDA, réglages.
+| Matière | Habiletés | Contenu |
+|---|---|---|
+| 🔢 Mathématique | 60 | nombres, opérations, **comprendre et résoudre des problèmes** (démarche, schémas en barres, marquer la question et les données), géométrie, mesure, statistique et probabilité, défis 🌟 |
+| 📚 Français | 22 | sons et syllabes, lecture et compréhension de textes, dictées (liste orthographique du MEQ), grammaire, phrase, verbes, vocabulaire; **Ma liste de la semaine** (saisie par le parent) |
+| 🗣️ Anglais | 16 | écoute (voix anglaise), vocabulaire illustré, consignes, situations, histoires et comptines originales |
+| 🗺️ Univers social | 14 | émotions, besoins, civilité, règles, familles, communauté, plans, fêtes, symboles du Québec, avant et maintenant |
+| 🔬 Sciences | 16 | le vivant, la matière (prédire → observer → expliquer), la Terre et le ciel, la démarche scientifique |
 
-Aucun serveur, aucune dépendance : ouvrir `index.html` dans un navigateur. La progression est stockée dans le `localStorage` du navigateur.
+- **Pratiquer** : séries de 8 questions avec visuel à manipuler, indice, 👀 démonstration et explication.
+- **Apprendre** : 49 petites leçons interactives.
+- **Révision du jour** : questions entrelacées qui priorisent ce qui est le moins maîtrisé ou vu il y a longtemps.
+- **Parents** : méthodologie, correspondance avec le programme, diagnostic des voix, réglages, outils (liste de mots).
 
-Voir [docs/curriculum.md](docs/curriculum.md) pour la correspondance avec le programme et [docs/methodologie.md](docs/methodologie.md) pour les choix pédagogiques.
+Aucun serveur, aucune dépendance : ouvrir `index.html` (ou la version GitHub Pages). La progression est stockée dans le
+`localStorage` du navigateur.
 
-## Structure
+## Documentation
 
-```
-index.html            coquille de l'application (routes par #hash)
-css/app.css           styles partagés
-js/core.js            utilitaires, progression, registre, moteur de session (window.M)
-js/viz.js             visuels partagés : cadres de dix, blocs base 10, droite numérique
-js/skills/<domaine>.js  habiletés (générateurs de questions)
-js/learn/<domaine>.js   pages « Apprendre »
-js/app.js             routeur, tableau de bord, pages
-tools/check-skills.js vérification automatique des générateurs (node)
-```
-
-Pas de modules ES (pour fonctionner en `file://`) : chaque fichier est un IIFE qui utilise `window.M`.
-
-## Ajouter une habileté
-
-```js
-M.registerSkill({
-  id: 'add-20',              // unique
-  domain: 'operations',      // nombres | operations | geometrie | mesure | stats
-  title: 'Additions jusqu'à 20',
-  icon: '➕',
-  desc: 'Une phrase pour l'enfant.',
-  pda: 'Opérations A.2 — répertoire mémorisé (0 + 0 à 10 + 10)',
-  learn: 'strategies',       // id d'une page Apprendre (optionnel)
-  starter: true,             // proposée dans la première révision (optionnel)
-  gen({ lvl }) {             // lvl 0, 1 ou 2 (selon la maîtrise)
-    return {
-      prompt: '<div class="eq">7 + 5 = {?}</div>', // {?} = case-réponse en ligne
-      say: '7 plus 5 égale combien ?',            // texte lu (optionnel)
-      input: 'number',       // 'number' | 'choice' | 'order'
-      answer: 12,
-      choices: [{ label: 'html', value: 'x' }],   // pour choice / order
-      unit: 'cm',            // suffixe (number)
-      viz(el) { /* monter un visuel interactif dans el */ },
-      showMe(el) { /* démonstration animée (peut retourner une Promise) */ },
-      hint: 'Indice après la 1re erreur',
-      explain: 'Explication affichée après la réponse',
-    };
-  },
-});
-```
-
-- `choice` : 1 essai si 2 choix, sinon 2 essais. `order` : `answer` est le tableau des `value` dans le bon ordre.
-- `number` : 2 essais ; l'enfant reçoit « trop grand / trop petit » après le 1er.
-
-## Ajouter une page Apprendre
-
-```js
-M.registerLearn({
-  id: 'strategies', domain: 'operations', title: 'Les stratégies de calcul', icon: '🧠',
-  short: 'Doubles, compléments à 10…',
-  intro: 'Texte d'introduction (lu à voix haute).',
-  render(el) { el.innerHTML = '<section class="l-sec"><h2>…</h2>…</section>'; },
-});
-```
+- [docs/framework.md](docs/framework.md) — **le cadre commun** : architecture, formats de questions, composants, style, règles de contenu, liste de contrôle pour ajouter une matière.
+- [docs/curriculum.md](docs/curriculum.md) — correspondance de chaque habileté avec le programme (générée par `node tools/gen-curriculum.js`).
+- [docs/methodologie.md](docs/methodologie.md) — choix pédagogiques.
+- [docs/hld/](docs/hld/) — conception détaillée de chaque matière (portée, sources officielles, données, risques).
+- Guide de style vivant : site → Parents → 🎨 Guide de style (`#/style`).
 
 ## Vérifier
 
 ```
-node tools/check-skills.js
+node tools/check-skills.js          # génère 900 questions par habileté et valide chacune (formats, sens, règles de matière)
+node tools/check-skills.js --only fr-
 ```
+
+Dans le navigateur : `#/test` résout un exemple de chaque format et ouvre chaque habileté et chaque leçon.
