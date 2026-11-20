@@ -163,7 +163,37 @@
     [['🌸', 'Le pommier a des fleurs.'], ['🍏', 'Une petite pomme verte pousse.'], ['🍎', 'La pomme est rouge et mûre.']],
     [['🐛', 'La chenille mange des feuilles.'], ['🛌', 'La chenille dort dans son cocon.'], ['🦋', 'Un papillon sort du cocon.']],
     [['🧦', 'Je mets mes bas.'], ['🥾', 'Je mets mes bottes.'], ['🏃', 'Je sors jouer dehors.']],
+    [['🍞', 'Je prends une tranche de pain.'], ['🧈', 'Je mets du beurre.'], ['😋', 'Je mange ma tartine.']],
+    [['🪥', 'Je mets du dentifrice.'], ['😁', 'Je brosse mes dents.'], ['🚰', 'Je rince ma bouche.']],
+    [['🎈', 'Je gonfle le ballon.'], ['🪢', 'Je fais un nœud.'], ['🎉', 'Je joue avec le ballon.']],
+    [['☁️', 'Le ciel devient gris.'], ['🌧️', 'La pluie tombe.'], ['☂️', 'J\'ouvre mon parapluie.']],
+    [['✏️', 'J\'écris une lettre.'], ['📮', 'Je mets la lettre dans la boîte.'], ['📬', 'Grand-maman reçoit la lettre.']],
+    [['🍎', 'Papa coupe des pommes.'], ['🥧', 'Papa fait cuire la tarte.'], ['😋', 'Nous mangeons la tarte.']],
+    [['⛸️', 'Je lace mes patins.'], ['🏒', 'Je joue au hockey.'], ['🏆', 'Mon équipe gagne le match.']],
+    [['🐟', 'Un petit têtard nage.'], ['🦵', 'Le têtard a des pattes.'], ['🐸', 'Le têtard devient une grenouille.']],
   ];
+  // Histoires en 4 temps (niveau 2) : les marqueurs d'abord, ensuite, puis, enfin sont dans le texte, pas dans les événements.
+  const SEQ4 = [
+    { titre: 'À la cabane à sucre', texte: 'Samedi, Zoé va à la cabane à sucre. D\'abord, elle fait une promenade en traîneau. Ensuite, elle mange des crêpes. Puis, elle roule de la tire sur la neige. Enfin, elle danse avec son grand-papa.',
+      sequence: [{ em: '🛷', t: 'Zoé fait une promenade en traîneau.' }, { em: '🥞', t: 'Zoé mange des crêpes.' }, { em: '🍯', t: 'Zoé roule de la tire sur la neige.' }, { em: '💃', t: 'Zoé danse avec son grand-papa.' }] },
+    { titre: 'La première neige', texte: 'Ce matin, Félix voit de la neige ! D\'abord, il met son habit de neige. Ensuite, il sort dans la cour. Puis, il attrape des flocons avec sa langue. Enfin, il rentre boire un chocolat chaud.',
+      sequence: [{ em: '🧥', t: 'Félix met son habit de neige.' }, { em: '🚪', t: 'Félix sort dans la cour.' }, { em: '❄️', t: 'Félix attrape des flocons.' }, { em: '☕', t: 'Félix boit un chocolat chaud.' }] },
+    { titre: 'La dent perdue', texte: 'Amira a une dent qui bouge. D\'abord, elle croque dans une pomme. Ensuite, sa dent tombe ! Puis, le soir, elle met la dent sous son oreiller. Enfin, le matin, elle trouve un sou brillant.',
+      sequence: [{ em: '🍎', t: 'Amira croque dans une pomme.' }, { em: '🦷', t: 'La dent d\'Amira tombe.' }, { em: '🛏️', t: 'Amira met sa dent sous l\'oreiller.' }, { em: '🪙', t: 'Amira trouve un sou brillant.' }] },
+    { titre: 'À la bibliothèque', texte: 'Mardi, Thomas va à la bibliothèque. D\'abord, il choisit un livre sur les dinosaures. Ensuite, il montre sa carte. Puis, il lit dans un gros fauteuil. Enfin, il rapporte le livre à la maison.',
+      sequence: [{ em: '📚', t: 'Thomas choisit un livre.' }, { em: '🪪', t: 'Thomas montre sa carte.' }, { em: '🛋️', t: 'Thomas lit dans un gros fauteuil.' }, { em: '🏠', t: 'Thomas rapporte le livre à la maison.' }] },
+    { titre: 'Le pique-nique', texte: 'Dimanche, Jade fait un pique-nique au parc. D\'abord, elle étend une nappe sur l\'herbe. Ensuite, elle mange un sandwich. Puis, une fourmi grimpe sur la nappe ! Enfin, Jade range tout et rentre.',
+      sequence: [{ em: '🧺', t: 'Jade étend une nappe sur l\'herbe.' }, { em: '🥪', t: 'Jade mange un sandwich.' }, { em: '🐜', t: 'Une fourmi grimpe sur la nappe.' }, { em: '🏡', t: 'Jade range tout et rentre.' }] },
+    { titre: 'Le bain de Biscuit', texte: 'Biscuit, le chien de Léa, saute dans la boue. D\'abord, Léa remplit la baignoire. Ensuite, elle lave Biscuit avec du savon. Puis, Biscuit se secoue et l\'arrose ! Enfin, Léa sèche son chien.',
+      sequence: [{ em: '🛁', t: 'Léa remplit la baignoire.' }, { em: '🧼', t: 'Léa lave Biscuit avec du savon.' }, { em: '💦', t: 'Biscuit se secoue et arrose Léa.' }, { em: '🧺', t: 'Léa sèche son chien.' }] },
+  ];
+  // Noms propres des textes (jamais mis en minuscule dans les explications : « Ensuite : Léa va au parc »)
+  const PROPRES = () => {
+    const out = new Set(['Biscuit']);
+    // mots à majuscule qui ne commencent pas une phrase (sans « lookbehind », absent avant Safari 16.4)
+    [...FR.TEXTES, ...SEQ4].forEach((t) => t.texte.split(/[.!?]+\s*/).forEach((ph) => ph.split(/[\s,;:«»"()’']+/).slice(1).forEach((w) => { if (/^[A-ZÀ-Ý][a-zà-ÿ]+$/.test(w)) out.add(w); })));
+    return [...out];
+  };
   M.registerSkill({
     id: 'fr-ordre-histoire', domain: D, title: 'Début, milieu, fin', icon: '🔢', learn: 'fr-lire-detective',
     desc: 'Remets l\'histoire dans l\'ordre.',
@@ -172,16 +202,31 @@
       let seq, passage = null;
       if (lvl === 0 || (lvl === 1 && Math.random() < 0.3)) seq = M.pick(SEQ0).map(([em, t]) => ({ em, t }));
       else {
-        const t = M.pick(FR.TEXTES.filter((x) => x.sequence && (lvl === 1 ? x.niveau <= 1 : x.niveau === 2 && x.sequence.length === 4)));
+        const t = M.pick(lvl === 1 ? FR.TEXTES.filter((x) => x.sequence && x.niveau <= 1) : FR.TEXTES.filter((x) => x.sequence && x.niveau === 2 && x.sequence.length === 4).concat(SEQ4));
         seq = t.sequence;
         passage = { title: t.titre, tokens: M.tokenize(t.texte) };
+      }
+      const names = PROPRES();
+      const low = (x) => M.esc(M.fr.uncap(x, names));
+      if (lvl === 2 && Math.random() < 0.45) {
+        // Qu'est-ce qui arrive juste après… ?
+        const k = M.rnd(0, seq.length - 2);
+        return {
+          passage,
+          prompt: `Qu'est-ce qui arrive juste <b>après</b> ?<div class="fr-ord" style="text-align:center">${seq[k].em} ${M.esc(seq[k].t)}</div>`,
+          say: `Qu'est-ce qui arrive juste après ? ${seq[k].t}`,
+          format: 'choice', cols: 1, answer: 'e' + (k + 1),
+          choices: M.shuffle(seq.map((x, i) => ({ label: `${x.em} ${M.esc(x.t)}`, value: 'e' + i })).filter((c) => c.value !== 'e' + k)),
+          hint: 'Cherche les mots <b>d\'abord</b>, <b>ensuite</b>, <b>puis</b>, <b>enfin</b> dans le texte.',
+          explain: `Après « ${low(seq[k].t)} », le texte dit : <b>${low(seq[k + 1].t)}</b>`,
+        };
       }
       const choices = seq.map((s, i) => ({ label: `<span class="fr-ord"><span style="font-size:1.6rem">${s.em}</span><br>${M.esc(s.t)}</span>`, value: 'e' + i }));
       const q = {
         prompt: passage ? 'Relis le texte. Remets les événements dans l\'ordre.' : 'Remets l\'histoire dans l\'ordre : début, milieu, fin.',
         format: 'order', choices: M.shuffle(choices), answer: seq.map((s, i) => 'e' + i),
         hint: seq.length === 4 ? 'Qu\'est-ce qui arrive <b>d\'abord</b> ? <b>ensuite</b> ? <b>puis</b> ? <b>enfin</b> ?' : 'Qu\'est-ce qui arrive en premier ?',
-        explain: (seq.length === 4 ? ['D\'abord', 'Ensuite', 'Puis', 'Enfin'] : ['D\'abord', 'Ensuite', 'Enfin']).map((w, i) => `<b>${w}</b> : ${M.esc(seq[i].t.charAt(0).toLowerCase() + seq[i].t.slice(1))}`).join('<br>'),
+        explain: (seq.length === 4 ? ['D\'abord', 'Ensuite', 'Puis', 'Enfin'] : ['D\'abord', 'Ensuite', 'Enfin']).map((w, i) => `<b>${w}</b> : ${low(seq[i].t)}`).join('<br>'),
       };
       if (passage) q.passage = passage;
       return q;

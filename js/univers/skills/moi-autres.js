@@ -20,6 +20,7 @@
   /* ---------------------------------------------------------------- us-emotions */
   function feelQ(s) {
     const w = s.who, e = emo(s.answer);
+    const bare = e.nom.replace(/^(la |le |l')/, '');
     const items = [{ label: `${e.emoji} ${adj(e, w)}`, tag: 'ok', emo: e.id }, ...s.distract.map((id) => ({ label: `${emo(id).emoji} ${adj(emo(id), w)}`, tag: 'opp', emo: id }))];
     const sh = M.shuffle(items).map((c, i) => ({ ...c, value: c.emo }));
     return {
@@ -27,7 +28,7 @@
       prompt: `Comment ${w.n} se sent-${w.f ? 'elle' : 'il'} <b>probablement</b> ?`,
       format: 'choice', choices: sh, answer: e.id, cols: 3,
       hint: 'Cherche les indices : le visage, les gestes, les paroles.',
-      explain: `${U.cap(s.cue)} : ce sont des indices de <b>${e.nom.replace(/^(la |l')/, '')}</b> ${e.emoji}. ${PROB}`,
+      explain: `${U.cap(s.cue)} : ce sont des indices ${M.fr.de(bare).replace(bare, `<b>${bare}</b>`)} ${e.emoji}. ${PROB}`,
     };
   }
   function triggerQ(s) {
@@ -295,7 +296,7 @@
         { label: '💛 Les émotions', prompt: k.both ? `Comment se sentent-${pl} <b>probablement</b> ?` : `Comment ${k.a.n} se sent-${k.a.f ? 'elle' : 'il'} <b>probablement</b> ?`, format: 'choice',
           ...U.tagged([{ label: `😠 ${feelAdj}`, tag: 'ok' }, { label: `😄 ${happy}`, tag: 'opp' }, { label: `😴 ${sleepy}`, tag: 'off' }]), cols: 3 },
         { label: '🤝 La solution', prompt: 'Quelle solution aide <b>sans blesser personne</b> ?', format: 'choice', ...sol, cols: 1, after: k.after },
-        { label: '🙋 Si ça ne marche pas', prompt: 'Si ça ne marche pas, que peuvent-ils faire ?', format: 'choice',
+        { label: '🙋 Si ça ne marche pas', prompt: `Si ça ne marche pas, que peuvent-${k.a.f && k.b.f ? 'elles' : 'ils'} faire ?`, format: 'choice',
           ...U.tagged([{ label: 'Demander l\'aide d\'un adulte.', tag: 'ok' }, { label: M.pick(AIDE_HARM), tag: 'harm' }]), cols: 1 },
       ];
       const q = {
@@ -308,6 +309,166 @@
         q.scoreSteps = [0, 1, 2, 3];
       }
       return q;
+    },
+  });
+  /* ---------------------------------------------------------------- us-dialogue */
+  /* CCQ 1er cycle — Pratique du dialogue : exprimer son point de vue (« Je pense que… parce que… »), poser une question
+     pour comprendre, écouter et attendre son tour, être en désaccord sans blesser. Personnages fictifs seulement. */
+  const DIA = {
+    // Donner son idée poliment, avec une raison
+    avis: [
+      { sit: 'La classe choisit un jeu pour la récré. Léa aimerait jouer au soccer.', who: 'Léa', f: true, ok: '« Je pense qu\'on pourrait jouer au soccer, parce qu\'on peut tous jouer ensemble. »', harm: '« Le soccer, c\'est le meilleur. Vos idées sont nulles ! »', off: 'Elle ne dit rien et boude dans son coin.' },
+      { sit: 'Le groupe choisit un livre à lire. Noah aime le livre sur les dinosaures.', who: 'Noah', ok: '« Je pense qu\'on devrait lire le livre des dinosaures, parce qu\'on va apprendre plein de choses. »', harm: '« Si on ne lit pas mon livre, je ne joue plus avec vous ! »', off: 'Il cache les autres livres sous son pupitre.' },
+      { sit: 'L\'équipe doit choisir un nom. Mei a une idée : « les Harfangs ».', who: 'Mei', f: true, ok: '« Je propose les Harfangs, parce que c\'est l\'oiseau du Québec. »', harm: '« On prend mon nom, un point c\'est tout ! »', off: 'Elle part dessiner toute seule.' },
+      { sit: 'La classe décide où faire le pique-nique. Kevin préfère le parc.', who: 'Kevin', ok: '« Moi, je pense qu\'on devrait aller au parc, parce qu\'il y a de l\'ombre. »', harm: '« Le parc, c\'est évident ! Vous êtes vraiment bébés. »', off: 'Il crie « Parc ! Parc ! Parc ! » sans s\'arrêter.' },
+      { sit: 'Le groupe choisit une chanson pour le spectacle. Awa aime une chanson douce.', who: 'Awa', f: true, ok: '« Je pense que la chanson douce serait belle, parce qu\'on peut bien entendre les paroles. »', harm: '« Vos chansons sont laides. On chante la mienne. »', off: 'Elle se bouche les oreilles pendant que les autres parlent.' },
+      { sit: 'Pour la sortie, la classe hésite entre le musée et la ferme. Samuel préfère la ferme.', who: 'Samuel', ok: '« J\'aimerais mieux la ferme, parce que je voudrais voir les animaux. »', harm: '« Le musée, c\'est pour les nuls ! »', off: 'Il fait semblant de dormir.' },
+    ],
+    // Poser une question pour comprendre l'idée de l'autre
+    questions: [
+      { dit: 'Zoé dit : « Je n\'aime pas jouer à la tag. »', ok: '« Pourquoi est-ce que tu n\'aimes pas ce jeu ? »', harm: '« Pourquoi tu dis toujours des niaiseries ? »', off: '« Quelle heure est-il ? »' },
+      { dit: 'Amir dit : « Je pense que les chats sont de meilleurs amis que les chiens. »', ok: '« Qu\'est-ce qui te fait penser ça ? »', harm: '« Ton idée est ridicule, non ? »', off: '« As-tu vu mon efface ? »' },
+      { dit: 'Inès dit : « Je préfère l\'hiver à l\'été. »', ok: '« Qu\'est-ce que tu aimes de l\'hiver ? »', harm: '« Es-tu bizarre ou quoi ? »', off: '« On mange quoi ce midi ? »' },
+      { dit: 'Félix dit : « Je ne veux pas être le premier à présenter. »', ok: '« Est-ce que tu peux m\'expliquer pourquoi ? »', harm: '« As-tu peur, bébé lala ? »', off: '« Tu as un beau chandail. »' },
+      { dit: 'Maya dit : « Je trouve que la récré est trop courte. »', ok: '« Combien de temps aimerais-tu avoir, et pourquoi ? »', harm: '« Pourquoi tu te plains tout le temps ? »', off: '« Il fait beau aujourd\'hui. »' },
+      { dit: 'Gabriel dit : « Je pense qu\'on devrait avoir des plantes dans la classe. »', ok: '« Qu\'est-ce que les plantes apporteraient à la classe ? »', harm: '« Qui t\'a demandé ton avis ? »', off: '« J\'ai un chat. »' },
+    ],
+    // Bien écouter et attendre son tour
+    ecoute: {
+      oui: ['Je regarde la personne qui parle.', 'J\'attends que l\'autre ait fini de parler.', 'Je lève la main pour avoir la parole.', 'Je pose une question sur son idée.', 'Je redis son idée avec mes mots.', 'Je fais signe que je comprends.'],
+      non: ['Je coupe la parole.', 'Je parle en même temps que l\'autre.', 'Je ris de son idée.', 'Je joue avec mes crayons pendant que l\'autre parle.', 'Je change de sujet.', 'Je parle plus fort pour couvrir sa voix.'],
+    },
+    // Être en désaccord : avec respect ou en blessant
+    desaccord: {
+      respect: ['« Je ne suis pas d\'accord, parce que… »', '« Je comprends ton idée, mais moi, je pense que… »', '« C\'est une bonne idée. On pourrait aussi… »', '« Peux-tu m\'expliquer ? Je ne comprends pas encore. »', '« On n\'a pas la même idée, et ce n\'est pas grave. »'],
+      blesse: ['« T\'es nul ! »', '« Ton idée est stupide. »', '« Tais-toi ! »', 'Rouler les yeux et soupirer fort.', 'Rire de l\'autre avec ses amis.'],
+    },
+    // Désaccord en situation : que peut dire la personne ?
+    situations: [
+      { sit: 'Léa dit : « Les vers de terre sont dégoûtants. » Kevin n\'est pas d\'accord.', who: 'Kevin', ok: '« Moi, je ne suis pas d\'accord, parce qu\'ils aident les plantes à pousser. »', harm: '« C\'est toi qui es dégoûtante ! »', off: '« J\'ai faim. »' },
+      { sit: 'Noah dit : « Le meilleur sport, c\'est le hockey. » Zoé pense autrement.', who: 'Zoé', ok: '« Je comprends que tu aimes le hockey, mais moi, je préfère la natation. »', harm: '« Le hockey, c\'est pour les perdants ! »', off: '« Il pleut dehors. »' },
+      { sit: 'Amir dit : « On devrait faire nos devoirs le matin. » Mei n\'est pas d\'accord.', who: 'Mei', ok: '« Je ne suis pas d\'accord, parce que le matin, je suis encore fatiguée. »', harm: '« Arrête de dire n\'importe quoi ! »', off: '« Mon chandail est bleu. »' },
+      { sit: 'Awa propose de peinturer la murale en vert. Samuel aimerait une autre couleur.', who: 'Samuel', ok: '« C\'est une bonne idée. On pourrait aussi ajouter du jaune pour le soleil. »', harm: '« Le vert, c\'est laid. Ton idée ne vaut rien. »', off: '« Où est mon sac ? »' },
+      { sit: 'Gabriel dit : « Les chiens ne devraient pas aller au parc. » Inès pense autrement.', who: 'Inès', ok: '« Moi, je pense qu\'ils peuvent y aller s\'ils sont en laisse. »', harm: '« Tu ne comprends jamais rien ! »', off: '« J\'aime les biscuits. »' },
+    ],
+    // Phrase qui donne une raison (« parce que »)
+    raisons: [
+      { ok: 'J\'aime l\'hiver parce que je peux glisser.', d: ['J\'aime l\'hiver.', 'L\'hiver, il neige.'] },
+      { ok: 'Je préfère lire, parce que les histoires me font rêver.', d: ['Je préfère lire.', 'Lire, c\'est une activité.'] },
+      { ok: 'Je pense qu\'il faut ranger, parce que la classe sera plus belle.', d: ['Il faut ranger.', 'La classe a des tables.'] },
+      { ok: 'Je voudrais un chat, parce qu\'il est doux et calme.', d: ['Je voudrais un chat.', 'Les chats ont des moustaches.'] },
+      { ok: 'Je pense qu\'on devrait jouer dehors, parce qu\'il fait beau.', d: ['On devrait jouer dehors.', 'Dehors, il y a des arbres.'] },
+    ],
+    // Phrases à compléter : « Je pense que… parce que… »
+    cloze: [
+      'Je pense {0} on devrait planter des fleurs, {1} c\'est joli.',
+      'Je pense {0} le chien est fatigué, {1} il a beaucoup couru.',
+      'Je pense {0} il faut partager les crayons, {1} tout le monde veut colorier.',
+      'Je pense {0} on devrait parler doucement, {1} des amis lisent.',
+      'Je pense {0} Kevin est content, {1} il sourit.',
+    ],
+    faits: [
+      { t: 'Quand je ne suis pas d\'accord, je peux le dire poliment.', v: true },
+      { t: 'Pour bien écouter, je coupe la parole.', v: false },
+      { t: 'On peut être amis même si on n\'a pas la même idée.', v: true },
+      { t: 'Si une personne a une idée différente, on peut rire d\'elle.', v: false },
+      { t: 'Dans une discussion, chacun parle à son tour.', v: true },
+      { t: 'Poser une question aide à comprendre l\'idée de l\'autre.', v: true },
+      { t: 'Pour donner mon idée, je dois crier plus fort que les autres.', v: false },
+      { t: '« Parce que… » sert à donner une raison.', v: true },
+      { t: 'Une seule personne a le droit de donner son idée.', v: false },
+    ],
+  };
+  M.registerSkill({
+    id: 'us-dialogue', domain: D, title: 'Le dialogue', icon: '💬', learn: 'us-vivre-ensemble',
+    desc: 'Donner son idée poliment, poser une question pour comprendre, écouter, ne pas être d\'accord sans blesser.',
+    pda: 'CCQ 1er cycle — Pratique du dialogue : conditions favorables au dialogue (écouter, attendre son tour, respect), exprimer un point de vue avec une raison, poser des questions pour comprendre',
+    parentNote: 'Le dialogue en Culture et citoyenneté québécoise : on apprend à dire « Je pense que… parce que… », à poser une question pour comprendre et à ne pas être d\'accord sans blesser. Les situations sont fictives; aucune réponse ne porte sur les opinions de l\'enfant.',
+    gen({ lvl }) {
+      const r = Math.random();
+      const tf = () => {
+        const f = M.pick(DIA.faits);
+        return {
+          prompt: `Vrai ou faux ? ${f.t}`, format: 'tf', answer: f.v,
+          hint: 'Dans un bon dialogue, chacun peut parler, écouter et donner son idée sans blesser.',
+          explain: `C'est <b>${f.v ? 'vrai' : 'faux'}</b>. Pour bien discuter : on écoute, on parle chacun son tour, on donne son idée avec une raison et on respecte les idées des autres.`,
+        };
+      };
+      const sortQ = (kind, n) => {
+        const S = kind === 'ecoute' ? DIA.ecoute : DIA.desaccord;
+        const [ka, kb] = kind === 'ecoute' ? ['oui', 'non'] : ['respect', 'blesse'];
+        const items = [...M.shuffle(S[ka]).slice(0, n).map((l) => ({ label: l, bin: ka, say: l })), ...M.shuffle(S[kb]).slice(0, n).map((l) => ({ label: l, bin: kb, say: l }))];
+        return kind === 'ecoute' ? {
+          prompt: 'Est-ce une façon de <b>bien écouter</b> ? Classe chaque geste.', format: 'sort',
+          bins: [{ id: 'oui', label: '👂 J\'écoute bien' }, { id: 'non', label: '🙉 Je n\'écoute pas' }], items,
+          hint: 'Imagine que c\'est toi qui parles : qu\'est-ce qui te montre que l\'autre t\'écoute ?',
+          explain: 'Pour <b>bien écouter</b>, on regarde la personne, on attend qu\'elle ait fini et on lève la main pour parler. Couper la parole ou rire de l\'autre empêche le dialogue.',
+        } : {
+          prompt: 'Ne pas être d\'accord : est-ce <b>respectueux</b> ou <b>blessant</b> ?', format: 'sort',
+          bins: [{ id: 'respect', label: '💚 Respectueux' }, { id: 'blesse', label: '💔 Blessant' }], items,
+          hint: 'On peut critiquer une idée sans attaquer la personne.',
+          explain: 'On a le droit de ne pas être d\'accord ! On le dit avec <b>respect</b> : « Je ne suis pas d\'accord, parce que… ». Les insultes et les moqueries <b>blessent</b> la personne.',
+        };
+      };
+      const avisQ = () => {
+        const a = M.pick(DIA.avis);
+        const t = U.tagged([{ label: a.ok, tag: 'ok' }, { label: a.harm, tag: 'harm' }, { label: a.off, tag: 'off' }]);
+        return {
+          passage: { html: a.sit }, prompt: `Comment ${a.who} peut-${a.f ? 'elle' : 'il'} donner son idée <b>poliment</b> ?`, format: 'choice', ...t, cols: 1,
+          hint: 'Une bonne façon de donner son idée : « Je pense que… parce que… ».',
+          explain: `${a.ok} C'est poli : on dit son idée <b>et sa raison</b>, sans rabaisser les idées des autres.`,
+        };
+      };
+      const questionQ = () => {
+        const q = M.pick(DIA.questions);
+        const t = U.tagged([{ label: q.ok, tag: 'ok' }, { label: q.harm, tag: 'harm' }, { label: q.off, tag: 'off' }]);
+        return {
+          passage: { html: q.dit }, prompt: 'Quelle question aide à <b>comprendre</b> son idée ?', format: 'choice', ...t, cols: 1,
+          hint: 'Une bonne question demande « pourquoi » ou « comment », sans se moquer.',
+          explain: `${q.ok} Cette question montre qu'on veut <b>comprendre</b> l'autre. Une question moqueuse blesse, et une question sur autre chose change de sujet.`,
+        };
+      };
+      if (lvl === 0) {
+        if (r < 0.4) return tf();
+        if (r < 0.75) return sortQ('ecoute', 2);
+        return avisQ();
+      }
+      if (lvl === 1) {
+        if (r < 0.25) return avisQ();
+        if (r < 0.5) return questionQ();
+        if (r < 0.7) {
+          const c = M.pick(DIA.cloze);
+          return {
+            prompt: 'Complète la phrase pour donner ton idée <b>et ta raison</b>.', format: 'cloze', text: c,
+            blanks: [{ choices: M.shuffle(['que', 'parce que', 'mais']), answer: 'que' }, { choices: M.shuffle(['parce que', 'que', 'ou']), answer: 'parce que' }],
+            hint: '« Je pense que… » donne l\'idée. « parce que… » donne la raison.',
+            explain: `On dit : « ${c.replace('{0}', 'que').replace('{1}', 'parce que')} » <b>Je pense que</b> annonce l'idée, <b>parce que</b> annonce la raison.`,
+          };
+        }
+        if (r < 0.85) return sortQ('ecoute', 3);
+        return sortQ('desaccord', 2);
+      }
+      if (r < 0.35) {
+        const s = M.pick(DIA.situations);
+        const t = U.tagged([{ label: s.ok, tag: 'ok' }, { label: s.harm, tag: 'harm' }, { label: s.off, tag: 'off' }]);
+        return {
+          passage: { html: s.sit }, prompt: `Que peut dire ${s.who} pour ne pas être d'accord <b>sans blesser</b> ?`, format: 'choice', ...t, cols: 1,
+          hint: 'On parle de l\'idée, pas de la personne. On peut donner une raison.',
+          explain: `${s.ok} On a le droit d'avoir une autre idée. On la dit avec <b>respect</b>, sans insulter.`,
+        };
+      }
+      if (r < 0.55) {
+        const x = M.pick(DIA.raisons);
+        const t = U.tagged([{ label: x.ok, tag: 'ok' }, ...x.d.map((l) => ({ label: l, tag: 'off' }))]);
+        return {
+          prompt: 'Quelle phrase donne une idée <b>avec une raison</b> ?', format: 'choice', ...t, cols: 1,
+          hint: 'Cherche le mot qui annonce une raison : « parce que ».',
+          explain: `« ${x.ok} » La raison vient après <b>parce que</b>. Donner une raison aide les autres à comprendre notre idée.`,
+        };
+      }
+      if (r < 0.75) return sortQ('desaccord', 3);
+      if (r < 0.9) return questionQ();
+      return tf();
     },
   });
 })();

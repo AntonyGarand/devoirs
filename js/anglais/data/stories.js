@@ -25,6 +25,7 @@
       ],
       questions: [
         { lvl: 0, type: 'pic', fr: 'Qui est Lily ?', choices: ['🐰', '🐱', '🐻'], line: 0 },
+        { lvl: 0, type: 'pic', fr: "Qu'est-ce que Lily mange ?", choices: ['🍎', '🍕', '🍦'], line: 1 },
         { lvl: 0, type: 'pic', fr: 'Qu\'est-ce que Lily boit ?', choices: ['🥛', '🧃', '☕'], line: 2 },
         { lvl: 1, type: 'tf', fr: 'Écoute la question et réponds.', audio: 'Is Lily hungry?', answer: true, line: 0 },
         { lvl: 1, type: 'pic', fr: 'Écoute la question et touche la bonne image.', audio: 'What does Lily eat?', choices: ['🥕', '🧀', '🍪', '🍞'], line: 1 },
@@ -49,13 +50,15 @@
       lines: [
         L('Max is a little beaver.', '🦫', 'Max est un petit castor.'),
         L('It is winter. It is cold and snowy.', '❄️|🌨️', 'C\'est l\'hiver. Il fait froid et il neige.'),
-        L('Max puts on his red hat and his blue mittens.', 'art:en-tuque:red|art:en-mittens:blue', 'Max met sa tuque rouge et ses mitaines bleues.'),
+        L('Max puts on his red toque and his blue mittens.', 'art:en-tuque:red|art:en-mittens:blue', 'Max met sa tuque rouge et ses mitaines bleues.'),
         L('Max sees his friend Lily. Lily is a rabbit.', '🐰', 'Max voit son amie Lily. Lily est un lapin.'),
         L('"Hello, Lily! Let\'s play!"', '👋', '« Bonjour Lily ! Viens jouer ! »'),
         L('They make a big snowman. Max is happy!', '⛄|😀', 'Ils font un gros bonhomme de neige. Max est content !'),
       ],
       questions: [
         { lvl: 0, type: 'pic', fr: 'Qui est Max ?', choices: ['🦫', '🐰', '🐻'], line: 0 },
+        { lvl: 0, type: 'pic', fr: 'Que font Max et Lily ?', choices: ['⛄', '🛷', '🏒'], line: 5 },
+        { lvl: 0, type: 'pic', fr: 'Comment se sent Max à la fin ?', choices: ['😀', '😢', '😠'], line: 5 },
         { lvl: 0, type: 'pic', fr: 'Quelle saison est-ce ?', choices: ['❄️', '☀️', '🍂', '🌷'], line: 1 },
         { lvl: 1, type: 'tf', fr: 'Écoute la question et réponds.', audio: 'Is Max sad?', answer: false, line: 5, hint: 'Regarde la dernière image 😀.' },
         { lvl: 1, type: 'pic', fr: 'De quelle couleur est la tuque de Max ?', choices: [SW('red'), SW('blue'), SW('green')], line: 2 },
@@ -91,6 +94,7 @@
         L('He skates again. He is happy!', '😀', 'Il patine encore. Il est content !'),
       ],
       questions: [
+        { lvl: 0, type: 'pic', fr: 'Comment se sent Noah à la fin ?', choices: ['😀', '😢', '😴'], line: 5 },
         { lvl: 0, type: 'pic', fr: 'Qu\'est-ce que Noah met ?', choices: ['⛸️', 'art:en-boots', '🧦'], line: 0 },
         { lvl: 0, type: 'pic', fr: 'Avec qui Noah va-t-il à la patinoire ?', choices: ['👩', '👴', '👧'], line: 1 },
         { lvl: 1, type: 'tf', fr: 'Écoute la question et réponds.', audio: 'Does Noah fall down?', answer: true, line: 2 },

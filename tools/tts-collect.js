@@ -23,7 +23,8 @@ const MAX = +arg('--max', 1500);
 const BATCH = 40;
 
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map((m) => m[1]).filter((f) => !/app\.js$/.test(f));
+const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map((m) => m[1]).filter((f) => !/app\.js$/.test(f))
+  .concat(['js/styleguide.js']); // chargé à la demande dans l'app; ses phrases d'exemple doivent quand même être enregistrées
 const dom = new JSDOM('<!doctype html><html><body><div id="app"></div></body></html>', { runScripts: 'outside-only', pretendToBeVisual: true, url: 'http://localhost/' });
 const w = dom.window;
 w.matchMedia = () => ({ matches: true, addEventListener() {}, removeEventListener() {}, addListener() {} }); // mouvement réduit : pas d'animations

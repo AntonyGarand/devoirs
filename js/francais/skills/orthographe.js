@@ -89,7 +89,7 @@
           };
         }
         const n = lvl === 0 ? 1 : 2;
-        const bad = FR.fautes(m.w, n);
+        const bad = FR.fautes(m.w, n, { noEr: true });
         if (bad.length < n) continue;
         return {
           prompt: 'Écoute. Touche le mot <b>bien écrit</b>.', audio: { seq: [m.w, m.phrase], pause: 700, autoplay: 'once' },
@@ -204,8 +204,11 @@
       if (lvl >= 1 && r < 0.8) {
         const pool = lvl === 2 ? LIEUX : M.people.NAMES.map((x) => x[0]);
         const w = M.pick(pool);
+        // le nom est MONTRÉ (en minuscules) : l'enfant ne peut pas deviner Maëlle, Inès ou Sherbrooke à l'oreille.
+        // Ce qu'on vérifie ici, c'est la majuscule.
         return {
-          prompt: lvl === 2 ? 'Écoute et écris le nom de cette ville du Québec.' : 'Écoute et écris ce prénom.',
+          prompt: `${lvl === 2 ? 'Écris le nom de cette ville' : 'Écris ce prénom'} avec la bonne majuscule.<div class="fr-big" style="font-size:1.6rem">${M.esc(w.toLocaleLowerCase('fr-CA'))}</div>`,
+          say: lvl === 2 ? 'Écris le nom de cette ville avec la bonne majuscule.' : 'Écris ce prénom avec la bonne majuscule.',
           audio: { seq: [w, w], pause: 700, autoplay: 'once' },
           format: 'text', answer: w, caseSensitive: 'first', keyboard: 'full',
           hint: lvl === 2 ? 'Le nom d\'une ville est un nom propre : il commence par une majuscule.' : 'Un prénom commence toujours par une <b>majuscule</b>.',

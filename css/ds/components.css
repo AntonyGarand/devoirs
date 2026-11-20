@@ -3,13 +3,13 @@
 .card { background: var(--card); border-radius: 26px; padding: 22px; box-shadow: 0 6px 0 var(--line), 0 10px 30px rgba(0,0,0,.05) }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  border: 3px solid var(--line); background: #fff; border-radius: 14px; padding: 8px 14px;
+  border: 3px solid var(--line); background: #fff; border-radius: 14px; padding: 8px 14px; min-height: 44px;
   font-weight: 800; font-size: 1rem; text-decoration: none; color: var(--ink); transition: transform .1s;
 }
 .btn:active { transform: translateY(2px) }
 .btn:disabled { opacity: .5 }
-.btn.primary { background: var(--C); border-color: #04805f; color: #fff; box-shadow: 0 4px 0 #04805f }
-.btn.blue { background: var(--B); border-color: #0b5f7c; color: #fff; box-shadow: 0 4px 0 #0b5f7c }
+.btn.primary { background: var(--C-strong); border-color: var(--C-strong-edge); color: #fff; box-shadow: 0 4px 0 var(--C-strong-edge) }
+.btn.blue { background: var(--B-strong); border-color: var(--B-strong-edge); color: #fff; box-shadow: 0 4px 0 var(--B-strong-edge) }
 .btn.yellow { background: var(--yel); border-color: #e9b949 }
 .btn.ghost { border-radius: 999px }
 .btn.icon { padding: 6px 10px; font-size: 1.3rem; background: var(--yel); border-color: #e9b949 }
@@ -25,6 +25,7 @@
 .big-num { font-size: 3rem; font-weight: 900 }
 .muted { color: var(--muted) }
 .chip { display: inline-block; border: 3px solid var(--line); border-radius: 999px; padding: 4px 12px; font-weight: 800; background: #fff }
+button.chip { min-height: 44px; cursor: pointer }
 .viz-box { background: #fbfaf6; border: 3px solid var(--line); border-radius: var(--radius); padding: 14px }
 .viz-hint { font-weight: 700; color: var(--muted); margin-bottom: 10px; font-size: 1rem }
 .viz-status { margin-top: 10px; font-size: 1.15rem; font-weight: 800; min-height: 1.4em }
@@ -37,5 +38,7 @@
 @keyframes bob { 50% { transform: translateY(-8px) rotate(-4deg) } }
 .confetti { position: fixed; top: -20px; width: 12px; height: 16px; z-index: 50; pointer-events: none; animation: fall linear forwards }
 @keyframes fall { to { transform: translateY(1400px) rotate(720deg) } }
+.btn:focus-within { outline: 4px solid var(--focus); outline-offset: 2px } /* label + champ fichier caché */
+.toast { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 70; width: max-content; max-width: 92vw; background: #fff8e6; color: var(--ink); border: 3px solid var(--yel); border-radius: 16px; padding: 10px 16px; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,.12) }
 .flystar { position: fixed; font-size: 3rem; z-index: 60; pointer-events: none; transition: all .8s cubic-bezier(.5,-0.4,.6,1) }
 

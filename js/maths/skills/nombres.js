@@ -1339,6 +1339,8 @@
      ===================================================================== */
   const KINDS = { pizza: { de: 'de la pizza', n: 'la pizza', N: 'La pizza', e: '🍕', f: true }, tab: { de: 'de la tablette de chocolat', n: 'la tablette de chocolat', N: 'La tablette de chocolat', e: '🍫', f: true }, carre: { de: 'du carré', n: 'le carré', N: 'Le carré', e: '⬜', f: false } };
   const allFracs = () => { const a = []; [2, 3, 4].forEach((n) => { for (let k = 1; k < n; k++) a.push(`${k}/${n}`); }); return a; };
+  // valeur d'une fraction : 2/4 = 1/2 → jamais deux fractions équivalentes dans les mêmes choix
+  const fv = (s) => { const [k, n] = s.split('/').map(Number); return Math.round((k / n) * 1000); };
   const fracLabel = (s) => { const [k, n] = s.split('/').map(Number); return NB.fracName(k, n); };
   const nameRef = '<div class="nb-card">Pour parler de fraction, il faut des <b>parts égales</b> !<br>2 parts égales → des <b>demis</b><br>3 parts égales → des <b>tiers</b><br>4 parts égales → des <b>quarts</b></div>';
   register({
@@ -1402,7 +1404,7 @@
       const w = NB.weights(n, true);
       const choices = lvl === 0
         ? ['1/2', '1/3', '1/4'].map((s) => ({ label: fracLabel(s), value: s }))
-        : mkChoices(ans, allFracs().filter((s) => s !== ans).sort((x, y) => { const sc = (s) => (s.split('/')[1] === String(n) || s.split('/')[0] === String(k) ? 0 : 1); return sc(x) - sc(y); }).slice(0, 4), 4, fracLabel);
+        : mkChoices(ans, M.shuffle(allFracs()).filter((s, i, a) => fv(s) !== fv(ans) && a.findIndex((t) => fv(t) === fv(s)) === i).sort((x, y) => { const sc = (s) => (s.split('/')[1] === String(n) || s.split('/')[0] === String(k) ? 0 : 1); return sc(x) - sc(y); }).slice(0, 4), 4, fracLabel);
       return {
         prompt: `Quelle fraction ${K.de} est coloriée ?`,
         say: `Quelle fraction ${K.de} est coloriée ?`,

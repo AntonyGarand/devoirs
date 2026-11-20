@@ -28,7 +28,11 @@
       let part = M.pickWeighted(zones, (p) => p, 'en-corps');
       // au niveau 2, « head » seul serait trop petit (yeux, nez… sont des zones à part) : on le replie
       const fold = SUBS[part] ? [part] : [];
-      const cmd = `Touch your ${part}.`;
+      // consignes variées (TPR) : Touch / Show me / Point to / Where is…?
+      const plural = !['head', 'tummy', 'nose', 'mouth', 'hair'].includes(part);
+      const forms = [`Touch your ${part}.`, `Show me your ${part}.`, `Point to your ${part}.`, `Touch your ${part}, please.`];
+      if (lvl >= 1) forms.push(`Where ${plural ? 'are' : 'is'} your ${part}?`, `${M.pick(['Max', 'Lily', 'Sam', 'Mia'])}, touch your ${part}!`);
+      const cmd = M.pick(forms);
       return {
         prompt: 'Écoute et touche la bonne partie du corps.',
         audio: EN.audio(cmd), format: 'hotspot', lang: LANG,
@@ -98,7 +102,7 @@
         };
       }
       // couleur (et taille au niveau 2) : plusieurs objets pareils de couleurs différentes
-      const kinds = [{ art: 'en-tuque', w: 'hat', bg: 'winter', fr: 'la tuque' }, { art: 'en-mittens', w: 'mittens', bg: 'winter', fr: 'les mitaines' }, { art: 'en-ball', w: 'ball', bg: 'bedroom', fr: 'le ballon' }, { art: 'en-car', w: 'car', bg: 'bedroom', fr: 'l\'auto' }];
+      const kinds = [{ art: 'en-tuque', w: 'toque', bg: 'winter', fr: 'la tuque', f: true }, { art: 'en-mittens', w: 'mittens', bg: 'winter', fr: 'les mitaines', f: true, pl: true }, { art: 'en-ball', w: 'ball', bg: 'bedroom', fr: 'le ballon' }, { art: 'en-car', w: 'car', bg: 'bedroom', f: true, fr: 'l\'auto' }];
       const k = M.pick(mode === 'size' ? kinds.filter((x) => x.w !== 'mittens') : kinds);
       const cols = EN.pickSet(EN.ofTheme('colours', lvl).filter((c) => c.id !== 'white'), mode === 'size' ? 2 : 3);
       const objs = [];
@@ -110,9 +114,9 @@
       return {
         prompt: mode === 'size' ? 'Écoute bien la taille et la couleur, puis touche.' : 'Écoute bien la couleur, puis touche.',
         audio: EN.audio(cmd), format: 'hotspot', lang: LANG,
-        html: EN.scene(k.bg, objs.concat(others)), answer: t.id, answerText: `${k.fr} (${t.b ? (t.b === 'big' ? 'gros, ' : 'petit, ') : ''}${t.c.fr})`, answerSay: cmd,
+        html: EN.scene(k.bg, objs.concat(others)), answer: t.id, answerText: `${k.fr} (${t.b ? (t.b === 'big' ? (k.f ? 'grosse, ' : 'gros, ') : (k.f ? 'petite, ' : 'petit, ')) : ''}${EN.frColour(t.c.fr, k)})`, answerSay: cmd,
         hint: (t.b ? '<span lang="en">Big</span> = gros, <span lang="en">little</span> = petit. ' : '') + 'Écoute le mot de couleur avec 🐢.',
-        explain: `${EN.ear(cmd)} — ${k.fr}${t.b ? (t.b === 'big' ? ' (gros)' : ' (petit)') : ''} de couleur <b>${M.esc(t.c.fr)}</b> ${EN.pic({ art: k.art, color: t.c.id }, 30)}.`,
+        explain: `${EN.ear(cmd)} — ${t.b ? `${k.fr.startsWith('le ') ? 'le' : 'la'} ${t.b === 'big' ? (k.f ? 'grosse' : 'gros') : (k.f ? 'petite' : 'petit')} ${k.fr.replace(/^(le |la |l')/, '')}` : k.fr} <b>${M.esc(EN.frColour(t.c.fr, k))}</b> ${EN.pic({ art: k.art, color: t.c.id }, 30)}.`,
       };
     },
   });

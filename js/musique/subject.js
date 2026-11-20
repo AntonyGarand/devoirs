@@ -46,7 +46,8 @@
   function out() {
     const c = C();
     if (!c) return null;
-    if (c.state === 'suspended' && c.resume) c.resume();
+    if (M.sfx && M.sfx.wake) M.sfx.wake(); // 'suspended' ou 'interrupted' (iOS)
+    else if (c.state !== 'running' && c.resume) c.resume();
     if (!bus) {
       bus = c.createGain(); bus.gain.value = 0.8;
       bus.connect(c.destination);
@@ -251,7 +252,18 @@
     const playAll = async () => { for (let i = 0; i < items.length; i++) { if (!el.isConnected) return; if (!(await playOne(i))) return; await M.sleep(450); } };
     // Lecture automatique seulement quand le lecteur est visible (ex. mini-quiz en bas d'une page Apprendre).
     if (autoplay) {
-      const go = () => setTimeout(() => { if (el.isConnected) playAll(); }, 500);
+      // Si une consigne est en train d'être lue (lecture automatique), on attend la fin de la voix :
+      // jouer un son couperait la consigne (MU.play → M.hush).
+      const go = () => {
+        const t0 = Date.now();
+        const wait = () => {
+          if (!el.isConnected) return;
+          if (M.isSpeaking && M.isSpeaking() && Date.now() - t0 < 30000) return setTimeout(wait, 200);
+          setTimeout(() => { if (el.isConnected && !(M.isSpeaking && M.isSpeaking())) playAll(); else if (el.isConnected) wait(); }, 450);
+        };
+        // 500 ms : laisse le temps à la lecture automatique de la consigne (300 ms) de commencer
+        setTimeout(wait, 500);
+      };
       if (typeof IntersectionObserver === 'function') {
         const io = new IntersectionObserver((ents) => { if (ents.some((e) => e.isIntersecting)) { io.disconnect(); go(); } }, { threshold: 0.6 });
         io.observe(el);
@@ -275,7 +287,7 @@
     .mu-pl-btn .mu-spk { width: 52px; height: 44px }
     .mu-player.big .mu-pl-btn { min-width: 150px } .mu-player.big .mu-spk { width: 72px; height: 60px }
     .mu-pl-btn .w1, .mu-pl-btn .w2 { opacity: .25; transition: opacity .2s }
-    .mu-pl-btn.playing { background: color-mix(in srgb, var(--c) 14%, #fff) }
+    .mu-pl-btn.playing { background: #f3f6ff; background: color-mix(in srgb, var(--c) 14%, #fff) }
     .mu-pl-btn.playing .w1 { animation: mu-wave .6s ease-in-out infinite } .mu-pl-btn.playing .w2 { animation: mu-wave .6s ease-in-out .15s infinite }
     .mu-pl-btn.playing .mu-spk { animation: mu-bump .3s ease-in-out infinite alternate }
     @keyframes mu-wave { 0%, 100% { opacity: .2 } 50% { opacity: 1 } }

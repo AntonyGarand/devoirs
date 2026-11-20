@@ -35,14 +35,16 @@ const load = (f) => vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'),
 
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map((m) => m[1]).filter((f) => !/app\.js$/.test(f));
-for (const f of scripts) {
+// Chargés à la demande par app.js (#/style, #/test) : styleguide.js fournit M.FORMAT_SAMPLES, vérifiés plus bas.
+const LAZY = ['js/styleguide.js', 'js/selftest.js'];
+for (const f of [...scripts, LAZY[0]]) {
   load(f);
   if (f === 'js/services.js') ctx.M.userData.useFixtures = true;
 }
 // Fichiers présents mais oubliés dans index.html
 for (const d of fs.readdirSync(path.join(root, 'js'), { withFileTypes: true }).filter((d) => d.isDirectory())) {
   const walk = (dir) => fs.readdirSync(path.join(root, dir), { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(dir + '/' + e.name) : e.name.endsWith('.js') ? [dir + '/' + e.name] : []));
-  walk('js/' + d.name).forEach((f) => { if (!scripts.includes(f) && f !== 'js/musique/samples.js' /* chargé à la demande par M.MU.load */) console.log(`⚠ ${f} n'est pas chargé par index.html`); });
+  walk('js/' + d.name).forEach((f) => { if (!scripts.includes(f) && f !== 'js/musique/samples.js' /* chargé à la demande par M.MU.load */ && !LAZY.includes(f)) console.log(`⚠ ${f} n'est pas chargé par index.html`); });
 }
 
 const M = ctx.M;

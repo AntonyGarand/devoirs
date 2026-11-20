@@ -19,6 +19,34 @@
     { id: 'graine', nom: 'la graine', label: 'Graine', role: 'Peut devenir une nouvelle plante', court: 'devient une nouvelle plante', pl: false, extra: true },
   ];
 
+  /** Quelle partie de la plante mange-t-on ? (réponses scolaires usuelles; céleri, rhubarbe = tige) */
+  SC.LEGUMES_PARTIE = [
+    { id: 'carotte', nom: 'une carotte', label: '🥕 La carotte', p: 'racines', facile: true },
+    { id: 'radis', nom: 'un radis', label: 'Le radis', p: 'racines' },
+    { id: 'betterave', nom: 'une betterave', label: 'La betterave', p: 'racines' },
+    { id: 'celeri', nom: 'du céleri', label: 'Le céleri', p: 'tige', facile: true },
+    { id: 'asperge', nom: 'une asperge', label: 'L\'asperge', p: 'tige' },
+    { id: 'rhubarbe', nom: 'de la rhubarbe', label: 'La rhubarbe', p: 'tige' },
+    { id: 'laitue', nom: 'de la laitue', label: '🥬 La laitue', p: 'feuille', facile: true },
+    { id: 'epinards', nom: 'des épinards', label: 'Les épinards', p: 'feuille' },
+    { id: 'brocoli', nom: 'du brocoli', label: '🥦 Le brocoli', p: 'fleur', facile: true },
+    { id: 'chou-fleur', nom: 'du chou-fleur', label: 'Le chou-fleur', p: 'fleur' },
+    { id: 'pomme', nom: 'une pomme', label: '🍎 La pomme', p: 'fruit', facile: true },
+    { id: 'tomate', nom: 'une tomate', label: '🍅 La tomate', p: 'fruit' },
+    { id: 'pois', nom: 'des petits pois', label: 'Les petits pois', p: 'graine' },
+    { id: 'tournesol', nom: 'des graines de tournesol', label: '🌻 Les graines de tournesol', p: 'graine' },
+  ];
+  SC.PLANTE_PARTIES_VF = [
+    { t: 'Les racines sont sous la terre.', v: true, e: 'Vrai ! Les racines sont cachées dans le sol : elles tiennent la plante et boivent l\'eau.' },
+    { t: 'Les feuilles poussent sous la terre.', v: false, e: 'Faux ! Les feuilles sont dans l\'air, à la lumière : elles captent la lumière du soleil.' },
+    { t: 'La fleur peut devenir un fruit.', v: true, e: 'Vrai ! Après la fleur, un fruit se forme, avec des graines dedans.' },
+    { t: 'Les graines sont souvent cachées dans le fruit.', v: true, e: 'Vrai ! Ouvre une pomme ou une tomate : les graines sont dedans.' },
+    { t: 'Une graine peut devenir une nouvelle plante.', v: true, e: 'Vrai ! Dans la terre humide, la graine germe et devient une nouvelle plante.' },
+    { t: 'Le tronc d\'un arbre est une très grosse tige.', v: true, e: 'Vrai ! Le tronc tient l\'arbre debout et transporte l\'eau, comme une tige.' },
+    { t: 'Ce sont les racines qui captent la lumière du soleil.', v: false, e: 'Faux ! Ce sont les <b>feuilles</b> qui captent la lumière. Les racines boivent l\'eau dans le sol.' },
+    { t: 'La tige transporte l\'eau des racines jusqu\'aux feuilles.', v: true, e: 'Vrai ! La tige est comme un tuyau : l\'eau monte des racines jusqu\'aux feuilles.' },
+  ];
+
   /* ---- Besoins ---- */
   SC.BESOINS_PLANTE = {
     oui: [{ id: 'eau', label: '💧 De l\'eau' }, { id: 'lumiere', label: '☀️ De la lumière' }, { id: 'air', label: '🌬️ De l\'air' }, { id: 'mineraux', label: '🟫 Des minéraux du sol', lvl: 1 }],
@@ -42,6 +70,13 @@
     { t: 'Les racines boivent l\'eau qui est dans le sol.', v: true, e: 'Vrai ! Les racines boivent l\'eau, puis la tige la transporte jusqu\'aux feuilles.' },
     { t: 'Une plante a besoin d\'air.', v: true, e: 'Vrai ! Comme nous, la plante a besoin d\'air. Même ses racines en ont besoin : c\'est pour ça que trop d\'eau lui fait du mal.' },
     { t: 'Plus on donne d\'eau à une plante, mieux elle pousse.', v: false, e: 'Faux ! Trop d\'eau noie les racines : elles manquent d\'air. Il faut de l\'eau <b>juste assez</b>.' },
+    { t: 'Avec la lumière, une plante fabrique sa propre nourriture.', v: true, e: 'Vrai ! Les feuilles captent la lumière pour fabriquer la nourriture de la plante.' },
+    { t: 'Une plante peut bien pousser des mois dans un placard noir.', v: false, e: 'Faux ! Sans lumière, la plante devient pâle et faible, puis elle meurt.' },
+    { t: 'Un animal a besoin d\'eau pour vivre.', v: true, e: 'Vrai ! Comme nous, les animaux doivent boire de l\'eau.' },
+    { t: 'Un chat a besoin de nourriture, mais pas d\'eau.', v: false, e: 'Faux ! Un chat a besoin de nourriture <b>et</b> d\'eau, comme tous les animaux.' },
+    { t: 'Un animal sauvage doit trouver lui-même sa nourriture.', v: true, e: 'Vrai ! Personne ne le nourrit : il cherche sa nourriture dans la nature.' },
+    { t: 'Les animaux ont besoin d\'air pour respirer.', v: true, e: 'Vrai ! Même les poissons respirent : ils prennent l\'air qui est dans l\'eau avec leurs branchies.' },
+    { t: 'Une plante a besoin de bonbons pour pousser.', v: false, e: 'Faux ! Une plante a besoin d\'eau, de lumière, d\'air et des minéraux du sol.' },
   ];
 
   /* ---- Cycles de vie (art = dessin si l'emoji n'existe pas) ---- */
@@ -71,6 +106,26 @@
       { id: 'gousse', art: 'sc-gousse', emoji: '🫛', label: 'Fleurs et haricots', texte: 'Les fleurs deviennent des haricots. Dedans, il y a de nouvelles graines !' },
     ] },
   };
+  /** Le bébé de… (adulte avec image; bébés en mots seulement : l'image donnerait la réponse). */
+  SC.BEBES = [
+    { a: 'la poule', e: '🐔', b: 'le poussin' }, { a: 'la grenouille', e: '🐸', b: 'le têtard' },
+    { a: 'le papillon', e: '🦋', b: 'la chenille' }, { a: 'le chien', e: '🐶', b: 'le chiot' },
+    { a: 'le chat', e: '🐱', b: 'le chaton' }, { a: 'la vache', e: '🐄', b: 'le veau' },
+    { a: 'le cheval', e: '🐴', b: 'le poulain' }, { a: 'le mouton', e: '🐑', b: 'l\'agneau' },
+    { a: 'l\'ours', e: '🐻', b: 'l\'ourson' }, { a: 'le canard', e: '🦆', b: 'le caneton' },
+  ];
+  SC.CYCLES_VF = [
+    { t: 'Le poussin sort d\'un œuf.', v: true, e: 'Vrai ! Le poussin grandit dans l\'œuf, puis casse sa coquille : il éclot.' },
+    { t: 'Le têtard vit dans l\'eau.', v: true, e: 'Vrai ! Le têtard nage dans l\'eau avec sa queue. Plus tard, il deviendra une grenouille.' },
+    { t: 'La chenille deviendra un papillon.', v: true, e: 'Vrai ! La chenille se transforme dans une chrysalide, puis devient un papillon.' },
+    { t: 'Le têtard a des ailes.', v: false, e: 'Faux ! Le têtard a une queue pour nager. Ensuite, des pattes lui poussent.' },
+    { t: 'Le papillon pond des chenilles.', v: false, e: 'Faux ! Le papillon pond des <b>œufs</b>. Une petite chenille sort de chaque œuf.' },
+    { t: 'La grenouille pond ses œufs dans l\'eau.', v: true, e: 'Vrai ! Ses œufs, collés comme de la gelée, flottent dans l\'eau d\'un étang.' },
+    { t: 'Le chaton sort d\'un œuf.', v: false, e: 'Faux ! Le chaton grandit dans le ventre de sa mère, puis il naît. Il boit le lait de sa mère.' },
+    { t: 'Une graine de haricot peut devenir une plante.', v: true, e: 'Vrai ! Dans la terre humide, la graine germe et devient une plante de haricot.' },
+    { t: 'Un bébé grenouille ressemble déjà à une grenouille.', v: false, e: 'Faux ! Le bébé de la grenouille est un <b>têtard</b> : il a une queue et pas de pattes au début.' },
+    { t: 'La chenille mange beaucoup de feuilles.', v: true, e: 'Vrai ! La chenille du monarque mange des feuilles d\'asclépiade et grossit beaucoup.' },
+  ];
   // Emoji récents (U14–U15) : remplacés par un dessin s'ils ne s'affichent pas
   SC.CYCLES.haricot.stades[0].recent = true;
   SC.CYCLES.haricot.stades[3].recent = true;
@@ -123,7 +178,15 @@
     { t: 'Tu regardes un feu d\'artifice : « Boum ! » Quels sens utilises-tu ?', choix: ['vue', 'ouie', 'gout'], a: ['vue', 'ouie'], e: 'On voit les couleurs (la vue) et on entend « Boum ! » (l\'ouïe). On ne goûte pas un feu d\'artifice !' },
     { t: 'Tu flattes un chat qui ronronne. Quels sens utilises-tu ?', choix: ['toucher', 'ouie', 'gout'], a: ['toucher', 'ouie'], e: 'On sent le poil doux avec la peau (le toucher) et on entend le ronron (l\'ouïe).' },
     { t: 'Tu manges une soupe aux légumes bien chaude, les yeux fermés. Quels sens t\'aident ?', choix: ['vue', 'gout', 'odorat', 'toucher'], a: ['gout', 'odorat', 'toucher'], e: 'Les yeux sont fermés : pas de vue. On goûte la soupe, on sent son odeur, et la bouche sent qu\'elle est chaude (le toucher).' },
+    { t: 'Tu lis un livre et tu entends ton ami t\'appeler. Quels sens utilises-tu ?', choix: ['vue', 'ouie', 'gout'], a: ['vue', 'ouie'], e: 'On lit avec les yeux (la vue) et on entend son ami avec les oreilles (l\'ouïe).' },
+    { t: 'Tu regardes le feu de camp et tu sens la fumée. Quels sens utilises-tu ?', choix: ['vue', 'odorat', 'gout'], a: ['vue', 'odorat'], e: 'On voit les flammes (la vue) et on sent l\'odeur de la fumée avec le nez (l\'odorat).' },
+    { t: 'Tu entends la pluie et tu sens les gouttes sur ta peau. Quels sens utilises-tu ?', choix: ['ouie', 'toucher', 'gout'], a: ['ouie', 'toucher'], e: 'On entend la pluie (l\'ouïe) et la peau sent les gouttes (le toucher).' },
+    { t: 'Tu regardes une fleur et tu respires son parfum. Quels sens utilises-tu ?', choix: ['vue', 'odorat', 'gout'], a: ['vue', 'odorat'], e: 'On voit la fleur (la vue) et on sent son parfum avec le nez (l\'odorat).' },
+    { t: 'Dans le noir, tu manges un biscuit chaud qui sent bon. Quels sens t\'aident ?', choix: ['vue', 'gout', 'odorat'], a: ['gout', 'odorat'], e: 'Dans le noir, on ne voit rien. Mais on goûte le biscuit (le goût) et on sent son odeur (l\'odorat).' },
+    { t: 'Dans le noir, tu flattes un chien qui jappe. Quels sens utilises-tu ?', choix: ['vue', 'toucher', 'ouie'], a: ['toucher', 'ouie'], e: 'Dans le noir, pas de vue. On sent le poil avec la peau (le toucher) et on entend le chien japper (l\'ouïe).' },
   ];
+  /** Avec quoi… ? (sens → organe) */
+  SC.SENS_VERBE = { vue: 'Avec quoi <b>vois</b>-tu ?', ouie: 'Avec quoi <b>entends</b>-tu ?', odorat: 'Avec quoi <b>sens</b>-tu les odeurs ?', gout: 'Avec quoi <b>goûtes</b>-tu les aliments ?', toucher: 'Avec quoi sens-tu si une chose est <b>chaude ou froide</b> ?' };
 
   /* ---- Produits du vivant (UV D.2.a, D.4.a) ---- */
   SC.PRODUITS = [

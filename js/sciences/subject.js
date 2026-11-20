@@ -14,10 +14,12 @@
   'use strict';
   const M = window.M;
   const SC = (M.SC = M.SC || {});
+  const NOTE_CYCLE = "Au 1<sup>er</sup> cycle, Science et technologie n'est <b>pas une matière distincte au bulletin</b> : ses apprentissages sont intégrés aux autres matières (français, mathématique…). Ici, c'est du contenu d'<b>intégration et d'enrichissement</b>, aligné sur la Progression des apprentissages.";
 
   M.registerSubject({
     id: 'sciences', title: 'Sciences', icon: '🔬', color: '#9b5de5', soft: '#f1e8fd',
     desc: 'Le vivant, la matière, la Terre et le ciel : observer, prédire, expliquer.',
+    parentNote: NOTE_CYCLE,
     /** Règles propres à la matière (tools/check-skills.js). */
     lint(q) {
       const t = JSON.stringify([q.prompt, q.explain, q.hint, q.choices, q.check, q.items, q.pairs]);
@@ -27,7 +29,7 @@
     },
   });
   [
-    { id: 'sc-vivant', title: 'Le vivant', icon: '🌱', color: '#06a77d', soft: '#dcf7ee', pda: 'Univers vivant (UV A, B, C, D) + Éducation physique et à la santé (saines habitudes)' },
+    { id: 'sc-vivant', title: 'Le vivant', icon: '🌱', color: '#06a77d', soft: '#dcf7ee', pda: 'Univers vivant (UV A, B, C, D) + Éducation physique et à la santé (saines habitudes)', parentNote: NOTE_CYCLE },
     { id: 'sc-matiere', title: 'La matière et les objets', icon: '🧲', color: '#9b5de5', soft: '#f1e8fd', pda: 'Univers matériel (UM A, C, D)' },
     { id: 'sc-terre', title: 'La Terre et le ciel', icon: '🌍', color: '#118ab2', soft: '#dff3fb', pda: 'Terre et espace (TE A, C, D)' },
     { id: 'sc-demarche', title: 'Démarche scientifique', icon: '🔎', color: '#f78c40', soft: '#ffe9d6', pda: 'Stratégies d\'exploration (PDA p. 14); compétence du 1er cycle « Explorer le monde de la science et de la technologie »' },
@@ -49,6 +51,10 @@
   });
   SC.ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
   SC.cap = (s) => String(s).charAt(0).toUpperCase() + String(s).slice(1);
+  /** Contractions devant un nom avec article : de + le clou → « du clou », à + le chat → « au chat »,
+      de + les lunettes → « des lunettes »; la / l' inchangés; prénom à voyelle → « d'Amira ». */
+  SC.de = (nom) => String(nom).replace(/^le /, 'du ').replace(/^les /, 'des ').replace(/^(la |l')/, 'de $1').replace(/^(?!du |des |de )([aeiouyhàâéèêîïôûœ])/i, "d'$1").replace(/^(?!du |des |de |d')/, 'de ');
+  SC.a = (nom) => String(nom).replace(/^le /, 'au ').replace(/^les /, 'aux ').replace(/^(?!au |aux )/, 'à ');
   SC.plain = (html) => String(html).replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ')
     .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim();
 

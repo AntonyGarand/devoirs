@@ -85,7 +85,7 @@
   ]);
 
   theme('clothes', [
-    ['hat', 'hat', { art: 'en-tuque', color: 'red' }, 'tuque', 0, { say: 'a hat', sameAs: ['cap'] }],
+    ['hat', 'toque', { art: 'en-tuque', color: 'red' }, 'tuque', 0, { say: 'a toque', sameAs: ['cap'] }], // id historique « hat » (progression); toque = mot canadien pour tuque
     ['mittens', 'mittens', { art: 'en-mittens', color: 'blue' }, 'mitaines', 1, { say: 'mittens' }],
     ['boots', 'boots', { art: 'en-boots', color: 'brown' }, 'bottes', 0, { say: 'boots', sameAs: ['shoes'] }],
     ['scarf', 'scarf', '🧣', 'foulard', 1, { say: 'a scarf' }],
@@ -147,9 +147,9 @@
   theme('weather', [
     ['sunny', 'sunny', '☀️', 'il fait soleil', 0, { say: 'It\'s sunny.', sameAs: ['hot', 'summer'] }],
     ['rainy', 'rainy', '🌧️', 'il pleut', 0, { say: 'It\'s rainy.', sameAs: ['cloudy'] }],
-    ['snowy', 'snowy', '🌨️', 'il neige', 1, { say: 'It\'s snowy.', sameAs: ['cold', 'winter'] }],
+    ['snowy', 'snowy', '🌨️', 'il neige', 1, { say: 'It\'s snowy.', sameAs: ['cold', 'winter', 'cloudy'] }], // 🌨️ montre aussi un nuage
     ['windy', 'windy', '🌬️', 'il vente', 1, { say: 'It\'s windy.' }],
-    ['cloudy', 'cloudy', '☁️', 'c\'est nuageux', 1, { say: 'It\'s cloudy.', sameAs: ['rainy'] }],
+    ['cloudy', 'cloudy', '☁️', 'c\'est nuageux', 1, { say: 'It\'s cloudy.', sameAs: ['rainy', 'snowy'] }],
     ['cold', 'cold', '🥶', 'il fait froid', 0, { say: 'It\'s cold.', sameAs: ['snowy', 'winter'] }],
     ['hot', 'hot', '🥵', 'il fait chaud', 0, { say: 'It\'s hot.', sameAs: ['sunny', 'summer'] }],
   ]);
@@ -168,6 +168,7 @@
     ['tired', 'tired', '😴', 'fatigué', 1, { say: 'I\'m tired.' }],
     ['scared', 'scared', '😨', 'effrayé (j\'ai peur)', 1, { say: 'I\'m scared.' }],
     ['sick', 'sick', '🤒', 'malade', 1, { say: 'I\'m sick.' }],
+    ['surprised', 'surprised', '😮', 'surpris', 1, { say: 'I\'m surprised.' }],
   ]);
 
   theme('toys', [

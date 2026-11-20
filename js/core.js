@@ -71,10 +71,12 @@
   /* ---------- Son ---------- */
   let actx;
   const audioCtx = () => (actx = actx || new (window.AudioContext || window.webkitAudioContext)());
+  /** Réveille le contexte audio partagé : 'suspended' (autoplay) ou 'interrupted' (iOS après un appel, Siri…). */
+  const wake = () => { try { if (actx && actx.state !== 'running' && actx.state !== 'closed' && actx.resume) actx.resume().catch(() => {}); } catch (e) {} };
   function tone(freqs, dur = 0.12, type = 'triangle', vol = 0.18) {
     try {
       audioCtx();
-      if (actx.state === 'suspended') actx.resume();
+      wake();
       const t = actx.currentTime;
       freqs.forEach((f, i) => {
         const o = actx.createOscillator(), g = actx.createGain();
@@ -98,7 +100,13 @@
     pop() { this.on && tone([880], 0.05, 'square', 0.05); },
     tone,
     ctx: audioCtx,
+    wake,
   };
+  // iOS : le contexte peut rester « interrompu »; on le relance à chaque geste et au retour sur l'onglet.
+  if (typeof window.addEventListener === 'function' && typeof document !== 'undefined' && document.addEventListener) {
+    ['pointerdown', 'touchend', 'keydown'].forEach((ev) => window.addEventListener(ev, wake, { passive: true, capture: true }));
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
+  }
 
   /* Voix : voir services.js (M.say, M.voices) */
 
@@ -164,10 +172,61 @@
 
   /* ---------- Stockage & progression ---------- */
   const KEY = 'devoirs2e:v1';
+  M.STORE_PREFIX = 'devoirs2e:';
   const fresh = () => ({ skills: {}, stars: 0, days: {} });
-  let P;
-  try { P = JSON.parse(localStorage.getItem(KEY)) || fresh(); } catch (e) { P = fresh(); }
-  M.save = () => { try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) {} };
+  const isObj = (o) => !!o && typeof o === 'object' && !Array.isArray(o);
+  /** Progression lue (stockage ou fichier importé) : null si ce n'en est pas une; sinon une copie nettoyée. */
+  M.normalizeProgress = (raw) => {
+    if (!isObj(raw)) return null;
+    const p = Object.assign(fresh(), raw);
+    if (!isObj(p.skills)) p.skills = {};
+    if (!isObj(p.days)) p.days = {};
+    if (typeof p.stars !== 'number' || !isFinite(p.stars) || p.stars < 0) p.stars = 0;
+    Object.keys(p.skills).forEach((id) => {
+      const s = p.skills[id];
+      if (!isObj(s)) { delete p.skills[id]; return; }
+      if (!Array.isArray(s.hist)) s.hist = [];
+      s.hist = s.hist.filter((x) => x === 0 || x === 1).slice(-20);
+      ['n', 'ok', 'last'].forEach((k) => { if (typeof s[k] !== 'number' || !isFinite(s[k])) s[k] = 0; });
+    });
+    ['items', 'participation'].forEach((k) => { if (p[k] !== undefined && !isObj(p[k])) delete p[k]; });
+    if (p.items) Object.keys(p.items).forEach((k) => { const it = p.items[k]; if (!isObj(it) || !Array.isArray(it.h)) delete p.items[k]; });
+    return p;
+  };
+  const loadP = () => { let raw = null; try { raw = JSON.parse(localStorage.getItem(KEY)); } catch (e) {} return M.normalizeProgress(raw) || fresh(); };
+  let P = loadP();
+  /** Avertissement discret (non bloquant) en bas de l'écran. */
+  M.toast = (html, ms = 6000) => {
+    if (typeof document === 'undefined' || !document.body || !document.body.appendChild) return;
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.setAttribute('role', 'status');
+    t.innerHTML = html;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), ms);
+  };
+  let warned = false;
+  /** Écriture sûre dans le stockage : false (et un avertissement, une fois) si elle échoue (espace plein, navigation privée…). */
+  M.store = (k, v) => {
+    try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) {
+      if (!warned) { warned = true; M.toast('⚠️ La progression n’a pas pu être enregistrée sur cet appareil (espace plein ?). Parents : voir « Exporter la progression ».', 9000); }
+      return false;
+    }
+  };
+  M.save = () => M.store(KEY, P);
+  // Deux onglets ouverts : l'autre a écrit → on recharge (sinon chaque onglet écraserait le travail de l'autre).
+  if (typeof window.addEventListener === 'function') window.addEventListener('storage', (e) => {
+    if (e.key === KEY || e.key === null) { P = loadP(); M.updateStars(); }
+  });
+  // Demander un stockage persistant (Safari / Chrome peuvent sinon effacer les données) — une fois, au premier geste.
+  M.persistStorage = () => {
+    try { if (navigator.storage && navigator.storage.persist) return navigator.storage.persist().catch(() => false); } catch (e) {}
+    return Promise.resolve(false);
+  };
+  if (typeof window.addEventListener === 'function') {
+    const once = () => { window.removeEventListener('pointerdown', once, true); M.persistStorage(); };
+    window.addEventListener('pointerdown', once, true);
+  }
   const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 
   M.progress = {

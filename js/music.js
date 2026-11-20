@@ -28,6 +28,7 @@
   let timer = null, nextT = 0, step = 0, bar = 0, section = 0;
   let mood = 'jeu', key = 0, prog = MOODS.jeu.progs[0], motif = null, seed = 1;
   let started = false, speaking = false, focusOn = false, held = false;
+  const holds = new Set(); // raisons de silence : 'route' (pages Musique), 'q' (question de musique), …
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   const S = () => M.settings;
   const enabled = () => !S() || S().get('music') !== false;
@@ -153,7 +154,9 @@
   }
 
   function loop() {
-    if (!ctx) return;
+    clearTimeout(timer); // jamais deux chaînes de minuteries
+    timer = null;
+    if (!ctx || !started) return;
     while (nextT < ctx.currentTime + 0.35) nextT += scheduleStep(nextT);
     timer = setTimeout(loop, 90);
   }
@@ -170,9 +173,10 @@
     g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(l, t + (l < 1 ? 0.25 : 1.4));
   }
 
+  function resumeCtx() { try { if (ctx && ctx.state !== 'running' && ctx.resume) { const p = ctx.resume(); if (p && p.catch) p.catch(() => {}); } } catch (e) {} }
   function start() {
-    if (!enabled() || held || started || !ensure()) return;
-    if (ctx.state === 'suspended') ctx.resume();
+    if (!enabled() || held || started || (typeof document !== 'undefined' && document.hidden) || !ensure()) return;
+    resumeCtx();
     started = true;
     seed = 7 + key * 31 + (mood === 'calme' ? 1000 : 0);
     step = 0; bar = 0; newSection();
@@ -196,10 +200,15 @@
       mood = MOODS[m] ? m : 'jeu'; key = k;
       if (was) setTimeout(start, 650);
     },
-    /** Pages de la matière Musique : l'ambiance se tait (elle brouillerait les sons à comparer). */
-    hold(on) {
-      if (!!on === held) return;
-      held = !!on;
+    /**
+     * Pages et questions de musique : l'ambiance se tait (elle brouillerait les sons à comparer).
+     * reason : 'route' (routeur), 'q' (carte-question)… la musique reprend quand plus aucune raison ne la retient.
+     */
+    hold(on, reason = 'route') {
+      if (on) holds.add(reason); else holds.delete(reason);
+      const h = holds.size > 0;
+      if (h === held) return;
+      held = h;
       if (held) stop(0.5); else setTimeout(start, 300);
     },
     set(on) { S() && S().set('music', !!on); on ? start() : stop(); },
@@ -223,12 +232,19 @@
   };
 
   // Les navigateurs exigent un geste de l'utilisateur avant de jouer du son.
-  const kick = () => { if (enabled()) start(); };
+  const kick = () => {
+    if (M.sfx && M.sfx.wake) M.sfx.wake();
+    else resumeCtx();
+    if (enabled()) start();
+  };
   if (typeof window.addEventListener !== 'function' || !document.addEventListener) return; // outils hors navigateur
   ['pointerdown', 'keydown'].forEach((ev) => window.addEventListener(ev, kick, { passive: true }));
   document.addEventListener('visibilitychange', () => {
     if (!ctx) return;
-    if (document.hidden) { clearTimeout(timer); ctx.suspend && ctx.suspend(); }
-    else if (started) { ctx.resume && ctx.resume(); nextT = ctx.currentTime + 0.1; loop(); }
+    if (document.hidden) { clearTimeout(timer); timer = null; ctx.suspend && ctx.suspend(); }
+    else {
+      resumeCtx();
+      if (started) { nextT = ctx.currentTime + 0.1; loop(); }
+    }
   });
 })();

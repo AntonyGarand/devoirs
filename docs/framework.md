@@ -37,7 +37,7 @@ tools/check-dupes.js          habiletés / niveaux qui ont peu de questions dist
 ```
 
 Pas de modules ES ni de compilation : chaque fichier est un IIFE qui utilise `window.M`, et le site fonctionne en `file://`
-comme sur GitHub Pages. Ordre de chargement : cadre → `subject.js` → `skills/` → `learn/` → `styleguide.js` → `app.js`.
+comme sur GitHub Pages. Ordre de chargement : cadre → `subject.js` → `skills/` → `learn/` → `app.js` (`styleguide.js` et `selftest.js` sont chargés à la demande par `#/style` et `#/test`). Après un changement de fichiers : `node tools/gen-sw.js` (liste hors ligne de `sw.js`).
 
 ## 2. Modèle de contenu
 
@@ -160,7 +160,7 @@ Règles communes :
 
 Services (`services.js`) : `M.voices.status(lang)`, `M.say(text|segments, opts) → Promise`, `M.sayHtml(html)`, `M.settings`,
 `M.userData.get/set(ns, key)` (+ `fixture` pour les tests), `M.registerParentTool({id,subject,title,icon,render})`,
-`M.registerData(id, value)` / `M.data[id]`, `M.people.pick()` → `{n, f, il, Il, e, ami, un}`, `M.fr.de/que/nb/fill/cap`,
+`M.registerData(id, value)` / `M.data[id]`, `M.people.pick()` → `{n, f, il, Il, e, ami, un}`, `M.fr` (élision et contraction : `de`, `a`, `que`, `ne`, `je`, `le`, `el`, `elides`; aussi `nb`, `fill`, `cap`, `uncap` — voir l'en-tête de `js/services.js`), `M.typo` (espaces insécables, affichage seulement : la voix reçoit le texte d'origine),
 `M.typo`, `M.tokenize(text)`, `M.progress.item(skill, key).record(ok)`, `M.pickWeighted(items, keyFn, skill)`, `M.lint.noPrivate`.
 
 ### Voix préenregistrée (`js/clips.js`, `audio/`)
@@ -221,7 +221,7 @@ spécifiques. Les boutons, cartes, couleurs et espacements viennent toujours des
 
 1. `js/<matière>/subject.js` : `M.registerSubject` + domaines (`M.registerDomain`).
 2. Habiletés dans `js/<matière>/skills/`, pages dans `js/<matière>/learn/`, données dans `js/<matière>/data/`.
-3. Ajouter les `<script>` dans `index.html` (section de la matière, avant `styleguide.js`).
+3. Ajouter les `<script>` dans `index.html` (section de la matière, avant `app.js`), puis `node tools/gen-sw.js`.
 4. `node tools/check-skills.js` → OK (`--only fr-` pour une matière).
 5. Navigateur : ouvrir `#/test` (auto-test) → ✅; vérifier les pages à 390 px et 1100 px; aucune erreur de console.
    Sans aperçu intégré : `python -m http.server` puis Chrome sans tête, p. ex.

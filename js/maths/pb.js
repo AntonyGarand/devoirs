@@ -143,7 +143,9 @@
     const used = new Set([...Object.values(pb.v), pb.answer]);
     pb.xVals = [];
     const personal = pb.sentences.some((s) => s.text.includes(pb.P.n));
+    const usedTpl = new Set(); // un même gabarit (même sujet, même attribut) une seule fois : jamais « 4 ans » puis « 5 ans »
     for (let k = 0; k < n; k++) {
+      let tplUsed = null;
       let text = null, x = 0;
       for (let g = 0; g < 50 && !text; g++) {
         const useNear = near && k === 0 && pb.ctx.cmp && pb.kind !== 'comparaison';
@@ -152,13 +154,16 @@
           x = rnd(Math.max(2, Math.round(hi / 2)), hi + 5);
           text = fill(`{Q} ${pb.ctx.cmp.v} {x} ${pb.ctx.cmp.U}.`, { Q: pb.Q.n, x });
         } else {
-          const tpl = pick(DD[personal ? 'person' : 'none']);
+          const tpl = pick(DD[personal ? 'person' : 'none'].filter((t) => !usedTpl.has(t)));
+          if (!tpl) break;
+          tplUsed = tpl;
           x = /heures/.test(tpl) ? rnd(2, 11) : rnd(3, 9);
           text = fill(tpl, { ...pv(pb.P), x });
         }
         if (used.has(x) || pb.sentences.some((s) => s.text === text)) text = null;
       }
       if (!text) return false;
+      if (tplUsed) usedTpl.add(tplUsed);
       used.add(x);
       pb.xVals.push(x);
       const pos = pb.sentences.length - 1; // juste avant la question : ne coupe jamais un pronom de son antécédent
@@ -564,7 +569,8 @@
       const names = [pb.P, pb.Q, pb.G, pb.S].filter(Boolean).map((p) => p.n);
       const who = names.find((nm) => pb.reply.includes(nm));
       const other = who && names.find((nm) => nm !== who);
-      if (other) { const t = pb.reply.split(who).join(other); if (!set.has(t)) set.set(t, 'who'); }
+      // échange les deux prénoms (jamais « Emma a 16 billes de plus que Emma »)
+      if (other) { const t = pb.reply.split(who).map((part) => part.split(other).join(who)).join(other); if (!set.has(t)) set.set(t, 'who'); }
       const qtxt = pb.sentences[pb.qIndex].text;
       if (set.size < 4 && !set.has(qtxt)) set.set(qtxt, 'q');
       const choices = [...set.entries()].slice(0, 4).map(([label, value]) => ({ label: M.esc(label), value, say: label, why: { num: 'Vérifie le <b>nombre</b> : c\'est le résultat du calcul ?', unit: 'Vérifie le <b>mot</b> après le nombre.', who: 'Vérifie <b>qui</b> : relis la question.', q: 'Une réponse n\'est pas une question !' }[value] }));
@@ -616,7 +622,16 @@
     return PB.attach(q, pb);
   };
   /** Lie le problème à la question (non énumérable : pas de JSON). */
-  PB.attach = (q, pb) => { Object.defineProperty(q, '_pb', { value: pb, enumerable: false }); return q; };
+  /** Élision et typographie sur tous les textes affichés ou lus (explications, choix, étapes…) : « de Amira » → « d'Amira ». */
+  const TXT = ['prompt', 'say', 'hint', 'explain', 'after', 'label', 'why', 'left', 'right', 'sayLeft', 'sayRight'];
+  const polish = (o) => {
+    if (Array.isArray(o)) { o.forEach(polish); return; }
+    if (!o || typeof o !== 'object') return;
+    TXT.forEach((k) => { if (typeof o[k] === 'string') o[k] = typo(o[k]); });
+    ['steps', 'choices', 'pairs', 'check'].forEach((k) => polish(o[k]));
+  };
+  PB.polish = polish;
+  PB.attach = (q, pb) => { polish(q); Object.defineProperty(q, '_pb', { value: pb, enumerable: false }); return q; };
 
   /* ------------------------------------------------------------------ contrôles (G13) */
   const BADTYPO = / [?!:;]/;

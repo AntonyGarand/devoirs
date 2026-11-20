@@ -21,8 +21,8 @@
       { id: 'hotel', nom: 'l\'hôtel de ville', court: 'hôtel de ville', emoji: '🏛️', besoin: 'prendre des décisions pour la ville', pour: 'voir le conseil municipal qui décide pour la ville', metier: 'la mairesse', outil: '📜' },
     ],
     /* Biens (choses qu'on achète) et services (travail fait pour nous) */
-    biens: ['du pain 🥖', 'du lait 🥛', 'des pommes 🍎', 'un jouet 🧸', 'des bottes 🥾', 'un livre neuf 📕'],
-    services: ['une coupe de cheveux ✂️', 'la réparation de l\'auto 🔧', 'un cours de natation 🏊', 'la livraison du courrier ✉️', 'un examen chez le dentiste 🦷', 'le ramassage des ordures 🚛'],
+    biens: ['du pain 🥖', 'du lait 🥛', 'des pommes 🍎', 'un jouet 🧸', 'des bottes 🥾', 'un livre neuf 📕', 'un ballon ⚽', 'une boîte de crayons ✏️', 'des mitaines 🧤'],
+    services: ['une coupe de cheveux ✂️', 'la réparation de l\'auto 🔧', 'un cours de natation 🏊', 'la livraison du courrier ✉️', 'un examen chez le dentiste 🦷', 'le ramassage des ordures 🚛', 'le déneigement des rues 🚜', 'un cours de patin ⛸️', 'une visite chez le médecin 🩺'],
     /* Hôtel de ville et conseil municipal */
     municipal: [
       { q: 'Qui décide de construire un nouveau parc dans la ville ?', ok: 'Le conseil municipal', d: ['Le boulanger', 'La bibliothécaire'] },

@@ -61,12 +61,17 @@
     const log = [];
     const errs = [];
     const onErr = (e) => errs.push(e.message || String(e.reason || e));
+    // On quitte #/test pendant le test : on arrête tout (sinon le test continue en arrière-plan et parle par-dessus la page).
+    const h0 = location.hash;
+    const gone = () => location.hash !== h0;
     window.addEventListener('error', onErr);
     window.addEventListener('unhandledrejection', onErr);
     const box = document.createElement('div');
     box.style.cssText = 'position:absolute;left:-3000px;top:0;width:1000px';
     document.body.appendChild(box);
+    const finish = () => { box.remove(); window.removeEventListener('error', onErr); window.removeEventListener('unhandledrejection', onErr); M.hush(); return { aborted: true, ok: false, formats: log, errors: errs }; };
     for (const [name, mk] of Object.entries(M.FORMAT_SAMPLES)) {
+      if (gone()) return finish();
       const q = mk();
       let res = null;
       const card = M.renderQuestion(box, q, { record: false, onResult: (r) => (res = r) });
@@ -84,6 +89,7 @@
     // Chaque habileté (3 niveaux) et chaque page Apprendre
     let skillErr = 0;
     for (const s of M.skills) {
+      if (gone()) return finish();
       for (let lvl = 0; lvl <= 2; lvl++) {
         const host = document.createElement('div');
         host.style.cssText = 'position:absolute;left:-3000px;top:0;width:1000px';
@@ -93,6 +99,7 @@
       }
     }
     for (const l of M.learns) {
+      if (gone()) return finish();
       const host = document.createElement('div');
       host.style.cssText = 'position:absolute;left:-3000px;top:0;width:1000px';
       document.body.appendChild(host);
@@ -104,6 +111,7 @@
     window.removeEventListener('error', onErr);
     window.removeEventListener('unhandledrejection', onErr);
     const result = { formats: log, errors: errs, ok: log.every((l) => l[1] === '✅') && !errs.length };
+    if (gone()) return { ...result, aborted: true };
     if (out) out.innerHTML = `<div class="card doc"><h1>🧪 Auto-test ${result.ok ? '✅' : '❌'}</h1><table><tr><th>Format</th><th></th><th>Résultat</th></tr>${log.map((l) => `<tr><td>${l[0]}</td><td>${l[1]}</td><td><code>${M.esc(l[2])}</code></td></tr>`).join('')}</table>
       <h2>Habiletés (${M.skills.length} × 3 niveaux) et pages Apprendre (${M.learns.length})</h2><p>${errs.length ? errs.map((e) => `<div class="callout warn">${M.esc(e)}</div>`).join('') : '✅ Aucune erreur.'}</p></div>`;
     return result;

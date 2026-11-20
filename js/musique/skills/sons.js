@@ -150,7 +150,8 @@
       if (lvl === 0) {
         const want = pick(['long', 'court']);
         const longFirst = pick([true, false]);
-        const items = (longFirst ? ['long', 'court'] : ['court', 'long']).map((k) => ({ events: seqEvents([k === 'long' ? 'tres-long' : 'court']) }));
+        const midi = pick([62, 65, 67, 69, 72]); // hauteur variée : pas toujours la même question
+        const items = (longFirst ? ['long', 'court'] : ['court', 'long']).map((k) => ({ events: seqEvents([k === 'long' ? 'tres-long' : 'court'], 'flute', midi) }));
         const ans = (want === 'long') === longFirst ? 0 : 1;
         return which({
           prompt: `Écoute les deux sons. Lequel est le plus <b>${want}</b> ?`, items, answer: ans,
@@ -197,7 +198,7 @@
         return which({
           prompt: `Écoute les deux sons. Lequel est <b>${want === 'sec' ? 'sec' : 'résonnant'}</b> ?`, items, answer: ans,
           hint: 'Un son <b>sec</b> s\'arrête tout de suite : « toc ! ». Un son <b>résonnant</b> continue de vibrer : « dinnnng… ».',
-          explain: `Le son ${ans + 1} est ${want === 'sec' ? 'sec' : 'résonnant'}. Le son 1, c'était ${pair[0].le}; le son 2, ${pair[1].le}. ${pair.find((x) => x.qualite === 'resonnant').le.replace(/^./, (c) => c.toUpperCase())} continue de vibrer après le coup.`,
+          explain: `Le son ${ans + 1} est ${want === 'sec' ? 'sec' : 'résonnant'}. Le son 1, c'était ${pair[0].le}; le son 2, ${pair[1].le}. ${pair.find((x) => x.qualite === 'resonnant').le.replace(/^./, (c) => c.toUpperCase())} ${/^les /i.test(pair.find((x) => x.qualite === 'resonnant').le) ? 'continuent' : 'continue'} de vibrer après le coup.`,
         });
       }
       if (lvl === 1) {

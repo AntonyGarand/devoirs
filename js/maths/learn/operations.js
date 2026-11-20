@@ -39,7 +39,7 @@
   .op-l-it.extra { background: #fff6d6; outline: 3px solid var(--yel); animation: pop .4s }
   @keyframes opLIn { from { transform: translateX(90px) scale(.4); opacity: 0 } }
   @keyframes opLOut { to { transform: translateY(-70px) rotate(25deg); opacity: 0 } }
-  .op-l-cmp { display: inline-grid; gap: 4px 3px; align-items: center }
+  .op-l-cmp { display: inline-grid; gap: 4px 3px; align-items: center; max-width: 100%; overflow-x: auto }
   .op-l-cmp .nm { font-weight: 800; padding-right: 8px; white-space: nowrap }
   .op-l-ans { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px }
   .op-l-ans .btn { min-width: 64px; font-size: 1.3rem }

@@ -7,10 +7,23 @@
 }
 /* Choix audibles */
 .choice-btn { position: relative }
-.say-btn { position: absolute; top: 4px; right: 6px; font-size: .95rem; background: var(--yel); border-radius: 999px; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 0 #e9b949 }
+/* 🔊 d'un choix : vrai bouton frère du choix (jamais imbriqué), pastille de 34 px, zone tactile de 48 px */
+.choice-wrap, .build-wrap { position: relative; display: flex }
+.choice-wrap > .choice-btn { flex: 1; min-width: 0 }
+.build-wrap { display: inline-flex }
+.say-btn { position: absolute; top: -10px; right: -10px; z-index: 2; font-size: 1rem; background: var(--yel); border: 2px solid #e9b949; border-radius: 999px; width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 2px 0 #e9b949 }
+.say-btn::before { content: ""; position: absolute; inset: -7px; border-radius: 999px }
 .choices-grid.audio-only .choice-btn .ao { font-size: 1.5rem }
 .choice-btn.heard { border-color: var(--yel) }
 .order-slots .slot.fixed { border-style: solid; background: #f6f3ea }
+/* Petits écrans : une case de choix rétrécit avec la grille (jamais de débordement de page) */
+.choices-grid > * { min-width: 0 }
+.choice-btn { overflow-wrap: anywhere }
+.choice-btn .art, .choice-btn img { max-width: 100% }
+/* Droite numérique et ligne du temps : largeur minimale lisible, défilement dans leur boîte au lieu d'élargir la page */
+.nline-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch }
+:has(> svg.nline:not(.est)), :has(> svg.timeline) { overflow-x: auto; -webkit-overflow-scrolling: touch }
+.steps-dem .demarche li { min-width: 0; overflow-wrap: anywhere }
 /* Scène illustrée */
 .q-scene { display: flex; justify-content: center; gap: 14px; font-size: 3.4rem; margin: 4px 0 10px; flex-wrap: wrap }
 /* Texte à jetons et marques */
@@ -43,7 +56,6 @@
 .build-end { font-size: 1.8rem; font-weight: 900 }
 .build-bank { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 10px; border: 3px dashed var(--line); border-radius: 18px }
 .build-tile { position: relative; min-width: 56px; min-height: var(--touch); border: 3px solid var(--line); border-radius: 14px; background: #fff; font-size: 1.4rem; font-weight: 800; padding: 6px 12px; box-shadow: 0 3px 0 var(--line) }
-.build-tile .say-btn { position: static; margin-left: 6px; width: 26px; height: 26px }
 .build-tile:disabled { opacity: .25 }
 /* label */
 .label-bank { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 10px }
@@ -85,7 +97,7 @@
 .cyc-lbl { font-size: 14px; font-weight: 800; fill: var(--ink) }
 /* Mots découpés */
 .wparts { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap }
-.wp { border: none; border-bottom: 5px solid var(--wp); background: color-mix(in srgb, var(--wp) 12%, #fff); color: var(--wp); font-size: 1.8rem; font-weight: 900; border-radius: 10px 10px 4px 4px; padding: 2px 8px }
+.wp { border: none; border-bottom: 5px solid var(--wp); background: #f6f6f6; background: color-mix(in srgb, var(--wp) 12%, #fff); color: var(--wp); font-size: 1.8rem; font-weight: 900; border-radius: 10px 10px 4px 4px; padding: 2px 8px }
 .wparts.sons .wp { border-bottom-width: 0; border-radius: 10px }
 /* Phrase annotée */
 .tagged { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center }

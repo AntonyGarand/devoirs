@@ -14,24 +14,26 @@
   M.art.register('us-ecole-rang', () => sv('<rect width="100" height="100" rx="10" fill="#dff3fb"/><rect y="78" width="100" height="22" fill="#9bd38b"/><rect x="22" y="44" width="56" height="38" fill="#c0392b"/><path d="M16 46 L50 20 L84 46 z" fill="#7a2e1f"/><rect x="44" y="60" width="12" height="22" fill="#7a4f27"/><rect x="28" y="52" width="10" height="10" fill="#fff"/><rect x="62" y="52" width="10" height="10" fill="#fff"/><rect x="48" y="12" width="4" height="10" fill="#555"/><path d="M50 10 l-4 -2 v6 z" fill="#e9b949"/>'), '🏚️');
 
   M.registerData('us-autrefois', {
+    /* tri: true = sans ambiguïté pour le tri « autrefois / aujourd'hui » (niveau 0) : l'objet d'autrefois n'est plus
+       d'usage courant, l'objet d'aujourd'hui n'existait pas il y a 100 ans (écran, Internet, cellulaire).
+       L'ampoule, l'auto, la laveuse ou le réfrigérateur existaient déjà vers 1925 : ils servent seulement aux paires (niveau 1). */
     paires: [
-      { domaine: 'maison', avant: { nom: 'la lampe à l\'huile', emoji: '🪔' }, maintenant: { nom: 'l\'ampoule électrique', emoji: '💡' } },
-      { domaine: 'maison', avant: { nom: 'la glacière à bloc de glace', art: 'us-glaciere' }, maintenant: { nom: 'le réfrigérateur', art: 'us-frigo' } },
-      { domaine: 'maison', avant: { nom: 'la planche à laver', art: 'us-planche' }, maintenant: { nom: 'la laveuse', art: 'us-laveuse' } },
+      { domaine: 'maison', avant: { nom: 'la lampe à l\'huile', emoji: '🪔', tri: true }, maintenant: { nom: 'l\'ampoule électrique', emoji: '💡' } },
+      { domaine: 'maison', avant: { nom: 'la glacière à bloc de glace', art: 'us-glaciere', tri: true }, maintenant: { nom: 'le réfrigérateur', art: 'us-frigo' } },
+      { domaine: 'maison', avant: { nom: 'la planche à laver', art: 'us-planche', tri: true }, maintenant: { nom: 'la laveuse', art: 'us-laveuse' } },
       { domaine: 'maison', avant: { nom: 'le poêle à bois', art: 'us-poele' }, maintenant: { nom: 'la cuisinière électrique', art: 'us-cuisiniere' } },
-      { domaine: 'maison', avant: { nom: 'la chandelle', emoji: '🕯️' }, maintenant: { nom: 'la lampe de chevet', emoji: '🛋️' }, skip: true },
-      { domaine: 'communication', avant: { nom: 'la lettre écrite à la main', emoji: '✉️' }, maintenant: { nom: 'le courriel', emoji: '📧' } },
-      { domaine: 'communication', avant: { nom: 'le téléphone à manivelle', emoji: '☎️' }, maintenant: { nom: 'le téléphone cellulaire', emoji: '📱' } },
-      { domaine: 'transport', avant: { nom: 'la calèche tirée par un cheval', emoji: '🐎' }, maintenant: { nom: 'l\'automobile', emoji: '🚗' } },
-      { domaine: 'transport', avant: { nom: 'le train à vapeur', emoji: '🚂' }, maintenant: { nom: 'le train électrique', emoji: '🚄' } },
-      { domaine: 'transport', avant: { nom: 'la carriole sur la neige', emoji: '🛷' }, maintenant: { nom: 'l\'autobus scolaire', emoji: '🚌' } },
-      { domaine: 'école', avant: { nom: 'l\'ardoise et la craie', art: 'us-ardoise' }, maintenant: { nom: 'la tablette numérique', emoji: '💻' } },
-      { domaine: 'école', avant: { nom: 'la plume et l\'encrier', emoji: '✒️' }, maintenant: { nom: 'le stylo', emoji: '🖊️' } },
-      { domaine: 'école', avant: { nom: 'l\'école de rang (une seule classe)', art: 'us-ecole-rang' }, maintenant: { nom: 'la grande école', emoji: '🏫' } },
-      { domaine: 'loisir', avant: { nom: 'le yo-yo en bois', emoji: '🪀' }, maintenant: { nom: 'le jeu vidéo', emoji: '🎮' } },
-      { domaine: 'loisir', avant: { nom: 'la radio', emoji: '📻' }, maintenant: { nom: 'les écouteurs sans fil', emoji: '🎧' } },
-      { domaine: 'loisir', avant: { nom: 'la photo en noir et blanc', emoji: '🖼️' }, maintenant: { nom: 'la photo prise avec le cellulaire', emoji: '🤳' } },
-    ].filter((p) => !p.skip),
+      { domaine: 'maison', avant: { nom: 'le seau d\'eau tiré du puits', emoji: '🪣', tri: true }, maintenant: { nom: 'le robinet', emoji: '🚰' } },
+      { domaine: 'communication', avant: { nom: 'le télégramme', emoji: '📜', tri: true }, maintenant: { nom: 'le texto', emoji: '💬', tri: true } },
+      { domaine: 'communication', avant: { nom: 'le téléphone à manivelle', emoji: '☎️', tri: true }, maintenant: { nom: 'le téléphone cellulaire', emoji: '📱', tri: true } },
+      { domaine: 'transport', avant: { nom: 'la calèche tirée par un cheval', emoji: '🐎', tri: true }, maintenant: { nom: 'l\'automobile', emoji: '🚗' } },
+      { domaine: 'transport', avant: { nom: 'le train à vapeur', emoji: '🚂', tri: true }, maintenant: { nom: 'le train électrique', emoji: '🚄' } },
+      { domaine: 'transport', avant: { nom: 'la carriole sur la neige', emoji: '🛷', tri: true }, maintenant: { nom: 'l\'autobus scolaire', emoji: '🚌' } },
+      { domaine: 'école', avant: { nom: 'l\'ardoise et la craie', art: 'us-ardoise', tri: true }, maintenant: { nom: 'la tablette numérique', emoji: '💻', tri: true } },
+      { domaine: 'école', avant: { nom: 'la plume et l\'encrier', emoji: '✒️', tri: true }, maintenant: { nom: 'le stylo', emoji: '🖊️' } },
+      { domaine: 'école', avant: { nom: 'l\'école de rang (une seule classe)', art: 'us-ecole-rang', tri: true }, maintenant: { nom: 'la grande école', emoji: '🏫' } },
+      { domaine: 'loisir', avant: { nom: 'le yo-yo en bois', emoji: '🪀' }, maintenant: { nom: 'le jeu vidéo', emoji: '🎮', tri: true } },
+      { domaine: 'loisir', avant: { nom: 'la photo en noir et blanc', emoji: '🖼️' }, maintenant: { nom: 'la photo prise avec le cellulaire', emoji: '🤳', tri: true } },
+    ],
     /* Transports : du plus ancien au plus récent (rang d'apparition). */
     transports: [
       { nom: 'le canot', emoji: '🛶', rang: 0 }, { nom: 'la calèche', emoji: '🐎', rang: 0 },
@@ -43,6 +45,11 @@
       { q: 'Il y a environ 100 ans, comment parlait-on à quelqu\'un qui habitait loin ?', ok: 'On lui écrivait une lettre ✉️', d: ['On lui envoyait un texto 📱', 'On lui faisait un appel vidéo 💻'] },
       { q: 'Il y a environ 100 ans, comment s\'éclairait-on dans beaucoup de maisons à la campagne ?', ok: 'Avec une lampe à l\'huile 🪔', d: ['Avec des lumières DEL 💡', 'Avec l\'écran d\'une tablette 📱'] },
       { q: 'Il y a environ 100 ans, dans une école de rang, combien de classes y avait-il souvent ?', ok: 'Une seule classe pour tous les âges', d: ['Vingt classes', 'Aucune classe'] },
+      { q: 'Il y a environ 100 ans, comment lavait-on les vêtements dans beaucoup de maisons ?', ok: 'À la main, avec une planche à laver 🧺', d: ['Avec une laveuse qu\'on démarre avec un cellulaire 📱', 'Avec un robot laveur 🤖'] },
+      { q: 'Il y a environ 100 ans, à la campagne, où prenait-on souvent l\'eau ?', ok: 'Au puits, avec un seau 🪣', d: ['Dans des bouteilles commandées sur Internet 💻', 'Dans une fontaine à écran tactile 📱'] },
+      { q: 'Il y a environ 100 ans, avec quoi écrivait-on à l\'école ?', ok: 'Avec une plume et de l\'encre, ou sur une ardoise ✒️', d: ['Sur une tablette numérique 💻', 'Avec le clavier d\'un ordinateur ⌨️'] },
+      { q: 'Il y a environ 100 ans, comment écoutait-on de la musique à la maison ?', ok: 'On chantait ensemble ou on jouait d\'un instrument 🎻', d: ['Avec des écouteurs sans fil 🎧', 'Sur une tablette 💻'] },
+      { q: 'Il y a environ 100 ans, comment voyageait-on souvent l\'hiver à la campagne ?', ok: 'En carriole tirée par un cheval 🛷', d: ['En motoneige électrique 🛵', 'En avion privé ✈️'] },
     ],
   });
 })();

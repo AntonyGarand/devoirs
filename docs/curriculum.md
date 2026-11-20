@@ -70,7 +70,7 @@ Pages Apprendre : **Les nombres jusqu'à 1000** (Centaines, dizaines, unités, �
 | ⚖️ La balance (égalité) (`egalite`) | Sens des opérations A.4, A.5a — relation d'égalité, commutativité | Le sens des opérations |
 | 💯 Calculer jusqu'à 100 (`calcul-100`) | Opérations A.3a, A.4a — processus personnels d'addition et de soustraction (< 100) | La droite numérique |
 | 🏗️ Calculer avec des centaines (`calcul-1000`) | Opérations A.4a — processus personnels avec des nombres < 1000 (centaines, dizaines) | La droite numérique |
-| 🧺 Groupes égaux (`groupes-egaux`) | Sens des opérations A.3a — sens de la multiplication (addition répétée, disposition rectangulaire) | Groupes égaux et partage |
+| 🧺 Groupes égaux (`groupes-egaux`) | Sens des opérations A.3a — sens de la multiplication (addition répétée, disposition rectangulaire); lvl 2 : notation × marquée 🌟 Défi (enrichissement : au 1er cycle, sens seulement) | Groupes égaux et partage |
 | 🍪 Partager également (`partage`) | Sens des opérations A.3a — sens de la division (partage, groupement / contenance) | Groupes égaux et partage |
 | 🔁 Suites et motifs (`suites`) | Opérations A.13, A.14 — régularités non numériques et numériques | Les régularités |
 
@@ -126,7 +126,7 @@ Pages Apprendre : **Les solides** (Boule, cône, cube, cylindre, prisme, pyramid
 | 📎 Mesurer avec des trombones (`mesurer-non-conv`) | Mesure — Longueurs A.3 : mesurer à l'aide d'unités non conventionnelles | Mesurer des longueurs |
 | 📏 Mesurer avec une règle (`mesurer-cm`) | Mesure — Longueurs A.4a : mesurer en centimètres avec une règle | Mesurer des longueurs |
 | 📐 Les unités : cm, dm et m (`unites-longueur`) | Mesure — Longueurs A.4a et A.5 : unités conventionnelles (m, dm, cm), relations et estimation | Mesurer des longueurs |
-| 🕒 Lire l'heure (`heure`) | Mesure — Temps G.1 : lire l'heure (heures, demies, quarts) sur une horloge à aiguilles | Lire l'heure |
+| 🕒 Lire l'heure (`heure`) | Mesure — Temps G.1 : lire l'heure (heures, demies, quarts) sur une horloge à aiguilles; lvl 2 : quelques heures aux 5 minutes, marquées 🌟 Défi (enrichissement) | Lire l'heure |
 | 📅 Le calendrier (`calendrier`) | Mesure — Temps : jour, semaine, mois, année, saisons; cycles quotidien, hebdomadaire et annuel | Le calendrier |
 | ⏳ Les durées (`duree`) | Mesure — Temps G.1–G.2 : estimer et mesurer des durées; unités de temps | Lire l'heure |
 
@@ -158,7 +158,7 @@ Pages Apprendre : **Le vote de la classe** (Enquête, tableau, diagramme à band
 | 🕵️ Qui suis-je ? (`defi-qui-suis-je`) 🌟 | Nombres naturels < 100 (pair/impair, dizaines, unités) et C2 : raisonner |  |
 | 💰 Compter l'argent (`argent-compter`) 🌟 | Enrichissement — argent (matériel de numération, Nombres naturels A.4c); notation décimale au 2e cycle |  |
 
-# 📚 Français (22 habiletés)
+# 📚 Français (24 habiletés)
 
 ## 👂 Les sons et les syllabes
 
@@ -183,6 +183,7 @@ Pages Apprendre : **Ma carte des sons** (Les voyelles, les sons qui s'écrivent 
 | 🖼️ Je lis une phrase (`fr-lire-phrases`) | Lire C.2.2 a (la phrase), d.i (ce dont on parle) — → 1re, ★ 2e; négation : Lire B.1 a.i | Lire comme un détective |
 | 🔍 Je comprends un texte (`fr-comprendre-texte`) | Lire A.3 c.i, d.i (personnages, temps, lieux); C.2.3 c (mots de substitution), g (inférence, → 2e); C.1 c.iii–iv (mot nouveau) | Lire comme un détective |
 | 🔢 Début, milieu, fin (`fr-ordre-histoire`) | Lire A.2 a (début, milieu, fin d'un récit, ★ 2e); A.4 c.ii (marqueurs d'abord, ensuite, enfin) | Lire comme un détective |
+| 📕 J'apprécie une histoire (`fr-apprecier`) | Apprécier des œuvres littéraires (compétence 3) : écouter ou lire une histoire, réagir et dire pourquoi on l'aime; Lire A.3 c.i (personnages), C.2.3 g (inférence simple); Communication orale (exprimer ses goûts) | Lire comme un détective |
 
 Pages Apprendre : **Lire comme un détective** (Mes trucs quand je bloque sur un mot, et les questions qui, quoi, où, quand.)
 
@@ -222,6 +223,14 @@ Pages Apprendre : **Les sortes de mots** (Nom, déterminant, adjectif, verbe : l
 | 🧱 Je construis une phrase (`fr-ordre-mots`) | Syntaxe A.1 b–d — mots dans le bon ordre, phrase qui a du sens (→ 1re, ★ 2e); D.1 a — négation (→ 2e) | La phrase |
 
 Pages Apprendre : **La phrase** (Majuscule, point, mots dans l'ordre, ? et !, ne… pas.)
+
+## ✍️ J'écris des phrases
+
+*Écrire des textes variés (compétence 2) : phrases qui ont du sens, majuscule et point, se relire avec une liste de vérification*
+
+| Habileté | Référence au programme | Page Apprendre |
+|---|---|---|
+| ✍️ J'écris une phrase (`fr-ecrire-phrases`) | Écrire des textes variés (compétence 2) : phrase qui a du sens (Syntaxe A.1), majuscule et point (Syntaxe B.1 a.i, b, ★ 2e), majuscule des prénoms (Orthographe d'usage C.4 a.i); se relire avec une liste de vérification | La phrase |
 
 ## 🏃 Les verbes au présent
 
@@ -299,7 +308,7 @@ Pages Apprendre : **Hello ! Dire bonjour** (Saluer, être poli, un petit dialogu
 
 Pages Apprendre : **L'heure du conte** (De petites histoires à écouter, avec des images) · **Comptines et rimes** (Des comptines originales et des mots qui riment)
 
-# 🗺️ Univers social (14 habiletés)
+# 🗺️ Univers social (15 habiletés)
 
 ## 💛 Moi et les autres
 
@@ -312,6 +321,7 @@ Pages Apprendre : **L'heure du conte** (De petites histoires à écouter, avec d
 | 🙏 Les gestes de civilité (`us-civilite`) | CCQ 2e — Civilité : gestes envers les personnes et l'environnement; effets sur les relations | Vivre ensemble |
 | 📋 Règles et responsabilités (`us-regles`) | CCQ 2e — Rôles et responsabilités; règles de la classe et de la cour · GHEC 2.4 b, A.4 b | Vivre ensemble |
 | 🤝 Régler un conflit (`us-conflits`) | CCQ — Appliquer les conditions favorables à l'interaction; Civilité (pacification) | Vivre ensemble |
+| 💬 Le dialogue (`us-dialogue`) | CCQ 1er cycle — Pratique du dialogue : conditions favorables au dialogue (écouter, attendre son tour, respect), exprimer un point de vue avec une raison, poser des questions pour comprendre | Vivre ensemble |
 
 Pages Apprendre : **Vivre ensemble** (Émotions, besoins, gestes de civilité, régler un conflit)
 

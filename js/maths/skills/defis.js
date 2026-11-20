@@ -143,12 +143,13 @@
       const d = Math.floor(n / 10), u = n % 10;
       const clues = [
         { t: `Je suis ${n % 2 ? 'impair' : 'pair'}.`, f: (x) => x % 2 === n % 2 },
-        { t: `Je suis entre ${d * 10} et ${d * 10 + 10}.`, f: (x) => x > d * 10 && x < d * 10 + 10 },
+        // « entre » : jamais de bornes parmi les choix (lecture inclusive ou exclusive → même réponse)
+        { t: `Je suis entre ${d * 10} et ${d * 10 + 10}.`, f: (x) => x > d * 10 && x < d * 10 + 10, fi: (x) => x >= d * 10 && x <= d * 10 + 10 },
         { t: `Mon chiffre des unités est ${u}.`, f: (x) => x % 10 === u },
       ];
       if (u === 0) clues[1] = { t: `J'ai ${d} dizaines.`, f: (x) => Math.floor(x / 10) === d };
-      const use = lvl === 0 ? [clues[1], clues[2]] : lvl === 1 ? clues : (() => { const k = n - rnd(1, 3); return [clues[0], clues[1], { t: `Je suis plus grand que ${k}.`, f: (x) => x > k }]; })();
-      const ok = (x) => use.every((c) => c.f(x));
+      const use = lvl === 0 ? [clues[1], clues[2]] : lvl === 1 ? clues : (() => { const k = n - rnd(1, 3); return [clues[0], clues[1], { t: `Je suis plus grand que ${k}.`, f: (x) => x > k, fi: (x) => x >= k }]; })();
+      const ok = (x) => use.every((c) => c.f(x)) || use.every((c) => (c.fi || c.f)(x));
       const pool = shuffle([n + 1, n - 1, n + 10, n - 10, n + 2, n - 2, u * 10 + d, n + 5].filter((x) => x > 0 && x <= 99 && x !== n && !ok(x)));
       const opts = [...new Set([n, ...pool])].slice(0, 4);
       if (opts.length < 3) return this.gen({ lvl });
@@ -158,12 +159,14 @@
         say: 'Qui suis-je ? ' + use.map((c) => c.t).join(' '),
         choices: shuffle(opts).map((x) => ({ label: String(x), value: x, why: x === n ? '' : `Relis les indices : ${x} n'en respecte pas un.` })),
         hint: 'Barre les nombres qui ne respectent pas le premier indice, puis le deuxième…',
-        explain: `${n} respecte tous les indices : ${use.map((c) => c.t).join(' ')}`, _clues: use.map((c) => c.f), _n: n,
+        explain: `${n} respecte tous les indices : ${use.map((c) => c.t).join(' ')}`, _clues: use.map((c) => c.f), _cluesIncl: use.map((c) => c.fi || c.f), _n: n,
       };
     },
     check(q) {
       const good = q.choices.filter((c) => q._clues.every((f) => f(c.value)));
       if (good.length !== 1 || good[0].value !== q._n) return `${good.length} choix respectent les indices`;
+      const incl = q.choices.filter((c) => q._cluesIncl.every((f) => f(c.value)));
+      if (incl.length !== 1) return `${incl.length} choix respectent les indices (bornes incluses)`;
     },
   });
 
@@ -184,7 +187,7 @@
     parentNote: 'Pièces et billets génériques (pas de reproduction officielle). Pas de virgule : on compte soit des cents, soit des dollars entiers.',
     gen({ lvl }) {
       let items, unit;
-      if (lvl === 0) { const c = pick([5, 10]); const n = rnd(2, c === 5 ? 9 : 8); items = Array(n).fill(c); unit = '¢'; }
+      if (lvl === 0) { const c = pick([5, 10, 100]); const n = rnd(2, c === 10 ? 8 : 9); items = Array(n).fill(c); unit = c === 100 ? '$' : '¢'; }
       else if (lvl === 1 && Math.random() < 0.5) { const [x, y] = pick([[10, 5], [25, 10], [25, 5]]); items = [...Array(rnd(1, 3)).fill(x), ...Array(rnd(1, 3)).fill(y)]; unit = '¢'; }
       else if (lvl === 1) { items = [...Array(rnd(1, 4)).fill(200), ...Array(rnd(1, 4)).fill(100)]; unit = '$'; }
       else { items = [...Array(rnd(0, 1)).fill('b20'), ...Array(rnd(1, 2)).fill('b10'), ...Array(rnd(0, 1)).fill('b5'), ...Array(rnd(1, 3)).fill(200), ...Array(rnd(0, 3)).fill(100)]; unit = '$'; }

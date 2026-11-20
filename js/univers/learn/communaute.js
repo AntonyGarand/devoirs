@@ -16,7 +16,7 @@
       const plan = U.d('plans').find((p) => p.id === 'quartier-maya');
       el.innerHTML = [
         ui.section({ icon: '👨‍👩‍👧', title: '1. Toutes sortes de familles', intro: 'Une famille, ce sont des personnes qui prennent soin les unes des autres. Toutes ces familles sont de vraies familles !',
-          body: `<div class="us-tiles">${F.familles.map((f) => `<div class="us-tile" data-say="${M.esc(`La famille de ${f.nom} : ${f.membres.map((m) => m.role).join(', ')}.`)}"><span class="em" style="font-size:1.8rem">${f.membres.map((m) => m.emoji).join('')}</span><b>Famille de ${f.nom}</b><small>${f.sorte}</small></div>`).join('')}</div><div class="us-read"></div>` }),
+          body: `<div class="us-tiles">${F.familles.map((f) => `<div class="us-tile" data-say="${M.esc(`La famille ${M.fr.de(f.nom)} : ${f.membres.map((m) => m.role).join(', ')}.`)}"><span class="em" style="font-size:1.8rem">${f.membres.map((m) => m.emoji).join('')}</span><b>Famille ${M.fr.de(f.nom)}</b><small>${f.sorte}</small></div>`).join('')}</div><div class="us-read"></div>` }),
         ui.section({ icon: '🌳', title: '2. Les mots de la famille', intro: 'Voici l\'arbre de la famille de Léo ⭐. Touche une personne pour savoir qui elle est pour Léo.',
           body: `<div class="us-treebox">${U.treeSvg()}</div><div class="us-plan-info us-tree-info">👆 Touche une personne.</div>` }),
         ui.section({ icon: '🏪', title: '3. Mon quartier', intro: 'Touche un lieu sur le plan : tu sauras à quoi il sert et qui y travaille.',

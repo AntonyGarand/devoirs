@@ -18,14 +18,16 @@
     gen({ lvl }) {
       const A = U.d('autrefois');
       if (lvl === 0) {
-        const ps = M.shuffle(A.paires).slice(0, 6);
-        const items = [...ps.slice(0, 3).map((p) => ({ o: p.avant, bin: 'avant' })), ...ps.slice(3).map((p) => ({ o: p.maintenant, bin: 'maintenant' }))];
+        // Seulement des objets sans ambiguïté (tri) : rien qui existait déjà vers 1925 du côté « aujourd'hui ».
+        const now = M.shuffle(A.paires.filter((p) => p.maintenant.tri)).slice(0, 3);
+        const old = M.shuffle(A.paires.filter((p) => p.avant.tri && !now.includes(p))).slice(0, 3);
+        const items = [...old.map((p) => ({ o: p.avant, bin: 'avant' })), ...now.map((p) => ({ o: p.maintenant, bin: 'maintenant' }))];
         return {
           prompt: 'Classe : est-ce un objet d\'<b>autrefois</b> (il y a environ 100 ans) ou d\'<b>aujourd\'hui</b> ?', format: 'sort',
           bins: [{ id: 'avant', label: '🕰️ Autrefois' }, { id: 'maintenant', label: '📱 Aujourd\'hui' }],
           items: items.map((i) => ({ label: `<span class="us-art-lbl">${U.pic(i.o)}<span>${i.o.nom}</span></span>`, bin: i.bin, say: i.o.nom })),
-          hint: 'Est-ce que ça fonctionne avec l\'électricité ou un écran ? Alors c\'est probablement d\'aujourd\'hui.',
-          explain: `Il y a environ 100 ans, quand les arrière-grands-parents étaient enfants, on utilisait ${ps.slice(0, 3).map((p) => p.avant.nom).join(', ')}. Aujourd'hui, on utilise ${ps.slice(3).map((p) => p.maintenant.nom).join(', ')}.`,
+          hint: 'Est-ce que ça a un écran ou ça envoie des messages sans fil ? Alors c\'est d\'aujourd\'hui.',
+          explain: `Il y a environ 100 ans, quand les arrière-grands-parents étaient enfants, on utilisait ${old.map((p) => p.avant.nom).join(', ')}. Ces objets n'existaient pas encore : ${now.map((p) => p.maintenant.nom).join(', ')}.`,
         };
       }
       if (lvl === 1) {
@@ -63,9 +65,9 @@
   U.timelineHtml = (pers, { hide = [], legend = true } = {}) => {
     const evs = pers.evenements.map((e) => ({ at: e.annee, label: e.label, emoji: e.emoji, id: e.id }));
     // Titre hors du SVG : il reste visible quand la ligne défile sur téléphone.
-    const tl = M.viz.timeline({ from: pers.naissance, to: pers.naissance + 8, title: '', events: evs, hide }).replace('aria-label="Ligne du temps"', `aria-label="La vie de ${pers.nom}"`);
+    const tl = M.viz.timeline({ from: pers.naissance, to: pers.naissance + 8, title: '', events: evs, hide }).replace('aria-label="Ligne du temps"', `aria-label="La vie ${M.fr.de(pers.nom)}"`);
     const leg = legend ? `<div class="us-leg">${pers.evenements.filter((e) => !hide.includes(e.id)).map((e) => `<span class="chip">${e.emoji} ${e.label}</span>`).join('')}</div>` : '';
-    return `<div class="plan-title" style="text-align:center">La vie de ${pers.nom}</div><div class="us-swipe">👉 Glisse la ligne du temps pour tout voir 👈</div><div class="us-tl">${tl}</div>${leg}`;
+    return `<div class="plan-title" style="text-align:center">La vie ${M.fr.de(pers.nom)}</div><div class="us-swipe">👉 Glisse la ligne du temps pour tout voir 👈</div><div class="us-tl">${tl}</div>${leg}`;
   };
 
   M.registerSkill({
@@ -76,7 +78,20 @@
     gen({ lvl }) {
       const T = U.d('lignes-temps');
       if (lvl === 0) {
-        if (Math.random() < 0.5) {
+        const r = Math.random();
+        if (r < 0.3) {
+          // Qui est le plus jeune / le plus âgé ? (3 âges parmi 5, ordre des données = du plus jeune au plus âgé)
+          const idx = M.shuffle(M.range(0, T.ages.length - 1)).slice(0, 3).sort((a, b) => a - b);
+          const three = idx.map((i) => T.ages[i]);
+          const old = Math.random() < 0.5, ok = old ? three[2] : three[0];
+          const s = U.simple(`${ok.emoji} ${U.cap(ok.nom)}`, three.filter((a) => a !== ok).map((a) => `${a.emoji} ${U.cap(a.nom)}`));
+          return {
+            prompt: `Qui est <b>${old ? 'le plus âgé' : 'le plus jeune'}</b> ?`, format: 'choice', ...s, cols: 3,
+            hint: 'Pense aux âges de la vie : bébé, enfant, ado, adulte, aîné.',
+            explain: `Du plus jeune au plus âgé : ${three.map((a) => `${a.emoji} ${a.nom}`).join(' → ')}. ${old ? 'Le plus âgé' : 'Le plus jeune'} : <b>${ok.nom}</b>.`,
+          };
+        }
+        if (r < 0.65) {
           const drop = M.rnd(0, T.ages.length - 1);
           const four = T.ages.filter((_, i) => i !== drop);
           return {
@@ -111,7 +126,7 @@
           const e = M.pick(evs.filter((x) => x.id !== 'nais'));
           const s = U.simple(`${e.emoji} ${e.label}`, M.shuffle(evs.filter((x) => x !== e)).slice(0, 2).map((x) => `${x.emoji} ${x.label}`));
           return {
-            prompt: `Quel événement de la vie de ${pers.nom} se cache sous le <b>?</b> ?`, format: 'choice', ...s, cols: 1,
+            prompt: `Quel événement de la vie ${M.fr.de(pers.nom)} se cache sous le <b>?</b> ?`, format: 'choice', ...s, cols: 1,
             viz: (el) => { el.innerHTML = U.timelineHtml(pers, { hide: [e.id] }); },
             hint: 'Regarde l\'année sous le ? et les événements qui restent.',
             explain: `En ${e.annee}, ${pers.nom} a vécu : ${e.emoji} <b>${e.label}</b>.`,
@@ -122,7 +137,7 @@
         const [a, b] = [a0, b0].sort((x, y) => x.annee - y.annee);
         const s = U.simple(`${a.emoji} ${a.label}`, [`${b.emoji} ${b.label}`]);
         return {
-          prompt: `Dans la vie de ${pers.nom}, qu'est-ce qui est arrivé <b>en premier</b> ?`, format: 'choice', ...s, cols: 1,
+          prompt: `Dans la vie ${M.fr.de(pers.nom)}, qu'est-ce qui est arrivé <b>en premier</b> ?`, format: 'choice', ...s, cols: 1,
           viz: (el) => { el.innerHTML = U.timelineHtml(pers); },
           hint: 'Sur la ligne du temps, ce qui est arrivé en premier est plus à gauche.',
           explain: `${a.emoji} ${U.cap(a.label)} (${a.annee}) est arrivé avant ${b.emoji} ${b.label} (${b.annee}) : c'est plus à gauche sur la ligne.`,

@@ -51,6 +51,10 @@
       'Elle/p mange/v une/d grosse/a pomme/n ./.',
       'Il/p porte/v un/d chapeau/n bleu/a ./.',
       'Nous/p mangeons/v une/d soupe/n chaude/a ./.',
+      'Mon/d oncle/n répare/v son/d vélo/n ./.',
+      'La/d petite/a fille/n cueille/v une/d fleur/n ./.',
+      'Le/d facteur/n apporte/v une/d lettre/n ./.',
+      'Ma/d tante/n tricote/v une/d tuque/n ./.',
     ],
     2: [
       'Le/d chat/n ne/x dort/v pas/x ./.',

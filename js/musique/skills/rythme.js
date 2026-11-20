@@ -92,10 +92,10 @@
         };
       }
       const regular = (spb) => MU.seq(8).map((i) => ({ t: i * spb, inst, vel: 0.85, dur: 0.15 }));
-      const irregular = () => { let t = 0; return MU.seq(8).map((i) => { const e = { t, inst, vel: 0.85, dur: 0.15 }; t += [0.3, 0.75, 0.42, 0.9, 0.25, 0.6, 0.35][i % 7]; return e; }); };
+      const irregular = () => { const off = M.pick(MU.seq(7)); let t = 0; return MU.seq(8).map((i) => { const e = { t, inst, vel: 0.85, dur: 0.15 }; t += [0.3, 0.75, 0.42, 0.9, 0.25, 0.6, 0.35][(i + off) % 7]; return e; }); };
       if (lvl === 1) {
         const reg = pick([true, false]);
-        const evs = reg ? regular(0.55) : irregular();
+        const evs = reg ? regular(pick([0.45, 0.5, 0.55, 0.62, 0.7])) : irregular();
         return {
           prompt: 'Écoute. Les coups sont-ils <b>réguliers</b>, comme le tic-tac d\'une horloge ?', format: 'tf', answer: reg,
           labels: [{ label: '🕰️ Oui, réguliers' }, { label: '🎲 Non, pas réguliers' }],
@@ -154,7 +154,7 @@
         return {
           prompt: `Combien de <b>sons</b> joue-t-on dans ce rythme ? (Un silence ne fait pas de son.) ${MU.rhythmSvg(p, { labels: false })}`, format: 'number', answer: n,
           hint: '« ta » = 1 son, « ti-ti » = 2 sons, « chut » = 0 son.',
-          explain: `${p.map((x) => `« ${MU.SYL[x]} »`).join(' ')} : ${p.map((x) => MU.BEATS[x].length).join(' + ')} = <b>${n}</b> sons.`,
+          explain: `${p.map((x) => `« ${MU.SYL[x]} »`).join(' ')} : ${p.map((x) => MU.BEATS[x].length).join(' + ')} = <b>${n}</b> son${n > 1 ? 's' : ''}.`,
         };
       }
       if (t === 'blanche') {

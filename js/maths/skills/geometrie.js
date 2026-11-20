@@ -512,11 +512,16 @@
   ];
   const OBJETS = [
     { e: '🧸', n: 'l\'ourson' }, { e: '⚽', n: 'le ballon' }, { e: '📕', n: 'le livre' }, { e: '🎲', n: 'le dé' },
-    { e: '🚗', n: 'l\'auto' }, { e: '🪀', n: 'le yoyo' }, { e: '🎨', n: 'la palette' }, { e: '🧩', n: 'le casse-tête' },
+    { e: '🚗', n: 'l\'auto', f: true }, { e: '🪀', n: 'le yoyo' }, { e: '🎨', n: 'la palette' }, { e: '🧩', n: 'le casse-tête' },
     { e: '🥁', n: 'le tambour' }, { e: '🎺', n: 'la trompette' }, { e: '🍎', n: 'la pomme' }, { e: '🪁', n: 'le cerf-volant' },
     { e: '⏰', n: 'le réveil' }, { e: '🏆', n: 'le trophée' }, { e: '🎁', n: 'le cadeau' }, { e: '🖍️', n: 'le crayon' },
   ];
   const de = (x) => (x.n.startsWith('le ') ? 'du ' + x.n.slice(3) : 'de ' + x.n);
+  /** « au chat », « à la vache », « à l'ours » */
+  const au = (x) => (x.n.startsWith('le ') ? 'au ' + x.n.slice(3) : 'à ' + x.n);
+  /** Genre du nom : « la … » ou f: true (« l'auto ») → accords il/elle, collé/collée, le/la. */
+  const fem = (x) => x.f || x.n.startsWith('la ');
+  const il = (x) => (fem(x) ? 'elle' : 'il'), Il = (x) => (fem(x) ? 'Elle' : 'Il'), E = (x) => (fem(x) ? 'e' : ''), le = (x) => (fem(x) ? 'la' : 'le');
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   G.ANIMAUX = ANIMAUX;
   G.de = de;
@@ -602,7 +607,7 @@
           viz: (el) => sceneViz(el, sc),
           showMe: (el) => sceneViz(el, sc, t === 'devant' ? 'f' : 'b'),
           hint: 'Ce qui est <b>devant</b> cache un peu ce qui est <b>derrière</b>.',
-          explain: `${cap(sc.front.n)} ${sc.front.e} est devant : il cache un bout ${de(sc.place)}. ${cap(sc.behind.n)} ${sc.behind.e} est derrière : on le voit à moitié, caché. ${cap(sc.side.n)} ${sc.side.e} est à côté.`,
+          explain: `${cap(sc.front.n)} ${sc.front.e} est devant : ${il(sc.front)} cache un bout ${de(sc.place)}. ${cap(sc.behind.n)} ${sc.behind.e} est derrière : on ${le(sc.behind)} voit à moitié, caché${E(sc.behind)}. ${cap(sc.side.n)} ${sc.side.e} est à côté.`,
         };
       }
 
@@ -620,7 +625,7 @@
           input: 'choice', choices: shuffle(ch).map(emoChoice), answer: a.e, viz,
           showMe: (el) => markSlots(el, i, j),
           hint: left ? 'Ta gauche, c\'est du côté 👈. Truc : avec ta main gauche, le pouce et l\'index font un vrai <b>L</b>.' : 'Ta droite, c\'est du côté 👉. Truc : avec ta main gauche, le pouce et l\'index font un vrai <b>L</b>; la droite, c\'est l\'autre main.',
-          explain: `On regarde l'écran : ${a.n} ${a.e} est collé ${de(x)} ${x.e}, du côté ${left ? 'gauche 👈' : 'droit 👉'}.`,
+          explain: `On regarde l'écran : ${a.n} ${a.e} est collé${E(a)} ${au(x)} ${x.e}, du côté ${left ? 'gauche 👈' : 'droit 👉'}.`,
         };
       }
       if (t === 'entre') {
@@ -646,7 +651,7 @@
           input: 'choice', choices: shuffle([a, ...far]).map(emoChoice), answer: a.e, viz,
           showMe: (el) => markSlots(el, i, j),
           hint: 'À côté veut dire <b>tout près</b>, collé, sans personne entre les deux.',
-          explain: `${cap(a.n)} ${a.e} est collé ${de(x)} ${x.e} : il est à côté. Les autres sont plus loin.`,
+          explain: `${cap(a.n)} ${a.e} est collé${E(a)} ${au(x)} ${x.e} : ${il(a)} est à côté. Les autres sont plus loin.`,
         };
       }
       if (t === 'compte') {
@@ -672,7 +677,7 @@
         input: 'choice', choices: [{ label: '👈 à gauche', value: 'gauche' }, { label: 'à droite 👉', value: 'droite' }], answer: ans, viz,
         showMe: (el) => markSlots(el, j, i),
         hint: 'Regarde d\'abord ' + y.n + ' ' + y.e + ', puis cherche de quel côté se trouve ' + x.n + ' ' + x.e + '.',
-        explain: `${cap(x.n)} ${x.e} est du côté ${ans === 'gauche' ? 'gauche 👈' : 'droit 👉'} ${de(y)} ${y.e}. Il n'est pas obligé d'être collé.`,
+        explain: `${cap(x.n)} ${x.e} est du côté ${ans === 'gauche' ? 'gauche 👈' : 'droit 👉'} ${de(y)} ${y.e}. ${Il(x)} n'est pas obligé${E(x)} d'être collé${E(x)}.`,
       };
     },
   });
@@ -837,7 +842,7 @@
           prompt: `${cap(o.n)} ${o.e} ressemble à quel solide ?`,
           input: 'choice', choices: cats.map((k) => ({ label: G.randSolid(k, { size: 104 }).svg + `<small>${solidName(k)}</small>`, value: k })), answer: o.s,
           viz: (el) => { el.innerHTML = `<div class="geo-obj">${o.e}</div><div class="viz-status" style="text-align:center">${cap(o.n)}</div>`; },
-          hint: o.s === 'boule' ? 'Il est tout rond partout.' : o.s === 'cylindre' ? 'Il a deux ronds plats, un en haut et un en bas.' : o.s === 'cone' ? 'Il a une pointe et un rond.' : o.s === 'cube' ? 'Toutes ses faces sont des carrés pareils.' : 'Ses faces sont plates.',
+          hint: o.s === 'boule' ? 'Cherche le solide rond partout.' : o.s === 'cylindre' ? 'Cherche le solide avec deux ronds plats, un en haut et un en bas.' : o.s === 'cone' ? 'Cherche le solide avec une pointe et un rond.' : o.s === 'cube' ? 'Cherche le solide dont toutes les faces sont des carrés pareils.' : 'Cherche le solide aux faces plates.',
           explain: `${cap(o.n)} ${o.e} a la forme ${G.SOL[o.s].un.startsWith('une') ? 'd\'une' : 'd\'un'} <b>${solidName(o.s)}</b>.`,
         };
       }
@@ -852,7 +857,7 @@
             boule: 'La boule est ronde partout, elle n\'a pas de partie plate.', cone: 'Le cône a une pointe et une base ronde.', cube: 'Le cube a 6 faces carrées, toutes pareilles.',
             cylindre: 'Le cylindre ressemble à une boîte de conserve.', prisme: 'Le prisme a deux bases pareilles reliées par des rectangles.', pyramide: 'La pyramide a une pointe et des faces en triangle.',
           }[target],
-          explain: `Voici ${G.SOL[target].le} : ${{ boule: 'tout rond, comme un ballon', cone: 'une pointe et une base ronde, comme un cornet', cube: '6 faces carrées pareilles, comme un dé', cylindre: 'deux bases rondes et une surface courbe, comme une boîte de conserve', prisme: 'deux bases pareilles reliées par des rectangles, comme une boîte', pyramide: 'une base et des faces en triangles qui se rejoignent en pointe' }[target]}.`,
+          explain: `Voici ${G.SOL[target].le} : ${{ boule: 'toute ronde, comme un ballon', cone: 'une pointe et une base ronde, comme un cornet', cube: '6 faces carrées pareilles, comme un dé', cylindre: 'deux bases rondes et une surface courbe, comme une boîte de conserve', prisme: 'deux bases pareilles reliées par des rectangles, comme une boîte', pyramide: 'une base et des faces en triangles qui se rejoignent en pointe' }[target]}.`,
         };
       }
       const s = G.randSolid(target, { size: 200 });
@@ -897,8 +902,20 @@
     desc: 'Surface plane ou courbe, roule ou glisse, compter les faces, la forme de la base.',
     pda: 'Géométrie — Solides B.2, B.4 : surfaces planes et courbes; faces, base (initiation); solides qui roulent ou glissent',
     gen({ lvl }) {
-      const t = lvl === 0 ? pick(['mouv', 'surf']) : lvl === 1 ? pick(['mouv', 'surf', 'faces', 'base']) : pick(['faces', 'base', 'lequel', 'nbsurf', 'surf']);
+      const t = lvl === 0 ? pick(['mouv', 'surf', 'objet']) : lvl === 1 ? pick(['mouv', 'surf', 'faces', 'base', 'objet']) : pick(['faces', 'base', 'lequel', 'nbsurf', 'surf']);
 
+      if (t === 'objet') {
+        // objet de tous les jours : roule, glisse ou les deux ?
+        const o = pick(G.OBJ), k = o.k || o.s, a = mouvOf(k), f = o.n.startsWith('une');
+        return {
+          prompt: `${o.e} ${cap(o.n)} peut-${f ? 'elle' : 'il'} <b>rouler</b>, <b>glisser</b>, ou <b>les deux</b> ?`,
+          say: `${cap(o.n)} peut-${f ? 'elle' : 'il'} rouler, glisser, ou les deux ?`,
+          input: 'choice', choices: [{ label: '🛞 Rouler', value: 'roule' }, { label: '🛷 Glisser', value: 'glisse' }, { label: '🔁 Les deux', value: 'deux' }], answer: a, cols: 1,
+          viz: (el) => { el.innerHTML = `<div class="geo-obj">${o.e}</div><div class="viz-hint">Sa forme : ${G.SOL[k].un}.</div>${G.solid(k, { size: 150 })}`; },
+          hint: 'Une surface <b>courbe</b> fait rouler. Une surface <b>plane</b> permet de glisser.',
+          explain: `${cap(o.n)} a la forme ${G.SOL[k].un.startsWith('une') ? "d'une" : "d'un"} <b>${solidName(o.s)}</b> : ${a === 'roule' ? 'seulement des surfaces courbes, ça roule.' : a === 'glisse' ? 'seulement des surfaces planes, ça glisse.' : `une surface courbe et ${G.SOL[k].planes === 1 ? 'une surface plane' : 'des surfaces planes'}, ça roule et ça glisse.`}`,
+        };
+      }
       if (t === 'mouv' || t === 'surf') {
         const kind = pick(['boule', 'cone', 'cylindre', 'cube', 'prisme', 'prisme-tri', 'pyramide']);
         const s = G.randSolid(G.cat(kind), { size: 190 });
@@ -1091,8 +1108,21 @@
     desc: 'Ligne courbe ou brisée, ouverte ou fermée.',
     pda: 'Géométrie — Figures planes C.1 : lignes courbes, lignes brisées, lignes ouvertes et fermées',
     gen({ lvl }) {
-      const t = lvl === 0 ? pick(['of', 'cb']) : lvl === 1 ? pick(['of', 'cb', 'laquelle']) : pick(['laquelle', 'nom', 'nom']);
+      const t = lvl === 0 ? pick(['of', 'cb', 'trouve']) : lvl === 1 ? pick(['of', 'cb', 'laquelle', 'trouve']) : pick(['laquelle', 'nom', 'nom']);
       const k = pick(LK);
+      if (t === 'trouve') {
+        // une seule propriété à la fois : « Laquelle est fermée ? » parmi 3 dessins
+        const prop = pick(['fermee', 'ouverte', 'courbe', 'brisee']);
+        const has = (x) => x.includes(prop);
+        const good = pick(LK.filter(has)), bad = shuffle(LK.filter((x) => !has(x))).slice(0, 2);
+        const word = { fermee: 'fermée', ouverte: 'ouverte', courbe: 'courbe', brisee: 'brisée' }[prop];
+        return {
+          prompt: `Laquelle est une ligne <b>${word}</b> ?`,
+          input: 'choice', cols: 3, choices: shuffle([good, ...bad]).map((x) => ({ label: G.lineSvg(x, { size: 110 }), value: x })), answer: good,
+          hint: { fermee: "Une ligne fermée n'a pas de bout : une fourmi peut en faire le tour.", ouverte: 'Une ligne ouverte a deux bouts.', courbe: 'Une ligne courbe est arrondie, sans coin.', brisee: 'Une ligne brisée est faite de traits droits avec des coins.' }[prop],
+          explain: `La ligne ${word} : ${{ fermee: "elle n'a pas de bout.", ouverte: 'elle a deux bouts.', courbe: 'elle est arrondie, sans coin.', brisee: 'elle a des traits droits et des coins.' }[prop]}`,
+        };
+      }
       const closed = k.endsWith('fermee'), curved = k.startsWith('courbe');
       const svg = G.lineSvg(k, { size: 240 });
       const viz = (el) => { el.innerHTML = svg; };
@@ -1139,7 +1169,7 @@
     let name, axis, rot = 0;
     const yes = Math.random() < 0.5;
     if (lvl === 0) {
-      if (yes) { name = pick(SYM_V); axis = 'v'; }
+      if (yes) { name = pick([...SYM_V, 'rectangle', 'carre', 'cercle', 'losange']); axis = 'v'; }
       else if (Math.random() < 0.5) { name = pick(ASYM); axis = 'v'; }
       else { name = pick(SYM_V); axis = 'voff'; }
     } else {

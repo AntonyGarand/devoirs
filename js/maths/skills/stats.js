@@ -25,7 +25,7 @@
   .st-prow.hl { background: #fff6d6 }
   .st-pcat { flex: 0 0 122px; font-weight: 800; font-size: 1rem; display: flex; align-items: center; gap: 6px; padding-right: 8px; border-right: 4px solid ${INK} }
   .st-pcat .st-pic { font-size: 1.5rem }
-  .st-ppics { display: flex; flex-wrap: nowrap; align-items: center; padding-left: 6px }
+  .st-ppics { display: flex; flex-wrap: nowrap; align-items: center; padding-left: 6px; max-width: 100%; overflow-x: auto }
   .st-pp { display: inline-flex; flex-direction: column; align-items: center; width: 1.7em; font-size: 1.4rem; line-height: 1.15 }
   .st-pp i { font-style: normal; font-size: .75rem; font-weight: 900; color: #fff; background: var(--B); border-radius: 8px; padding: 0 4px; line-height: 1.3 }
   .st-pleg { margin-top: 10px; border: 3px dashed var(--pur); border-radius: 12px; padding: 4px 12px; display: inline-flex; align-items: center; gap: 6px; font-weight: 800; background: #f6effe; flex-wrap: wrap }
@@ -97,7 +97,7 @@
 
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   /** Texte brut (sans balises ni émojis) pour la lecture à voix haute — sans DOM. */
-  const plain = (html) => String(html).replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ')
+  const plain = (html) => String(html).replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/ avec ▶/g, '')
     .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}\u{2300}-\u{23FF}\u{25A0}-\u{25FF}\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim();
   S.plain = plain;
   const dot = (key) => `<span class="st-dot" style="background:${COL[key].hex}"></span>`;
@@ -732,7 +732,7 @@
         }).join('')}</div>`;
         return {
           prompt: `Classe les objets pour compléter le tableau.<br>Combien y a-t-il de <b>${c.icon} ${c.p}</b> ?`, input: 'number', answer: c.value,
-          say: `Classe les objets pour compléter le tableau. Combien y a-t-il de ${c.p} ?`,
+          say: `Classe les objets pour compléter le tableau. Combien y a-t-il ${M.fr.de(c.p)} ?`,
           hint: `Touche chaque ${c.icon} pour le cocher pendant que tu comptes.`,
           explain: `Il y a <b>${c.value}</b> ${c.icon} ${c.p}. On écrit ${c.value} dans le tableau.`,
           viz(el) {
@@ -893,7 +893,7 @@
           prompt: `Ces réponses vont dans la catégorie <b>« ${cl.name} »</b>. Laquelle n'est <b>pas</b> à sa place ?`, input: 'choice', answer: bad[1],
           choices: list.map(([e, l]) => ({ label: `<span style="font-size:2rem">${e}</span>${l}`, value: l })),
           hint: `Pour chaque réponse, demande-toi : « Est-ce que c'est un élément de la catégorie ${cl.name} ? »`,
-          explain: `${bad[0]} ${cap(bad[1])} ne fait pas partie des ${cl.name}.`,
+          explain: `La réponse ${bad[0]} « ${bad[1]} » ne fait pas partie des ${cl.name}.`,
           viz(el) { mount(el, `<div class="viz-hint">Catégorie : ${cl.name}</div>${tilesHtml(list)}`); },
           showMe(el) { mount(el, `<div class="viz-hint">Catégorie : ${cl.name}</div>${tilesHtml(list, list.indexOf(bad))}`); },
         };
@@ -1065,7 +1065,7 @@
           hint: 'Regarde les couleurs de la roulette.',
           explain: target === 'certain' ? `Toute la roulette est ${COL[ask].f} : c'est <b>certain</b>.`
             : target === 'possible' ? `${k} ${M.plural(k, 'partie')} sur ${n} ${k > 1 ? 'sont' : 'est'} ${k > 1 ? COL[ask].fp : COL[ask].f}, mais pas toute la roulette : c'est <b>possible</b>.`
-              : `Il n'y a pas de ${COL[ask].m} sur la roulette : c'est <b>impossible</b>.`,
+              : `Il n'y a pas ${M.fr.de(COL[ask].m)} sur la roulette : c'est <b>impossible</b>.`,
           viz(el) { tryViz(el, spec, '🎡 La roulette. Tu peux essayer de la faire tourner !'); },
           showMe(el) { tryViz(el, spec, '👀 Regarde la couleur demandée.', ask, target); },
         };
@@ -1112,7 +1112,7 @@
   /** Textes selon l'appareil. */
   function devText(spec) {
     if (spec.type === 'spinner') return {
-      todo: (n) => `Fais tourner la roulette ${n} fois avec le bouton ▶.`,
+      todo: (n) => `Tourne la roulette ${n} fois avec ▶.`,
       count: (k) => `Combien de fois la flèche s'est-elle arrêtée sur <b>${COL[k].nom}</b> ${dot(k)} ?`,
       most: 'Sur quelle couleur la flèche s\'est-elle arrêtée <b>le plus souvent</b> ?',
       least: 'Sur quelle couleur la flèche s\'est-elle arrêtée <b>le moins souvent</b> ?',
@@ -1120,7 +1120,7 @@
       name: (k) => COL[k].nom, one: 'Tourner', verb: 'tours',
     };
     if (spec.type === 'bag') return {
-      todo: (n) => `Pige ${n} billes avec le bouton ▶ (on remet chaque bille dans le sac).`,
+      todo: (n) => `Pige ${n} billes avec ▶. Chaque bille retourne dans le sac.`,
       count: (k) => `Combien de fois as-tu pigé une bille <b>${COL[k].f}</b> ${dot(k)} ?`,
       most: 'Quelle couleur de bille as-tu pigée <b>le plus souvent</b> ?',
       least: 'Quelle couleur de bille as-tu pigée <b>le moins souvent</b> ?',
@@ -1128,7 +1128,7 @@
       name: (k) => `la bille ${COL[k].f}`, one: 'Piger', verb: 'piges',
     };
     return {
-      todo: (n) => `Lance le dé ${n} fois avec le bouton ▶.`,
+      todo: (n) => `Lance le dé ${n} fois avec ▶.`,
       count: (k) => `Combien de fois as-tu obtenu <b>${k}</b> ?`,
       most: 'Quel nombre as-tu obtenu <b>le plus souvent</b> ?',
       least: 'Quel nombre as-tu obtenu <b>le moins souvent</b> ?',
@@ -1255,7 +1255,7 @@
         const same = pred.key === cats[iMax].key;
         const who = M.pick(NAMES);
         q = {
-          prompt: `Avant l'expérience, ${who} a fait une <b>prédiction</b> : « ${cap(T.name(pred.key))} ${pred.icon} va sortir le plus souvent. »<br>${todo}Le <b>résultat</b> est-il pareil à sa prédiction ?`,
+          prompt: `${who} <b>prédit</b> : « ${cap(T.name(pred.key))} ${pred.icon} sortira le plus souvent. »<br>${todo}Le <b>résultat</b> est-il pareil ?`,
           input: 'choice', answer: same ? 'oui' : 'non', hl: cats[iMax].key,
           choices: [{ label: '👍 Oui, pareil', value: 'oui' }, { label: '👎 Non, différent', value: 'non' }],
           hint: 'La prédiction, c\'est ce qu\'on pense avant. Le résultat, c\'est ce qui est vraiment arrivé : regarde le tableau.',
@@ -1263,7 +1263,7 @@
         };
       } else if (type === 'vary') {
         q = {
-          prompt: `${todo}Si tu refais l'expérience ${N} autres fois, auras-tu <b>sûrement</b> les mêmes résultats ?`,
+          prompt: `${todo}Si tu recommences, auras-tu <b>sûrement</b> les mêmes résultats ?`,
           input: 'choice', answer: 'hasard',
           choices: [{ label: '🔁 Oui, toujours les mêmes', value: 'pareil' }, { label: '🎲 Pas sûr : ça peut changer', value: 'hasard' }],
           hint: 'Avec le hasard, on ne peut pas savoir d\'avance ce qui va sortir.',
@@ -1276,7 +1276,7 @@
         const tot = sum(amt);
         const where = spec.type === 'spinner' ? `${amt[i]} parties sur ${tot} de la roulette` : `${amt[i]} billes sur ${tot} dans le sac`;
         q = {
-          prompt: `Regarde ${spec.type === 'spinner' ? 'la roulette' : 'le sac'}. Quelle couleur a <b>le plus de chances</b> de sortir ?<br><span class="st-instr">🧪 Tu peux faire l'expérience pour vérifier.</span>`,
+          prompt: `Regarde ${spec.type === 'spinner' ? 'la roulette' : 'le sac'}. Quelle couleur a <b>le plus de chances</b> de sortir ?<br><span class="st-instr">🧪 Tu peux vérifier avec ▶.</span>`,
           input: 'choice', answer: String(c.key), choices: choicesCats, hl: c.key,
           hint: spec.type === 'spinner' ? 'Quelle couleur prend la plus grande place sur la roulette ?' : 'De quelle couleur y a-t-il le plus de billes ?',
           explain: `${c.icon} ${c.label} : ${where}. C'est la couleur qui a le plus de chances de sortir… mais ce n'est pas certain !`,

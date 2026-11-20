@@ -12,7 +12,11 @@
   /* Deux expressions ne vont pas dans le même choix : même groupe, même emoji ou un mot important en commun. */
   const STOP = new Set(['i', 'i\'m', 'you', 'a', 'the', 'me', 'can', 'is', 'it', 'to', 'and', 'my', 'your', 'go', 'good']);
   const words = (x) => new Set(x.en.toLowerCase().replace(/[^a-z' ]/g, ' ').split(/\s+/).filter((w) => w && !STOP.has(w)));
-  const AVOID = [['thank-you', 'welcome'], ['how-are-you', 'fine'], ['please', 'yes-please'], ['my-turn', 'your-turn'], ['hungry', 'water'], ['look', 'listen'], ['lets-play', 'hello'], ['lets-play', 'hi'], ['come-here', 'line-up']];
+  const AVOID = [['thank-you', 'welcome'], ['how-are-you', 'fine'], ['please', 'yes-please'], ['my-turn', 'your-turn'], ['hungry', 'water'], ['look', 'listen'], ['lets-play', 'hello'], ['lets-play', 'hi'], ['come-here', 'line-up'],
+    // paires défendables toutes les deux (audit) : jamais dans le même choix
+    ['please', 'excuse-me'], ['please', 'help'], ['please', 'water'], ['please', 'washroom'], ['please', 'repeat'], ['sorry', 'excuse-me'],
+    ['yes-please', 'thank-you'], ['here-you-go', 'welcome'], ['happy-birthday', 'hooray'], ['ready', 'lets-play'], ['hi', 'how-are-you'], ['hello', 'how-are-you'],
+    ['good-job', 'happy-birthday'], ['lets-play', 'my-turn']];
   EN.exprClash = (a, b) => {
     if (a.id === b.id || a.group === b.group || a.emoji === b.emoji) return true;
     if (AVOID.some(([x, y]) => (x === a.id && y === b.id) || (x === b.id && y === a.id))) return true;
@@ -41,7 +45,7 @@
       const set = EN.pickSet(pool.filter((x) => x !== t), n, t, EN.exprClash);
       return {
         prompt: 'Écoute. Quand dit-on ça ?', audio: EN.audio(t.say), format: 'choice', cols: 1,
-        choices: set.map((x) => ({ label: sit(x), value: x.id })), answer: t.id,
+        choices: set.map((x) => ({ label: sit(x), value: x.id, say: x.situation, lang: 'fr-CA' })), answer: t.id, // 🔊 : chaque situation se lit
         hint: 'Pense à ce que tu dirais en français. Réécoute avec 🐢.',
         explain: explainExpr(t),
       };
@@ -184,21 +188,32 @@
     tired: ['I\'m tired. I want to go to bed.', 'I\'m tired. I ran all day.'],
     scared: ['I\'m scared. There is a big spider!', 'I\'m scared. It\'s dark!'],
     sick: ['I\'m sick. My tummy hurts.', 'I\'m sick. I have a fever.'],
+    surprised: ["I'm surprised. Look, it's snowing!", "I'm surprised. A big box for me?", "I'm surprised. Wow, a rainbow!"],
   };
+  REASONS.happy.push("I'm happy. We go to the park!", "I'm happy. Grandma is here!");
+  REASONS.sad.push("I'm sad. My fish is sick.", "I'm sad. It's raining. No park today.");
+  REASONS.angry.push("I'm angry! My sister took my crayons!");
+  REASONS.tired.push("I'm tired. It's late.");
+  REASONS.scared.push("I'm scared. The dog is very big!");
   const PEOPLE = ['Max', 'Lily', 'Sam', 'Zoe', 'Noah', 'Ava', 'Leo', 'Mia', 'Ben'];
+  // Niveau 0 : les visages les plus faciles à distinguer (sans « sick » ni « surprised »)
+  const FEEL0 = ['happy', 'sad', 'angry', 'tired', 'scared'];
   M.registerSkill({
     id: 'en-sentiments', domain: 'en-parler', title: 'Comment ça va ?', icon: '😀', starter: true, needs: NEEDS, learn: 'en-emotions-meteo',
     desc: 'Écoute comment se sent l\'enfant et touche le bon visage.',
     pda: 'ALS 1er cycle — Contextual Language : ideas, feelings (« Happy, today. »)',
     check: EN.checkChoices,
     gen({ lvl = 0 }) {
-      const pool = lvl === 0 ? ['happy', 'sad', 'angry'].map((id) => EN.word[id]) : EN.ofTheme('feelings', 1);
+      const pool = lvl === 0 ? FEEL0.map((id) => EN.word[id]) : EN.ofTheme('feelings', 1);
       const n = [3, 5, 6][lvl];
       const t = M.pickWeighted(pool, (w) => w.id, 'en-sentiments');
       const set = EN.pickSet(pool.filter((w) => w !== t), n, t);
+      // phrase entendue : « I'm sad. » · « Max is sad. » · avec une raison « I'm happy. It's my birthday! »
+      const r = Math.random(), who = M.pick(PEOPLE);
       let text = t.say;
-      if (lvl === 1 && Math.random() < 0.5) text = `${M.pick(PEOPLE)} is ${t.word}.`;
-      if (lvl === 2) text = M.pick(REASONS[t.id]);
+      if (lvl === 0) text = r < 0.4 ? t.say : r < 0.7 ? `${who} is ${t.word}.` : REASONS[t.id][0];
+      if (lvl === 1) text = r < 0.3 ? t.say : r < 0.6 ? `${who} is ${t.word}.` : M.pick(REASONS[t.id]);
+      if (lvl === 2) text = r < 0.6 ? M.pick(REASONS[t.id]) : `${who} says: ${M.pick(REASONS[t.id])}`;
       return {
         prompt: 'Écoute. Comment se sent cet enfant ? Touche le bon visage.', audio: EN.audio(text), format: 'choice', cols: 3,
         choices: set.map((w) => EN.picChoice(w, 60)), answer: t.id,

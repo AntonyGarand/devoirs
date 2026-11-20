@@ -145,7 +145,7 @@
     desc: 'Les besoins d\'une plante (eau, air, lumière, minéraux) et d\'un animal (air, eau, nourriture).',
     pda: 'Univers vivant A.3.a — décrire les besoins essentiels d\'une plante (eau, air, lumière, sels minéraux) (1er cycle); enrichissement : A.1.a — besoins essentiels des animaux (2e cycle)',
     gen({ lvl }) {
-      const t = lvl === 0 ? 'multiPlante' : lvl === 1 ? M.pick(['pots', 'pots', 'multiAnimal', 'multiPlante']) : M.pick(['tf', 'tf', 'pots']);
+      const t = lvl === 0 ? M.pick(['multiPlante', 'multiPlante', 'multiAnimal']) : lvl === 1 ? M.pick(['pots', 'pots', 'multiAnimal', 'multiPlante']) : M.pick(['tf', 'tf', 'pots']);
       if (t === 'multiPlante' || t === 'multiAnimal') {
         const B = t === 'multiPlante' ? SC.BESOINS_PLANTE : SC.BESOINS_ANIMAL;
         const oui = B.oui.filter((b) => !b.lvl || b.lvl <= lvl);
@@ -171,7 +171,7 @@
         };
       }
       const s = M.pick(SC.PLANTE_VF);
-      return { prompt: `Vrai ou faux ? « ${s.t} »`, format: 'tf', answer: s.v, explain: s.e, hint: 'Pense aux racines, aux feuilles et à la lumière.' };
+      return { prompt: `Vrai ou faux ? « ${s.t} »`, format: 'tf', answer: s.v, explain: s.e, hint: 'Une plante a besoin d\'eau, de lumière et d\'air. Un animal a besoin d\'air, d\'eau et de nourriture.' };
     },
     check(q) {
       const d = Q.dataOnce(); if (d) return d;
@@ -182,12 +182,43 @@
 
   /* ================================================================ 3 (enrichissement) */
   const P4 = () => SC.PARTIES_PLANTE.filter((p) => !p.extra);
+  const MANGE_PART = { racines: 'la racine', tige: 'la tige', feuille: 'les feuilles', fleur: 'les fleurs', fruit: 'le fruit', graine: 'les graines' };
   M.registerSkill({
     id: 'sc-plante-parties', domain: 'sc-vivant', title: 'Les parties d\'une plante', icon: '🌻', enrichment: true, learn: 'sc-l-plante',
     desc: 'Racines, tige, feuilles, fleur (et fruit, graines) : où elles sont et à quoi elles servent.',
     pda: 'Enrichissement — PDA Univers vivant A.2.e–f : parties d\'une plante et leurs fonctions (2e cycle)',
     gen({ lvl }) {
-      if (lvl === 0) {
+      const t = lvl === 0 ? M.pick(['hot', 'hot', 'mange']) : lvl === 1 ? M.pick(['label', 'mange', 'mange', 'vf']) : M.pick(['roles', 'roles', 'trier', 'mange']);
+      const PART = (id) => SC.PARTIES_PLANTE.find((p) => p.id === id);
+      if (t === 'mange') {
+        const v = M.pick(SC.LEGUMES_PARTIE.filter((x) => lvl > 0 || x.facile));
+        const ids = lvl === 2 ? SC.PARTIES_PLANTE.map((p) => p.id) : ['racines', 'tige', 'feuille', 'fleur', 'fruit'];
+        const others = Q.pickN(ids.filter((id) => id !== v.p), 2);
+        return {
+          prompt: `Quand on mange <b>${v.nom}</b>, quelle partie de la plante mange-t-on ?`, format: 'choice', answer: v.p, cols: 3,
+          choices: M.shuffle([v.p, ...others]).map((id) => ({ label: PART(id).label, value: id })),
+          hint: 'Est-ce que ça pousse sous la terre ? Est-ce vert et plat ? Y a-t-il des graines dedans ?',
+          explain: `${SC.plain(v.label)} : on mange <b>${MANGE_PART[v.p]}</b> de la plante. ${cap(PART(v.p).nom)} : ${PART(v.p).role.toLowerCase()}.`,
+          _sc: { kind: 'mange', id: v.id },
+        };
+      }
+      if (t === 'vf') {
+        const s = M.pick(SC.PLANTE_PARTIES_VF);
+        return { prompt: `Vrai ou faux ? « ${s.t} »`, format: 'tf', answer: s.v, explain: s.e, hint: 'Pense à la plante de bas en haut : racines, tige, feuilles, fleur.' };
+      }
+      if (t === 'trier') {
+        const bins = Q.pickN(['racines', 'tige', 'feuille', 'fleur', 'fruit', 'graine'], 3);
+        const items = [];
+        bins.forEach((b) => Q.pickN(SC.LEGUMES_PARTIE.filter((x) => x.p === b), M.pick([1, 2])).forEach((x) => items.push({ label: x.label, bin: b, key: x.id })));
+        return {
+          prompt: 'Quelle partie de la plante mange-t-on ? Classe les aliments.', format: 'sort', items,
+          bins: bins.map((b) => ({ id: b, label: PART(b).label })),
+          hint: 'Racine : sous la terre. Feuille : verte et plate. Fruit : il y a des graines dedans.',
+          explain: items.map((it) => `${SC.plain(it.label)} : ${PART(it.bin).nom}.`).join(' '),
+          _sc: 'trier',
+        };
+      }
+      if (t === 'hot') {
         const p = M.pick(P4());
         return {
           prompt: `Touche ${p.pl ? 'les' : 'la'} <b>${p.nom.replace(/^(les|la|le) /, '')}</b> de la plante.`, format: 'hotspot', answer: p.id,
@@ -196,7 +227,7 @@
           explain: `${cap(p.nom)} : ${p.role.toLowerCase()}.`,
         };
       }
-      if (lvl === 1) {
+      if (t === 'label') {
         return {
           prompt: 'Place les étiquettes sur les parties de la plante.', format: 'label', html: SC.svg.plante(),
           labels: P4().map((p) => ({ id: p.id, text: p.nom })), distractors: [M.pick(['la patte', 'l\'aile', 'le bec'])],
@@ -212,7 +243,11 @@
         explain: parts.map((p) => `<b>${cap(p.nom)}</b> : ${p.role.toLowerCase()}.`).join(' '),
       };
     },
-    check() { return Q.dataOnce(); },
+    check(q) {
+      const d = Q.dataOnce(); if (d) return d;
+      if (q._sc && q._sc.kind === 'mange') return Q.checkOne(q, (v) => SC.LEGUMES_PARTIE.find((x) => x.id === q._sc.id).p === v);
+      if (q._sc === 'trier') return Q.checkSort(q, (k) => SC.LEGUMES_PARTIE.find((x) => x.id === k).p);
+    },
   });
 
   /* ================================================================ 4 (enrichissement) */
@@ -241,9 +276,36 @@
           _sc: { kind: 'missing', k, id: st.id },
         };
       }
-      const k = lvl === 0 ? 'poule' : lvl === 1 ? M.pick(['grenouille', 'haricot', 'poule']) : M.pick(['monarque', 'grenouille', 'haricot']);
+      const t = lvl === 0 ? M.pick(['ordre', 'bebe', 'bebe', 'vf']) : lvl === 1 ? M.pick(['ordre', 'ordre', 'match', 'vf']) : M.pick(['ordre', 'ordre', 'match']);
+      if (t === 'bebe') {
+        const x = M.pick(SC.BEBES), bad = Q.pickN(SC.BEBES.filter((y) => y !== x), 2);
+        return {
+          scene: [{ emoji: x.e, label: x.a }],
+          prompt: `Qui est le <b>bébé</b> ${SC.de(x.a)} ?`, format: 'choice', answer: x.b, cols: 3,
+          choices: Q.choicesFrom(x, bad, (y) => cap(y.b), (y) => y.b, (y) => `${cap(y.b)}, c'est le bébé ${SC.de(y.a)}.`),
+          hint: 'Pense à l\'animal quand il vient de naître.',
+          explain: `Le bébé ${SC.de(x.a)}, c'est <b>${x.b}</b>. Les bébés grandissent et deviennent des adultes.`,
+          _sc: { kind: 'bebe', b: x.b },
+        };
+      }
+      if (t === 'match') {
+        const pick = Q.pickN(SC.BEBES, 4);
+        return {
+          prompt: 'Associe chaque animal à son <b>bébé</b>.', format: 'match',
+          pairs: pick.map((x) => ({ left: `${x.e} ${cap(x.a)}`, right: cap(x.b) })),
+          hint: 'Le têtard vit dans l\'eau; la chenille mange des feuilles; le poussin sort d\'un œuf.',
+          explain: pick.map((x) => `${cap(x.b)} → ${x.a}`).join(' · ') + '.',
+        };
+      }
+      if (t === 'vf') {
+        const s = M.pick(SC.CYCLES_VF);
+        return { prompt: `Vrai ou faux ? « ${s.t} »`, format: 'tf', answer: s.v, explain: s.e, hint: 'Pense aux étapes : l\'œuf, le bébé, puis l\'adulte.' };
+      }
+      const k = lvl === 0 ? M.pick(['poule', 'grenouille', 'haricot']) : lvl === 1 ? M.pick(['grenouille', 'haricot', 'poule', 'monarque']) : M.pick(['monarque', 'grenouille', 'haricot', 'poule']);
       const C = cyc(k);
-      const stades = lvl === 0 && k === 'poule' ? C.stades.filter((s) => s.id !== 'eclot') : C.stades;
+      // Niveau 0 : trois étapes faciles seulement
+      const SIMPLE = { poule: ['oeuf', 'poussin', 'poule'], grenouille: ['oeufs', 'tetard', 'grenouille'], haricot: ['graine', 'germe', 'plant'] };
+      const stades = lvl === 0 ? C.stades.filter((s) => SIMPLE[k].includes(s.id)) : C.stades;
       return {
         prompt: `Le cycle de vie : <b>${C.titre.toLowerCase()}</b>. La première étape est placée. Touche les autres dans l'ordre.`, format: 'order', fixed: [0],
         choices: M.shuffle(stades.map((s) => ({ label: stageTile(s), value: s.id }))), answer: stades.map((s) => s.id),
@@ -257,6 +319,7 @@
         if (new Set(labels).size !== labels.length) return 'deux choix avec le même nom';
         return Q.checkOne(q, (v) => v === q._sc.k + ':' + q._sc.id);
       }
+      if (q._sc && q._sc.kind === 'bebe') return Q.checkOne(q, (v) => v === q._sc.b);
       if (q.format === 'order' && (!q.fixed || q.fixed[0] !== 0)) return 'un cycle : la première étape doit être donnée (fixed)';
     },
   });
@@ -287,7 +350,7 @@
           prompt: 'Que donne-t-on à manger à ces animaux domestiques ?', format: 'match',
           pairs: pick.map((a) => ({ left: lbl(a), right: SC.NOURRITURE[a.cat] })),
           hint: 'Les animaux de la ferme qui broutent mangent du foin. Les poules picorent des grains.',
-          explain: pick.map((a) => `On donne à ${a.nom} ${a.nourri}.`).join(' '),
+          explain: pick.map((a) => `On donne ${SC.a(a.nom)} ${a.nourri}.`).join(' '),
           _sc: { kind: 'nourri', ids: pick.map((a) => a.id) },
         };
       }
@@ -454,7 +517,18 @@
     pda: 'Univers vivant A.2.a — décrire les fonctions de parties de son anatomie (membres, tête, cœur, estomac) (1er cycle); Éducation physique et à la santé — adopter un mode de vie sain et actif (intégration)',
     parentNote: 'Silhouette neutre, vue de face. Aucune question sur la santé de l\'enfant; jamais de gauche / droite (effet miroir).',
     gen({ lvl }) {
-      const t = lvl === 0 ? 'hot' : lvl === 1 ? M.pick(['fonction', 'habitudes', 'hot']) : M.pick(['label', 'label', 'sommeil', 'fonction']);
+      const t = lvl === 0 ? M.pick(['hot', 'hot', 'sert']) : lvl === 1 ? M.pick(['fonction', 'habitudes', 'hot']) : M.pick(['label', 'label', 'sommeil', 'fonction']);
+      if (t === 'sert') {
+        const [f, ...others] = Q.pickN(SC.FONCTIONS, 3);
+        const nom = f.left.replace(/^\S+ /, '');
+        return {
+          prompt: `À quoi ${/^les /i.test(nom) ? 'servent' : 'sert'} <b>${nom.toLowerCase()}</b> ?`, format: 'choice', answer: f.id, cols: 1,
+          choices: Q.choicesFrom(f, others, (x) => x.right, (x) => x.id),
+          hint: 'Montre cette partie sur ton propre corps. Que fait-elle ?',
+          explain: `${f.left} : ${f.right.toLowerCase()}.`,
+          _sc: { kind: 'sert', id: f.id },
+        };
+      }
       if (t === 'hot') {
         const p = M.pick(SC.CORPS);
         return {
@@ -499,6 +573,7 @@
       };
     },
     check(q) {
+      if (q._sc && q._sc.kind === 'sert') return Q.checkOne(q, (v) => v === q._sc.id);
       if (q._sc === 'habitudes') return Q.checkSort(q, (k) => (SC.HABITUDES.saine.includes(k) ? 'oui' : SC.HABITUDES.pas.includes(k) ? 'non' : '?'));
       return M.lint.noPrivate(q.prompt);
     },
@@ -511,6 +586,16 @@
     desc: 'La vue, l\'ouïe, l\'odorat, le goût et le toucher : quel organe, quel sens ?',
     pda: 'Enrichissement — PDA Univers vivant A.2.h : fonction sensorielle (2e cycle); « explorer à l\'aide des sens » : stratégie dès le 1er cycle',
     gen({ lvl }) {
+      if (lvl === 0 && Math.random() < 0.6) {
+        const s = M.pick(SC.SENS), others = Q.pickN(SC.SENS.filter((x) => x !== s), 2);
+        return {
+          prompt: SC.SENS_VERBE[s.id], format: 'choice', answer: s.id, cols: 3,
+          choices: Q.choicesFrom(s, others, (x) => `${x.icon} ${cap(x.organe)}`, (x) => x.id),
+          hint: 'Quelle partie de ton corps travaille ? Montre-la !',
+          explain: `On utilise <b>${s.organe}</b> : c'est le sens ${SC.de(s.sens)}.`,
+          _sc: { kind: 'un', a: s.id },
+        };
+      }
       if (lvl === 0) {
         const pick = Q.pickN(SC.SENS, M.pick([4, 5]));
         return {
@@ -534,6 +619,16 @@
         return q;
       }
       const s = M.pick(SC.SENS_MULTI);
+      const non = s.choix.filter((id) => !s.a.includes(id));
+      if (non.length === 1 && Math.random() < 0.4) {
+        return {
+          prompt: `${s.t.replace(/\s*Quels sens [^?]*\?$/, '')}<br>Quel sens <b>n'utilises-tu pas</b> ?`, format: 'choice', answer: non[0], cols: 3,
+          choices: s.choix.map((id) => ({ label: SENS(id).label, value: id })),
+          hint: 'Imagine la scène : qu\'est-ce que tu vois, entends, sens, goûtes ou touches ?',
+          explain: `On n'utilise pas <b>${SENS(non[0]).sens}</b>. ${s.e}`,
+          _sc: { kind: 'un', a: non[0] },
+        };
+      }
       return {
         prompt: s.t, format: 'multi', choices: s.choix.map((id) => ({ label: SENS(id).label, value: id })), answer: s.a,
         hint: 'Imagine la scène : qu\'est-ce que tu vois, entends, sens, goûtes ou touches ?', explain: s.e,

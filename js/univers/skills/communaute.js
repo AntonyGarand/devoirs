@@ -45,7 +45,16 @@
       const scene = fam.membres.map((m) => ({ emoji: m.emoji, label: m.role }));
       const list = fam.membres.map((m) => `${m.emoji} ${m.role}`).join(', ');
       if (lvl === 0) {
-        if (Math.random() < 0.4) {
+        const r = Math.random();
+        if (r < 0.3) {
+          const f = M.pick(F.faits);
+          return {
+            prompt: `Vrai ou faux ? ${f.t}`, format: 'tf', answer: f.v,
+            hint: 'Pense à toutes les familles que tu connais, dans les livres ou à l\'école.',
+            explain: `C'est <b>${f.v ? 'vrai' : 'faux'}</b>. ${f.e ? f.e + ' ' : ''}Chaque famille est différente, et toutes sont de vraies familles.`,
+          };
+        }
+        if (r < 0.55) {
           const mots = M.shuffle(F.mots).slice(0, 4);
           return {
             prompt: 'Associe chaque image au bon mot.', format: 'match',
@@ -54,10 +63,10 @@
           };
         }
         return {
-          scene, prompt: `Voici la famille de ${fam.nom}. Combien de personnes y a-t-il dans cette famille ? {?}`, format: 'number', answer: fam.membres.length,
+          scene, prompt: `Voici la famille ${M.fr.de(fam.nom)}. Combien de personnes y a-t-il dans cette famille ? {?}`, format: 'number', answer: fam.membres.length,
           hint: 'Touche chaque personne avec ton doigt en comptant.',
-          explain: `Dans la famille de ${fam.nom}, il y a ${list} : <b>${fam.membres.length} personnes</b>. Chaque famille est différente, et toutes sont de vraies familles.`,
-          viz: (el) => { el.innerHTML = `<div class="viz-hint">Famille de ${fam.nom} (${fam.sorte})</div><div class="us-mytl">${fam.membres.map((m) => `<span class="chip">${m.emoji} ${m.role}</span>`).join('')}</div>`; },
+          explain: `Dans la famille ${M.fr.de(fam.nom)}, il y a ${list} : <b>${fam.membres.length} personnes</b>. Chaque famille est différente, et toutes sont de vraies familles.`,
+          viz: (el) => { el.innerHTML = `<div class="viz-hint">Famille ${M.fr.de(fam.nom)} (${fam.sorte})</div><div class="us-mytl">${fam.membres.map((m) => `<span class="chip">${m.emoji} ${m.role}</span>`).join('')}</div>`; },
         };
       }
       if (lvl === 1) {
@@ -73,9 +82,9 @@
         const adults = fam.membres.filter((m) => m.adulte).length, kids = fam.membres.length - adults;
         const askAd = Math.random() < 0.5;
         return {
-          scene, prompt: `Dans la famille de ${fam.nom}, combien y a-t-il ${askAd ? 'd\'adultes' : 'd\'enfants'} ? {?}`, format: 'number', answer: askAd ? adults : kids,
+          scene, prompt: `Dans la famille ${M.fr.de(fam.nom)}, combien y a-t-il ${askAd ? 'd\'adultes' : 'd\'enfants'} ? {?}`, format: 'number', answer: askAd ? adults : kids,
           hint: askAd ? 'Les adultes sont les grandes personnes. Compte seulement les adultes.' : 'Compte seulement les enfants : les bébés, les filles et les garçons.',
-          explain: `Famille de ${fam.nom} : ${list}. Il y a <b>${adults} adulte${adults > 1 ? 's' : ''}</b> et <b>${kids} enfant${kids > 1 ? 's' : ''}</b>.`,
+          explain: `Famille ${M.fr.de(fam.nom)} : ${list}. Il y a <b>${adults} adulte${adults > 1 ? 's' : ''}</b> et <b>${kids} enfant${kids > 1 ? 's' : ''}</b>.`,
           viz: (el) => { el.innerHTML = `<div class="us-mytl">${fam.membres.map((m) => `<span class="chip">${m.emoji} ${m.role}</span>`).join('')}</div>`; },
         };
       }
@@ -173,6 +182,11 @@
     { t: 'Noah veut flatter un chien qu\'il ne connaît pas, au parc.', ok: 'Demander d\'abord la permission au propriétaire.', harm: 'Courir vers le chien en criant.', off: 'Compter les arbres.' },
     { t: 'Le poisson rouge de Samuel nage dans un aquarium.', ok: 'Lui donner un peu de nourriture et garder l\'eau propre.', harm: 'Vider toute la boîte de nourriture dans l\'eau.', off: 'Lui lire une histoire.' },
     { t: 'Le lapin d\'Inès a fini son eau.', ok: 'Remplir son bol d\'eau fraîche.', harm: 'Lui donner du jus sucré.', off: 'Mettre ses bottes.' },
+    { t: 'Le hamster de Félix dort pendant la journée.', ok: 'Le laisser dormir et jouer avec lui le soir.', harm: 'Secouer sa cage pour le réveiller.', off: 'Lui acheter un livre.' },
+    { t: 'Zoé part une semaine chez sa tante. Son chat reste à la maison.', ok: 'Demander à quelqu\'un de venir le nourrir chaque jour.', harm: 'Laisser un seul bol de nourriture pour toute la semaine.', off: 'Ranger ses crayons.' },
+    { t: 'Gabriel promène son chien le long d\'une rue où passent beaucoup d\'autos.', ok: 'Garder le chien en laisse.', harm: 'Lâcher la laisse pour qu\'il coure partout.', off: 'Lui mettre des lunettes.' },
+    { t: 'Le chien de Maya se gratte beaucoup et semble avoir mal.', ok: 'Avertir un adulte pour qu\'il l\'amène chez le vétérinaire.', harm: 'Le gronder parce qu\'il se gratte.', off: 'Lui chanter une chanson.' },
+    { t: 'Le chien de Noah a bien mangé et apporte sa balle.', ok: 'Lui lancer la balle dans la cour.', harm: 'Le pousser quand il s\'approche.', off: 'Lui montrer la télévision.' },
   ];
   M.registerSkill({
     id: 'us-animaux', domain: D, title: 'Les animaux dans nos vies', icon: '🐕', learn: 'us-communaute',

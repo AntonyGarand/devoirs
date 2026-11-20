@@ -28,7 +28,13 @@
   };
   const sayChoice = (q, c) => M.say(c.say, { lang: c.lang || q.lang || 'fr-CA', raw: true });
   /** Contenu d'un bouton de choix : libellé (ou numéro si audioOnly) + 🔊 facultatif. */
-  const choiceInner = (q, c, i) => (q.audioOnly ? `<span class="ao">🔊 ${i + 1}</span>` : c.label) + (c.say && !q.audioOnly ? '<span class="say-btn" role="button" aria-label="Écouter" data-say-i="' + i + '">🔊</span>' : '');
+  const choiceInner = (q, c, i) => (q.audioOnly ? `<span class="ao">🔊 ${i + 1}</span>` : c.label);
+  /** Bouton de choix; si le choix se lit (say), un vrai bouton 🔊 frère (pas imbriqué) qui ne répond pas à la question. */
+  const choiceBtn = (q, c, i, attrs = '') => {
+    const b = `<button class="choice-btn" data-i="${i}" ${attrs}>${choiceInner(q, c, i)}</button>`;
+    if (!c.say || q.audioOnly) return b;
+    return `<div class="choice-wrap">${b}<button type="button" class="say-btn" aria-label="Écouter : ${M.esc(M.text ? M.text(String(c.label)) : c.label)}" data-say-i="${i}">🔊</button></div>`;
+  };
 
   /** Découpe un texte en jetons {w, s} (mot avec ponctuation attachée, numéro de phrase). '¶' = paragraphe. */
   M.tokenize = function (text) {
@@ -94,7 +100,7 @@
   function renderChoice(host, q, ctx, choices) {
     const cols = q.cols || (choices.length <= 2 ? 2 : choices.length === 3 ? 3 : 2);
     let heard = false;
-    host.innerHTML = `<div class="choices-grid ${q.audioOnly ? 'audio-only' : ''}" style="grid-template-columns:repeat(${cols},1fr)">${choices.map((c, i) => `<button class="choice-btn" data-i="${i}">${choiceInner(q, c, i)}</button>`).join('')}</div>`;
+    host.innerHTML = `<div class="choices-grid ${q.audioOnly ? 'audio-only' : ''}" style="grid-template-columns:repeat(${cols},1fr)">${choices.map((c, i) => choiceBtn(q, c, i)).join('')}</div>`;
     const pick = (b) => {
       if (!b || ctx.done || b.disabled) return;
       const c = choices[+b.dataset.i];
@@ -174,7 +180,7 @@
     render(host, q, ctx) {
       const sel = new Set();
       const cols = q.cols || (q.choices.length <= 4 ? 2 : 3);
-      host.innerHTML = `<div class="choices-grid multi" style="grid-template-columns:repeat(${cols},1fr)">${q.choices.map((c, i) => `<button class="choice-btn" data-i="${i}" aria-pressed="false">${choiceInner(q, c, i)}</button>`).join('')}</div>
+      host.innerHTML = `<div class="choices-grid multi" style="grid-template-columns:repeat(${cols},1fr)">${q.choices.map((c, i) => choiceBtn(q, c, i, 'aria-pressed="false"')).join('')}</div>
         <button class="btn primary big fmt-check">✓ Vérifier</button>`;
       host.onclick = (e) => {
         if (ctx.done) return;
@@ -212,7 +218,7 @@
       const draw = (reveal) => {
         const seq = reveal ? q.answer.map(idxOf) : slots;
         host.innerHTML = `<div class="order-slots">${seq.map((ci, k) => `<span class="slot ${reveal ? 'good' : ''} ${fixed.has(k) ? 'fixed' : ''}">${ci != null ? q.choices[ci].label : ''}</span>`).join('')}</div>
-          <div class="choices-grid order" style="grid-template-columns:repeat(${q.cols || Math.min(4, n)},minmax(0,1fr))">${q.choices.map((c, i) => `<button class="choice-btn" data-i="${i}" ${slots.includes(i) || reveal ? 'disabled' : ''}>${choiceInner(q, c, i)}</button>`).join('')}</div>
+          <div class="choices-grid order" style="grid-template-columns:repeat(${q.cols || Math.min(4, n)},minmax(0,1fr))">${q.choices.map((c, i) => choiceBtn(q, c, i, slots.includes(i) || reveal ? 'disabled' : '')).join('')}</div>
           ${reveal ? '' : '<button class="btn small-undo">↺ Recommencer</button>'}`;
       };
       draw();
@@ -364,7 +370,7 @@
       const draw = (reveal) => {
         const sq = reveal ? q.answer.map((v) => { const used = new Set(); return tiles.findIndex((t, i) => same(t.value, v) && !used.has(i)); }) : slots;
         host.innerHTML = `<div class="build-slots ${q.join === '' ? 'tight' : ''}">${sq.map((ti, k) => `<button class="build-slot ${ti != null ? 'filled' : ''} ${reveal || good.has(k) ? 'good' : ''}" data-k="${k}">${ti != null ? (k === 0 && q.capitalizeFirst ? M.fr.cap(tiles[ti].label) : tiles[ti].label) : ''}</button>`).join('')}${q.fixedEnd ? `<span class="build-end">${M.esc(q.fixedEnd)}</span>` : ''}</div>
-          ${reveal ? '' : `<div class="build-bank">${order.map((i) => `<button class="build-tile" data-i="${i}" ${slots.includes(i) ? 'disabled' : ''}>${tiles[i].label}${tiles[i].say ? '<span class="say-btn" data-say-t="' + i + '">🔊</span>' : ''}</button>`).join('')}</div>
+          ${reveal ? '' : `<div class="build-bank">${order.map((i) => `${tiles[i].say ? '<span class="build-wrap">' : ''}<button class="build-tile" data-i="${i}" ${slots.includes(i) ? 'disabled' : ''}>${tiles[i].label}</button>${tiles[i].say ? `<button type="button" class="say-btn" aria-label="Écouter : ${M.esc(M.text ? M.text(String(tiles[i].label)) : tiles[i].label)}" data-say-t="${i}">🔊</button></span>` : ''}`).join('')}</div>
           <div class="row-center"><button class="btn small-undo">↺ Recommencer</button><button class="btn primary big fmt-check">✓ Vérifier</button></div>`}`;
       };
       draw();
@@ -730,7 +736,7 @@
         if (revealed) s += `<rect class="est-zone" x="${x(Math.max(q.lo, q.answer - q.tolerance))}" y="${Y - 22}" width="${x(Math.min(q.hi, q.answer + q.tolerance)) - x(Math.max(q.lo, q.answer - q.tolerance))}" height="44" rx="8"/><text class="tl est-ans" x="${x(q.answer)}" y="${Y - 30}">${q.answer}</text>`;
         if (val != null) s += `<text x="${x(val)}" y="${Y - 8}" text-anchor="middle" font-size="34">📍</text>`;
         s += `<rect class="est-hit" x="${X0 - 20}" y="0" width="${X1 - X0 + 40}" height="150" fill="transparent"/></svg>`;
-        host.innerHTML = s + `<div class="viz-status">${val != null ? 'Tu as choisi environ <b>' + val + '</b>' : ''}</div><button class="btn primary big fmt-check">✓ Vérifier</button>`;
+        host.innerHTML = `<div class="nline-scroll">${s}</div>` + `<div class="viz-status">${val != null ? 'Tu as choisi environ <b>' + val + '</b>' : ''}</div><button class="btn primary big fmt-check">✓ Vérifier</button>`;
       };
       draw();
       host.onclick = (e) => {

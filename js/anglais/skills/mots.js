@@ -81,14 +81,26 @@
   });
 
   /* ------------------------------ 2. Les couleurs ------------------------------ */
+  /** « a red ball » / « an orange ball » : an devant un son voyelle. */
+  const aAn = (w) => (/^[aeiou]/i.test(w) ? 'an ' : 'a ') + w;
+  EN.aAn = aAn;
+  /** Couleur accordée au nom français : « maison blanche », « mitaines grises », « chandail vert ». */
+  const FEM = { bleu: 'bleue', vert: 'verte', brun: 'brune', noir: 'noire', gris: 'grise', blanc: 'blanche' };
+  EN.frColour = (fr, { f = false, pl = false } = {}) => {
+    let w = f ? FEM[fr] || fr : fr;
+    if (pl && fr !== 'orange' && !/s$/.test(w)) w += 's';
+    return w;
+  };
   const COLOR_OBJ = [
-    { art: 'en-ball', say: (c, b) => `a ${b ? b + ' ' : ''}${c} ball`, fr: 'ballon', sized: true },
-    { art: 'en-car', say: (c, b) => `a ${b ? b + ' ' : ''}${c} car`, fr: 'auto', sized: true },
-    { art: 'en-house', say: (c, b) => `a ${b ? b + ' ' : ''}${c} house`, fr: 'maison', sized: true },
-    { art: 'en-tuque', say: (c, b) => `a ${b ? b + ' ' : ''}${c} hat`, fr: 'tuque', sized: true },
-    { art: 'en-mittens', say: (c) => `${c} mittens`, fr: 'mitaines' },
-    { art: 'en-sweater', say: (c) => `a ${c} sweater`, fr: 'chandail' },
+    { art: 'en-ball', say: (c, b) => aAn(`${b ? b + ' ' : ''}${c} ball`), fr: 'ballon', le: 'le ballon', sized: true },
+    { art: 'en-car', say: (c, b) => aAn(`${b ? b + ' ' : ''}${c} car`), fr: 'auto', le: 'l\'auto', f: true, sized: true },
+    { art: 'en-house', say: (c, b) => aAn(`${b ? b + ' ' : ''}${c} house`), fr: 'maison', le: 'la maison', f: true, sized: true },
+    { art: 'en-tuque', say: (c, b) => aAn(`${b ? b + ' ' : ''}${c} toque`), fr: 'tuque', le: 'la tuque', f: true, sized: true },
+    { art: 'en-mittens', say: (c) => `${c} mittens`, fr: 'mitaines', le: 'les mitaines', f: true, pl: true },
+    { art: 'en-sweater', say: (c) => aAn(`${c} sweater`), fr: 'chandail', le: 'le chandail' },
   ];
+  /** « maison blanche », « gros ballon rouge » */
+  EN.frObjColour = (o, c, size) => `${size ? (size === 'big' ? (o.f ? 'grosse' : 'gros') : (o.f ? 'petite' : 'petit')) + (o.pl ? 's' : '') + ' ' : ''}${o.fr} ${EN.frColour(c.fr, o)}`;
   EN.COLOR_OBJ = COLOR_OBJ;
   const colourWords = (maxLvl) => EN.ofTheme('colours', maxLvl);
   M.registerSkill({
@@ -114,10 +126,10 @@
         const target = M.pick(set);
         return {
           prompt: 'Écoute et touche le bon dessin.', audio: EN.audio(obj.say(target.word)), format: 'choice', cols: 4,
-          choices: set.map((c) => ({ label: EN.pic({ art: obj.art, color: c.id, fr: obj.fr + ' ' + c.fr }, 72), value: c.id })),
+          choices: set.map((c) => ({ label: EN.pic({ art: obj.art, color: c.id, fr: EN.frObjColour(obj, c) }, 72), value: c.id })),
           answer: target.id,
           hint: 'Écoute bien le mot de couleur. Réécoute avec 🐢.',
-          explain: `${EN.ear(obj.say(target.word))} : ${obj.fr} <b>${M.esc(target.fr)}</b> ${EN.pic({ art: obj.art, color: target.id }, 30)}.`,
+          explain: `${EN.ear(obj.say(target.word))} : ${obj.fr} <b>${M.esc(EN.frColour(target.fr, obj))}</b> ${EN.pic({ art: obj.art, color: target.id }, 30)}.`,
         };
       }
       // lvl 2 : taille + couleur + objet (6 choix : 3 couleurs × gros/petit)
@@ -126,13 +138,12 @@
       const all = [];
       cols.forEach((c) => ['big', 'little'].forEach((b) => all.push({ c, b, value: b + '-' + c.id })));
       const t = M.pick(all);
-      const frSize = (b) => (b === 'big' ? 'gros' : 'petit');
       return {
         prompt: 'Écoute bien : la taille et la couleur !', audio: EN.audio(obj.say(t.c.word, t.b)), format: 'choice', cols: 3,
-        choices: M.shuffle(all).map((x) => ({ label: `<span class="en-pic-lbl" style="min-height:84px;justify-content:flex-end">${EN.pic({ art: obj.art, color: x.c.id, fr: frSize(x.b) + ' ' + obj.fr + ' ' + x.c.fr }, x.b === 'big' ? 80 : 40)}</span>`, value: x.value })),
+        choices: M.shuffle(all).map((x) => ({ label: `<span class="en-pic-lbl" style="min-height:84px;justify-content:flex-end">${EN.pic({ art: obj.art, color: x.c.id, fr: EN.frObjColour(obj, x.c, x.b) }, x.b === 'big' ? 80 : 40)}</span>`, value: x.value })),
         answer: t.value,
         hint: `<span lang="en">Big</span> = gros, <span lang="en">little</span> = petit. Écoute encore avec 🐢.`,
-        explain: `${EN.ear(obj.say(t.c.word, t.b))} : ${frSize(t.b)} · <b>${M.esc(t.c.fr)}</b>. ${EN.ear('big')} = gros, ${EN.ear('little')} = petit.`,
+        explain: `${EN.ear(obj.say(t.c.word, t.b))} : ${EN.frObjColour(obj, t.c, t.b).replace(EN.frColour(t.c.fr, obj), `<b>${M.esc(EN.frColour(t.c.fr, obj))}</b>`)}. ${EN.ear('big')} = gros, ${EN.ear('little')} = petit.`,
       };
     },
   });
@@ -146,7 +157,9 @@
     pda: 'ALS 1er cycle — Repertoire; routines (counting)',
     gen({ lvl = 0 }) {
       const nums = EN.ofTheme('numbers', 2);
-      if (lvl < 2 || Math.random() < 0.4) {
+      // niveaux 0–1 : surtout la dictée de nombres, parfois « Show me … » (collections plus petites)
+      const showMe = lvl === 2 ? Math.random() >= 0.4 : Math.random() < 0.35;
+      if (!showMe) {
         const pool = lvl === 0 ? nums.filter((w) => w.n <= 10) : lvl === 1 ? nums.filter((w) => w.n >= 6) : nums.filter((w) => w.n >= 11);
         const t = M.pickWeighted(pool, (w) => w.id, 'en-nombres');
         return {
@@ -155,9 +168,9 @@
           explain: `${EN.ear(t.word)} = <b>${t.n}</b> (${M.esc(t.fr)}).`,
         };
       }
-      // lvl 2 : « Show me eight apples. » → la bonne collection
+      // « Show me eight apples. » → la bonne collection
       const [emoji, plural] = M.pick(COUNT_OBJ);
-      const n = M.rnd(4, 12);
+      const n = lvl === 0 ? M.rnd(2, 6) : lvl === 1 ? M.rnd(3, 9) : M.rnd(4, 12);
       const vals = M.shuffle([n, n - 1, n + 1, n + (Math.random() < 0.5 ? 2 : -2)].filter((v, i, a) => v >= 2 && a.indexOf(v) === i)).slice(0, 4);
       if (!vals.includes(n)) vals[0] = n;
       const word = EN.word[nums[n].id].word;

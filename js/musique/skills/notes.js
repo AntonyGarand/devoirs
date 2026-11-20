@@ -99,20 +99,21 @@
         return {
           prompt: `Quelle note est la plus ${B(want)} : ${B(nm(a))} ou ${B(nm(b))} ?`,
           format: 'choice', answer: nm(ans), cols: 2, choices: [a, b].map((d) => ({ label: `<span class="mu-big">${nm(d)}</span>`, value: nm(d) })),
-          hint: 'Dans la gamme, les notes montent : do est la plus grave, puis ré, mi… jusqu\'à si. Sur le piano, plus on va vers la droite, plus c\'est aigu.',
-          explain: `${B(nm(ans))} est plus ${want} : ${want === 'aiguë' ? 'elle vient plus loin dans la gamme (plus à droite sur le piano)' : 'elle vient plus tôt dans la gamme (plus à gauche sur le piano)'}.`,
+          hint: 'Dans la gamme, les notes montent : le do est le plus grave, puis ré, mi… jusqu\'à si. Sur le piano, plus on va vers la droite, plus c\'est aigu.',
+          // « la note la plus aiguë », mais « le ré est plus aigu » (les noms de notes sont masculins)
+          explain: `Le ${B(nm(ans))} est plus ${want === 'aiguë' ? 'aigu' : 'grave'} : il vient ${want === 'aiguë' ? 'plus loin dans la gamme (plus à droite sur le piano)' : 'plus tôt dans la gamme (plus à gauche sur le piano)'}.`,
           viz: (el) => MU.player(el, [a, b].map((d) => ({ label: nm(d), events: [pno(d, 0, 0.7)] })), { autoplay: false }),
         };
       }
-      // ecoute : un do, puis une note voisine ou lointaine
-      const near = pick([1, 2]), far = pick([5, 6, 7]);
+      // ecoute : un do, puis une note proche (ré, mi) ou lointaine (sol, la, si — jamais le do aigu, qui s'appelle aussi « do »)
+      const near = pick([1, 2]), far = pick([4, 5, 6]);
       const isNear = Math.random() < 0.5, d = isNear ? near : far;
       const evs = [pno(0, 0, 0.6), pno(d, 0.8, 0.8)];
       return {
         prompt: `Écoute : on joue ${B('do')}, puis une autre note. Laquelle ?`,
         format: 'choice', answer: nm(d), cols: 2, choices: shuffle([near, far]).map((x) => ({ label: `<span class="mu-big">${nm(x)}</span>`, value: nm(x) })),
-        hint: `${nm(near)} est tout près de do : la 2e note monte un tout petit peu. ${nm(far)} est loin : la 2e note monte beaucoup.`,
-        explain: `C'était ${B(nm(d))} : la note ${isNear ? 'monte un petit peu (elle est voisine de do)' : 'monte beaucoup (elle est loin de do dans la gamme)'}.`,
+        hint: `Le ${nm(near)} est proche du do : la 2e note monte un petit peu. Le ${nm(far)} est loin : la 2e note monte beaucoup.`,
+        explain: `C'était le ${B(nm(d))} : la note ${isNear ? `monte un petit peu (le ${nm(d)} est proche du do)` : `monte beaucoup (le ${nm(d)} est loin du do dans la gamme)`}.`,
         _mu: { items: [{ events: evs }] }, viz: (el) => MU.player(el, [{ label: 'Écoute', events: evs }], { big: true }),
       };
     },

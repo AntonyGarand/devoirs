@@ -4,7 +4,8 @@
 .progress { flex: 1; height: 18px; background: #fff; border: 3px solid var(--line); border-radius: 999px; overflow: hidden }
 .progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--yel), var(--org)); transition: width .4s }
 .q-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap }
-.learn-link { font-weight: 800; font-size: .95rem; text-decoration: none }
+.learn-link { font-weight: 800; font-size: .95rem; text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; padding: 0 10px; border-radius: 999px }
+.learn-link:hover { background: var(--Bb) }
 .q-prompt-row { display: flex; gap: 12px; align-items: flex-start }
 .q-prompt { flex: 1; font-size: 1.45rem; font-weight: 700; line-height: 1.5 }
 .q-prompt .eq { font-size: 3rem; font-weight: 900; display: flex; gap: 14px; align-items: center; justify-content: center; flex-wrap: wrap; margin: 6px 0 }
@@ -18,6 +19,7 @@
 .q-body { display: grid; grid-template-columns: 1fr 290px; gap: 18px; margin-top: 14px }
 .q-body.noviz { grid-template-columns: 1fr; max-width: 520px; margin-left: auto; margin-right: auto }
 .q-body.noviz .q-left { display: none }
+.q-left, .q-right { min-width: 0 } /* un visuel large défile dans .q-viz au lieu d'élargir la page */
 @media (max-width: 860px) { .q-body { grid-template-columns: 1fr } .q-prompt { font-size: 1.25rem } .q-prompt .eq { font-size: 2.4rem } }
 .q-viz { background: #fbfaf6; border: 3px solid var(--line); border-radius: var(--radius); padding: 14px; min-height: 120px; overflow-x: auto }
 .q-viz:empty { display: none }
@@ -25,7 +27,7 @@
 .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px }
 .key { font-size: 1.8rem; font-weight: 900; padding: 10px 0; border-radius: 16px; background: #fff; box-shadow: 0 5px 0 var(--line); border: 3px solid var(--line) }
 .key:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--line) }
-.key.ok { grid-column: span 3; background: var(--C); color: #fff; border-color: #04805f; box-shadow: 0 5px 0 #04805f; font-size: 1.4rem }
+.key.ok { grid-column: span 3; background: var(--C-strong); color: #fff; border-color: var(--C-strong-edge); box-shadow: 0 5px 0 var(--C-strong-edge); font-size: 1.4rem }
 .key.del { background: #fff1f3 }
 .key:disabled { opacity: .45 }
 .choices-grid { display: grid; gap: 10px }
@@ -39,7 +41,7 @@
 .order-slots .slot { min-width: 64px; min-height: 52px; border: 3px dashed #c7c2b4; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: 900; padding: 0 6px }
 .small-undo { margin-top: 10px }
 .q-feedback { text-align: center; font-size: 1.25rem; font-weight: 900; min-height: 2em; margin: 12px 0 6px; display: flex; flex-direction: column; align-items: center; justify-content: center }
-.q-feedback.good { color: var(--C) }
+.q-feedback.good { color: var(--C-strong) }
 .q-feedback.bad { color: var(--red) }
 .q-feedback.hint { color: var(--ink) }
 .q-next { width: 100%; animation: pop .5s }

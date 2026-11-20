@@ -62,6 +62,10 @@
     O('laine', 'la balle de laine', '🧶', { texture: 'doux', magnet: false }),
     O('papier-sable', 'le papier sablé', 'sc-papier-sable', { texture: 'rugueux', magnet: false }),
     O('regle', 'la règle de plastique', 'sc-regle', { mat: 'plastique', magnet: false }),
+    O('foulard', 'le foulard de laine', '🧣', { texture: 'doux', magnet: false }),
+    O('mitaine', 'la mitaine de laine', '🧤', { texture: 'doux', magnet: false }),
+    O('coco', 'la noix de coco', '🥥', { texture: 'rugueux', magnet: false }),
+    O('ananas', 'l\'ananas', '🍍', { texture: 'rugueux', magnet: false }),
   ];
   /** Genre et nombre (accords : il / elle / ils / elles, fait / faite). */
   SC.fem = (o) => o.nom.startsWith('la ') || ['epingle', 'orange', 'orange-pelee', 'eponge', 'assiette', 'lunettes'].includes(o.id);

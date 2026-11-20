@@ -16,7 +16,36 @@
     desc: 'Le Soleil est une étoile, la Terre une planète, la Lune un satellite; l\'ombre change pendant la journée; le jour et la nuit.',
     pda: 'Terre et espace D.1.a — position apparente du Soleil et longueur de l\'ombre; D.2.a — Soleil (étoile), Terre (planète), Lune (satellite naturel) (1er cycle); enrichissement en lvl 2 : C.1.a — jour et nuit, rotation de la Terre (2e cycle)',
     gen({ lvl }) {
-      const t = lvl === 0 ? M.pick(['astres', 'astres', 'midi']) : lvl === 1 ? M.pick(['midi', 'cote', 'astres', 'vf']) : M.pick(['nuit', 'nuit', 'vf', 'cote']);
+      const t = lvl === 0 ? M.pick(['astres', 'midi', 'jn', 'jn', 'quel', 'vf']) : lvl === 1 ? M.pick(['midi', 'cote', 'astres', 'vf', 'jn', 'quel']) : M.pick(['nuit', 'nuit', 'vf', 'cote', 'q2', 'q2']);
+      if (t === 'jn') {
+        const n = lvl === 0 ? 2 : 3;
+        const items = [...Q.pickN(SC.JOUR_NUIT.jour, n).map((l) => ({ label: l, bin: 'jour', key: l })), ...Q.pickN(SC.JOUR_NUIT.nuit, n).map((l) => ({ label: l, bin: 'nuit', key: l }))];
+        return {
+          prompt: 'Est-ce que ça se passe le <b>jour</b> ou la <b>nuit</b> ? Classe-les.', format: 'sort', items,
+          bins: [{ id: 'jour', label: '☀️ Le jour' }, { id: 'nuit', label: '🌙 La nuit' }],
+          hint: 'Le jour, le Soleil nous éclaire. La nuit, le ciel est noir.',
+          explain: 'Le <b>jour</b>, notre côté de la Terre est éclairé par le Soleil. La <b>nuit</b>, il est dans l\'ombre : le ciel est noir et on voit les étoiles.',
+          _sc: 'jn',
+        };
+      }
+      if (t === 'quel') {
+        const x = M.pick(SC.ASTRE_Q);
+        return {
+          prompt: x.t, format: 'choice', answer: x.a, cols: 3,
+          choices: M.shuffle(SC.ASTRES.slice()).map((a) => ({ label: `${M.art.html('ciel-' + a.id, { size: 40, alt: a.label.replace(/^\S+ /, '') })} ${a.label.replace(/^\S+ /, '')}`, value: a.id })),
+          hint: 'Une étoile fait sa propre lumière. On vit sur une planète. Un satellite tourne autour d\'une planète.',
+          explain: x.e,
+        };
+      }
+      if (t === 'q2') {
+        const x = M.pick(SC.CIEL_Q2);
+        return {
+          prompt: x.t, format: 'choice', answer: x.a, cols: 1,
+          choices: M.shuffle([{ label: x.a, value: x.a }, ...x.d.map(([l, w]) => ({ label: l, value: l, why: w }))]),
+          hint: 'Rappelle-toi : c\'est la Terre qui tourne, et l\'ombre est toujours du côté opposé au Soleil.',
+          explain: x.e,
+        };
+      }
       if (t === 'astres') {
         return {
           prompt: 'Le Soleil, la Terre et la Lune : associe chacun à ce qu\'il est.', format: 'match',
@@ -62,10 +91,11 @@
           explain: 'Le côté de la Terre tourné vers le Soleil est éclairé : il fait <b>jour</b>. L\'autre côté est dans l\'ombre : il fait <b>nuit</b>. La Terre tourne sur elle-même en un jour : chaque maison passe du jour à la nuit !',
         };
       }
-      const s = M.pick(SC.CIEL_VF);
+      const s = M.pick(SC.CIEL_VF.filter((x) => lvl > 0 || x.facile));
       return { prompt: `Vrai ou faux ? « ${s.t} »`, format: 'tf', answer: s.v, explain: s.e, hint: 'Qui fait sa propre lumière ? Qui tourne ?' };
     },
     check(q) {
+      if (q._sc === 'jn') return Q.checkSort(q, (k) => (SC.JOUR_NUIT.jour.includes(k) ? 'jour' : SC.JOUR_NUIT.nuit.includes(k) ? 'nuit' : '?'));
       if (q._sc && q._sc.kind === 'midi') return Q.checkOne(q, (v) => v === 'midi');
       if (q._sc && q._sc.kind === 'cote') return Q.checkOne(q, (v) => v === String(q._sc.right));
     },

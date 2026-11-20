@@ -49,6 +49,16 @@
   const norm = (s) => String(s).normalize('NFC').replace(/[’`]/g, '\'').trim().toLocaleLowerCase('fr-CA');
   FR.norm = norm;
   let REAL = null;
+  /** Mots courants (homophones et quasi-homophones fréquents) absents de la banque : jamais proposés comme faute. */
+  const VRAIS_MOTS = ('sens sent sang cent sans penser pensé panser pansé pense panse danse dense chair cher chère chaire pré prés près prêt ' +
+    'coté côté côte cote cotte été étés étai était fée fées fait faits poing point mère mer maire chaîne chêne foi fois foie ' +
+    'cou coup coût dé dés des dès thé tes nez né nés allé allée allez aller aile elle hôtel autel ver vers vert verre bal balle ' +
+    'pot peau pause pose mais mes mets met dessin dessein cuir cuire tour tours tous tout toux ton thon ballet balai sale salle ' +
+    'pâte patte tante tente compte conte comte voie voix voit vois saut sceau seau sot vin vingt vain chant champ rose roses ' +
+    'gros grosse gras grâce glace classe chasse chausse cause cases case cache caché cacher marché marcher marchez marche ' +
+    'parlé parler parlez jouet jouait jouer jouez joué été boucher bouché boucle poucet pousser poussé léger légère ' +
+    'pain pin peint plein plain plaine pleine mien main maint lait laid les laie mot maux haut eau au aux os ' +
+    'fin faim feint teint thym tain sein saint sain seing cinq cygne signe').split(' ').filter(Boolean);
   FR.realSet = () => {
     if (REAL) return REAL;
     REAL = new Set();
@@ -58,6 +68,12 @@
     (FR.HOMOPHONES || []).forEach((g) => g.forEach(add));
     (FR.FAMILLES || []).forEach((f) => [...f.mots, ...f.piege, ...f.loin].forEach(add));
     (FR.REELS || []).forEach(add);
+    // formes des verbes en -er de la banque (arriver → arrive, arrivez, arrivé, arrivée…) : jamais proposées comme faute
+    (FR.MOTS || []).filter((m) => m.cls === 'v' && /er$/.test(m.w)).forEach((m) => {
+      const r = m.w.slice(0, -2);
+      ['e', 'es', 'ent', 'ons', 'ez', 'é', 'ée', 'és', 'ées', 'ais', 'ait', 'aient', 'a', 'as', 'ai', 'era', 'erai', 'eras', 'ions', 'iez'].forEach((t) => add(r + t));
+    });
+    VRAIS_MOTS.forEach(add);
     return REAL;
   };
   FR.isReal = (w) => FR.realSet().has(norm(w));
@@ -67,16 +83,19 @@
   /* ---------------- Fautes plausibles ---------------- */
   const V = 'aeiouyéèêàâîôûœ';
   // [regex, remplacements] — ordre de préférence (même son d'abord)
+  // Les « lookbehind » (?<…) n'existent qu'à partir de Safari 16.4 : construits à l'exécution, ignorés si non pris en charge
+  // (une regex littérale ferait échouer tout le fichier sur un vieil iPad).
+  const R = (src) => { try { return new RegExp(src, 'g'); } catch (e) { return null; } };
   const RULES = [
     [/eau/g, ['au', 'o']],
-    [/(?<!e)au/g, ['o', 'eau']],
-    [/(?<![aeoué])o(?![nmiuy])/g, ['au']],
+    [R("(?<!e)au"), ['o', 'eau']],
+    [R("(?<![aeoué])o(?![nmiuy])"), ['au']],
     [/ain(?![aeiouyn])/g, ['in', 'ein']],
     [/ein(?![aeiouyn])/g, ['ain', 'in']],
-    [/(?<![aeoué])in(?![aeiouyn])/g, ['ain']],
+    [R("(?<![aeoué])in(?![aeiouyn])"), ['ain']],
     [/an(?![aeiouyn])/g, ['en']],
-    [/(?<![iéy])en(?![aeiouynt]|t$|s$)/g, ['an']],
-    [/(?<![iéy])ent/g, ['ant']],
+    [R("(?<![iéy])en(?![aeiouynt]|t$|s$)"), ['an']],
+    [R("(?<![iéy])ent"), ['ant']],
     [/ant/g, ['ent']],
     [/am(?=[bp])/g, ['an']],
     [/om(?=[bp])/g, ['on']],
@@ -91,17 +110,17 @@
     [/c(?=[eiy])/g, ['s', 'ss']],
     [/ç/g, ['ss', 's']],
     [/ph/g, ['f']],
-    [/(?<=[aeiouy])s(?=[aeiouy])/g, ['z']],
+    [R("(?<=[aeiouy])s(?=[aeiouy])"), ['z']],
     [/qu/g, ['k', 'c']],
     [/g(?=[ei])/g, ['j']],
     [/j(?=[ei])/g, ['g']],
     [/oi/g, ['oa']],
     [/gn/g, ['ni']],
-    [/tt/g, ['t']], [/ll(?<!ill)/g, ['l']], [/mm/g, ['m']], [/nn/g, ['n']], [/pp/g, ['p']], [/rr/g, ['r']], [/ff/g, ['f']],
-    [/(?<=[aeiou])t(?=[aeiou])/g, ['tt']], [/(?<=[aeiou])r(?=[aeiou])/g, ['rr']], [/(?<=[aeiou])l(?=[aeiou])/g, ['ll']],
+    [/tt/g, ['t']], [R("ll(?<!ill)"), ['l']], [/mm/g, ['m']], [/nn/g, ['n']], [/pp/g, ['p']], [/rr/g, ['r']], [/ff/g, ['f']],
+    [R("(?<=[aeiou])t(?=[aeiou])"), ['tt']], [R("(?<=[aeiou])r(?=[aeiou])"), ['rr']], [R("(?<=[aeiou])l(?=[aeiou])"), ['ll']],
     [/é/g, ['e']], [/è/g, ['e']], [/ê/g, ['e']], [/à/g, ['a']], [/â/g, ['a']], [/ô/g, ['o']], [/î/g, ['i']], [/ç/g, ['c']],
-    [/(?<=[^aeiouy])e$/g, ['']],
-  ];
+    [R("(?<=[^aeiouy])e$"), ['']],
+  ].filter((r) => r[0]);
   /** Toutes les fautes candidates (une seule transformation chacune), par ordre de préférence. */
   FR.fautesAll = function (w, extra = []) {
     const out = [];
@@ -123,10 +142,13 @@
     extra.forEach(push);
     return out.filter((x) => x.length >= 2 && !/^\s|\s$|''|--/.test(x));
   };
-  /** n fautes plausibles, toutes différentes du mot et entre elles, jamais un vrai mot. */
-  FR.fautes = function (w, n = 2, { exclude = [] } = {}) {
+  /** Finale en [é] écrite é / ée / és / er / ez (pas encore enseignée en début de 2e année). */
+  const FIN_E = (x) => (/(ées|ée|és|é|er|ez)$/.exec(norm(x)) || [''])[0];
+  /** n fautes plausibles, toutes différentes du mot et entre elles, jamais un vrai mot.
+      noEr : aucune faute qui change une finale é / er / ez (ni qui en crée une). */
+  FR.fautes = function (w, n = 2, { exclude = [], noEr = false } = {}) {
     const bad = new Set([norm(w), ...exclude.map(norm)]);
-    const ok = FR.fautesAll(w).filter((x) => !bad.has(norm(x)) && !FR.isReal(x));
+    const ok = FR.fautesAll(w).filter((x) => !bad.has(norm(x)) && !FR.isReal(x) && (!noEr || FIN_E(x) === FIN_E(w)));
     // préférer les premières (même son), avec un peu de hasard
     const top = M.shuffle(ok.slice(0, Math.max(n + 2, 4)));
     const res = [];

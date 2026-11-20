@@ -220,6 +220,8 @@
     const n = h % 12;
     return n === 1 ? 'une heure' : M.frNum(n) + ' heures';
   }
+  /** Heure juste sur 24 h, lue comme elle s'écrit : 13 h → « treize heures », 12 h → « midi ». */
+  const h24Words = (h) => (h === 12 ? 'midi' : h === 1 ? 'une heure' : M.frNum(h) + ' heures');
   /** « trois heures et quart », « quatre heures moins le quart »… */
   function timeWords(h, m) {
     const noon = (x) => { x = ((x % 24) + 24) % 24; return x === 12 || x === 0; };
@@ -1036,7 +1038,14 @@
   function heureGen(lvl) {
     const [h, m] = pickTime(lvl);
     const r = Math.random();
+    // lvl 2 : quelques heures aux 5 minutes = défi 🌟 (au-delà de « heures, demies, quarts »)
     const type = lvl === 0 ? (r < 0.7 ? 'read' : 'rev') : lvl === 1 ? (r < 0.5 ? 'read' : r < 0.8 ? 'rev' : 'where') : (r < 0.4 ? 'read' : r < 0.65 ? 'rev' : r < 0.85 ? 'phrase' : 'where');
+    const q = heureGen2(lvl, h, m, type);
+    if (m % 15 && type !== 'where') q.say = q.say || q.prompt.replace(/<[^>]*>/g, '');
+    if (m % 15 && type !== 'where') q.prompt = '<span class="tag enrich" title="Défi : au-delà du programme de 2e année">🌟 Défi</span> ' + q.prompt;
+    return q;
+  }
+  function heureGen2(lvl, h, m, type) {
     const q = {};
     if (type === 'read') {
       q.prompt = 'Quelle heure est-il ?';
@@ -1141,7 +1150,7 @@
   M.registerSkill({
     id: 'heure', domain: D, title: 'Lire l\'heure', icon: '🕒', starter: true,
     desc: 'Lis l\'heure sur une horloge à aiguilles : heures justes, demies et quarts.',
-    pda: 'Mesure — Temps G.1 : lire l\'heure (heures, demies, quarts) sur une horloge à aiguilles',
+    pda: 'Mesure — Temps G.1 : lire l\'heure (heures, demies, quarts) sur une horloge à aiguilles; lvl 2 : quelques heures aux 5 minutes, marquées 🌟 Défi (enrichissement)',
     learn: 'heure',
     gen: ({ lvl }) => heureGen(lvl),
   });
@@ -1410,7 +1419,7 @@
     } else if (gt === 'firstX') {
       const wd = M.rnd(0, 6);
       const d = 1 + mod(wd - first, 7);
-      q.prompt = `Regarde le calendrier. Quelle est la date du <b>premier ${DAYS[wd]}</b> de ${MONTHS[mo]} ?`;
+      q.prompt = `Regarde le calendrier. Quelle est la date du <b>premier ${DAYS[wd]}</b> ${M.fr.de(MONTHS[mo])} ?`;
       q.input = 'number';
       q.answer = d;
       q.hint = `Trouve la colonne des ${DAYS[wd]}s, puis descends jusqu'au premier nombre.`;
@@ -1582,16 +1591,26 @@
       return q;
     }
     // elapsed / end : durée en heures entières
-    const ctx = M.pick([['Le film', 'il'], ['La fête d\'anniversaire', 'elle'], ['La visite au zoo', 'elle'], ['La partie de soccer', 'elle'], ['Le cours de natation', 'il'], ['La sortie à la cabane à sucre', 'elle']]);
-    const [who, pr] = ctx;
-    const d = M.rnd(1, 4), s = M.rnd(1, 12 - d);
+    // Heures de début et durées réalistes pour chaque activité (après-midi en 13 h – 17 h)
+    const ctx = M.pick([
+      ['Le film', 'il', [13, 14, 15, 18, 19], [2]],
+      ['La fête d\'anniversaire', 'elle', [13, 14, 15], [2, 3]],
+      ['La visite au zoo', 'elle', [9, 10, 13], [2, 3, 4]],
+      ['La partie de soccer', 'elle', [9, 10, 17, 18], [1, 2]],
+      ['Le cours de natation', 'il', [9, 10, 16, 17], [1]],
+      ['La sortie à la cabane à sucre', 'elle', [10, 11, 13], [2, 3, 4]],
+      ['Le pique-nique au parc', 'il', [11, 12], [1, 2, 3]],
+      ['La journée de ski', 'elle', [9, 10], [3, 4]],
+    ]);
+    const [who, pr, starts, durs] = ctx;
+    const d = M.pick(durs), s = M.pick(starts);
     const e = s + d;
     const twoClocks = (showEnd) => `<div class="l-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
       <div class="l-tile"><b>Début</b>${clockSvg(s, 0, { size: 180 })}<div class="me-dig">${fmt(s, 0)}</div></div>
       <div class="l-tile"><b>Fin</b>${showEnd ? clockSvg(e, 0, { size: 180 }) + `<div class="me-dig">${fmt(e, 0)}</div>` : '<div style="font-size:4rem;font-weight:900;color:#c7c2b4">?</div>'}</div></div>`;
     if (type === 'elapsed') {
       q.prompt = `${who} commence à <span class="me-dig">${fmt(s, 0)}</span> et finit à <span class="me-dig">${fmt(e, 0)}</span>. Combien d'heures dure-t-${pr} ?`;
-      q.say = `${who} commence à ${timeWords(s, 0)} et finit à ${timeWords(e, 0)}. Combien d'heures dure-t-${pr} ?`;
+      q.say = `${who} commence à ${h24Words(s)} et finit à ${h24Words(e)}. Combien d'heures dure-t-${pr} ?`;
       q.input = 'number';
       q.answer = d;
       q.unit = 'h';
@@ -1600,10 +1619,10 @@
       q.viz = (el) => { claim(el); el.innerHTML = `<div class="viz-hint">Regarde les deux horloges.</div>${twoClocks(true)}<div class="viz-status"></div>`; };
     } else {
       q.prompt = `${who} commence à <span class="me-dig">${fmt(s, 0)}</span> et dure <b>${durTxt(d, 'h')}</b>. À quelle heure finit-${pr} ?`;
-      q.say = `${who} commence à ${timeWords(s, 0)} et dure ${d} ${M.plural(d, 'heure')}. À quelle heure finit-${pr} ?`;
+      q.say = `${who} commence à ${h24Words(s)} et dure ${d} ${M.plural(d, 'heure')}. À quelle heure finit-${pr} ?`;
       q.input = 'choice';
       const opts = new Set([e]);
-      [e - 1, e + 1, s + d + 2, s].forEach((x) => { if (x >= 1 && x <= 12 && opts.size < 4) opts.add(x); });
+      [e - 1, e + 1, s + d + 2, s].forEach((x) => { if (x >= 1 && x <= 23 && opts.size < 4) opts.add(x); });
       q.choices = M.shuffle([...opts]).map((x) => ({ label: `<span class="me-dig">${fmt(x, 0)}</span>`, value: x }));
       q.answer = e;
       q.hint = `Avance de ${d} ${M.plural(d, 'heure')} à partir de ${fmt(s, 0)}.`;

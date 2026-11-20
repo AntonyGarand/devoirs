@@ -1070,9 +1070,9 @@
   M.registerSkill({
     id: 'groupes-egaux', domain: D, title: 'Groupes égaux', icon: '🧺', learn: 'multiplication-partage',
     desc: '3 groupes de 4, des rangées de chaises : l\'addition répétée.',
-    pda: 'Sens des opérations A.3a — sens de la multiplication (addition répétée, disposition rectangulaire)',
+    pda: 'Sens des opérations A.3a — sens de la multiplication (addition répétée, disposition rectangulaire); lvl 2 : notation × marquée 🌟 Défi (enrichissement : au 1er cycle, sens seulement)',
     gen({ lvl }) {
-      const kinds = lvl === 0 ? ['groups', 'groups', 'rep'] : lvl === 1 ? ['groups', 'array', 'array', 'match', 'rep'] : ['times', 'times', 'array', 'match'];
+      const kinds = lvl === 0 ? ['groups', 'groups', 'rep'] : lvl === 1 ? ['groups', 'array', 'array', 'match', 'rep'] : ['times', 'groups', 'array', 'match'];
       const kind = pick(kinds);
       let g, k;
       if (lvl === 0) { g = rnd(2, 4); k = rnd(2, 5); }
@@ -1123,9 +1123,9 @@
           explain: `Il y a ${g} ${isArray ? 'rangées' : 'groupes'} de ${k}, donc on additionne ${k} ${g} fois : ${sumTxt}.`,
         }, viz);
       }
-      // times (lvl 2) : notation ×
+      // times (lvl 2) : notation × = défi 🌟 (au 1er cycle, le PDA vise le sens seulement)
       return withViz({
-        prompt: instr(`${g} × ${k} veut dire « ${g} ${isArray ? 'rangées' : 'groupes'} de ${k} »`) + eq(g, '×', k, '=', '{?}'),
+        prompt: '<span class="tag enrich" title="Défi : au-delà du programme de 2e année">🌟 Défi</span> ' + instr(`${g} × ${k} veut dire « ${g} ${isArray ? 'rangées' : 'groupes'} de ${k} »`) + eq(g, '×', k, '=', '{?}'),
         say: `${g} fois ${k} égale combien ? ${g} groupes de ${k}.`,
         input: 'number', answer: N,
         hint: `Fais ${repeated(g, k)}.`,
@@ -1155,19 +1155,19 @@
         const total = n * k + rest;
         const [e, word, one] = pick(SHARE);
         const askRest = rest && Math.random() < 0.5;
-        const txt = `On partage ${total} ${word} également entre ${n} enfants : chaque enfant doit en avoir le même nombre. ` + (askRest ? `Combien ${de(word)} reste-t-il quand on ne peut plus faire un tour complet ?` : `Combien ${de(word)} chaque enfant reçoit-il ?`);
+        const txt = `On partage ${total} ${word} en parts égales entre ${n} enfants. ` + (askRest ? `Combien ${de(word)} reste-t-il ?` : `Combien en reçoit chaque enfant ?`);
         return withViz({
           prompt: `<div class="op-story"><span class="op-em">${e}</span>${txt}</div>`, say: txt,
           input: 'number', answer: askRest ? rest : k,
           hint: `Donne ${one} à chaque enfant, chacun son tour.`,
-          explain: `${n} enfants qui reçoivent chacun ${k}, ça fait ${repeated(n, k)} = ${n * k}.` + (rest ? ` Il en reste ${rest} : pas assez pour un autre tour.` : '') + (askRest ? ` Réponse : <b>${rest}</b>.` : ` Chaque enfant reçoit <b>${k}</b>.`),
+          explain: `${n} enfants qui reçoivent chacun ${k}, ça fait ${repeated(n, k)} = ${n * k}.` + (rest ? ` Il en reste ${rest} : pas assez pour en donner encore ${n === 2 ? 'aux deux' : 'à tous'}.` : '') + (askRest ? ` Réponse : <b>${rest}</b>.` : ` Chaque enfant reçoit <b>${k}</b>.`),
         }, (el) => shareViz(el, { total, n, emoji: e, mode: 'share' }));
       }
       const total = n * k + rest;
       const [e, word, cont, fem] = pick(BOXES);
       const pleins = fem ? 'pleines' : 'pleins';
       const askRest = rest && Math.random() < 0.5;
-      const txt = `On a ${total} ${word}. On les place dans des ${cont} de ${k}. ` + (askRest ? `Combien ${de(word)} restent en dehors des ${cont} ${pleins} ?` : `Combien ${de(cont)} ${pleins} peut-on remplir ?`);
+      const txt = `On a ${total} ${word}. On les place dans des ${cont} de ${k}. ` + (askRest ? `Combien ${de(word)} reste-t-il à la fin ?` : `Combien ${de(cont)} ${pleins} peut-on remplir ?`);
       return withViz({
         prompt: `<div class="op-story"><span class="op-em">${e}</span>${txt}</div>`, say: txt,
         input: 'number', answer: askRest ? rest : n,

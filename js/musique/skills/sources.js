@@ -73,7 +73,8 @@
       if (t === 'oreille') {
         const pool = lvl === 0 ? MU.CORPS.filter((c) => c.id !== 'cuisses') : MU.CORPS;
         const x = pick(pool);
-        const evs = [0, 0.55, 1.1].map((t) => ({ t, inst: x.inst, vel: 0.9 }));
+        const gap = pick([0.5, 0.65]);
+        const evs = MU.seq(pick([2, 3, 4])).map((i) => ({ t: i * gap, inst: x.inst, vel: 0.9 }));
         return {
           prompt: 'Écoute. Avec quelle partie du corps fait-on ce son ?', format: 'choice', answer: x.id, cols: pool.length,
           choices: shuffle(pool).map((c) => ({ label: `<span class="mu-lblv"><span class="mu-big">${c.icon}</span><span>${c.nom}</span></span>`, value: c.id })),

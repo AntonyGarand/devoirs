@@ -73,7 +73,8 @@ Notation PDA : *Section, Connaissances, lettre.numéro.lettre* (page du PDF). «
 | Marqueurs *et, ou, puis*; *d'abord, ensuite, enfin* | → | ★ / → | ✅ (dans les textes) | Lire A.4 c.i–ii (p. 70) |
 | Jeux de sonorités (rime, répétition) | → | → | ✅ | Lire A.3 j (p. 70) |
 | Communication orale (prise de parole, discussion) | | | ❌ non notable automatiquement; ✅ **écoute** d'un court texte lu | PDA volet oral (2011) |
-| Écrire un texte (production libre) | | | ❌ (pas de correction automatique fiable) | Écrire — Organisation et cohérence |
+| Écrire des textes variés : phrase à partir d'une image, se relire (majuscule, point, espaces) | → | ★ | ✅ `fr-ecrire-phrases` (domaine `fr-ecriture`) : construire et repérer la phrase bien écrite (noté); écrire sa propre phrase sur une feuille + liste de vérification (`reflect`, non noté) | Compétence 2 « Écrire des textes variés »; Syntaxe A.1, B.1 |
+| Apprécier des œuvres littéraires : écouter / lire une histoire, réagir, justifier son avis | → | → | ✅ `fr-apprecier` : 8 histoires originales lues à voix haute, compréhension (notée) + « As-tu aimé ? Pourquoi ? » (`reflect`, non noté) | Compétence 3 « Apprécier des œuvres littéraires »; Lire A.3, C.2.3 g |
 
 Exclus aussi : temps autres que le présent, accord sujet-verbe, homophones grammaticaux systématiques (*a/à, et/est, son/sont*) —
 ils n'apparaissent que comme **contexte de dictée** (phrase-repère), jamais comme règle à appliquer.

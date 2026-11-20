@@ -1,7 +1,7 @@
 /* Design system — 1. Jetons (couleurs, rayons, typographie) et base */
 /* ===================== Base ===================== */
 :root {
-  --bg: #fef6e4; --ink: #2b2d42; --card: #fff; --muted: #7a7f99; --line: #e7e1d3;
+  --bg: #fef6e4; --ink: #2b2d42; --card: #fff; --muted: #5f6480; --line: #e7e1d3;
   --A: #ef476f; --Aa: #ffe1e8; --B: #118ab2; --Bb: #dff3fb; --C: #06a77d; --Cc: #dcf7ee;
   --yel: #ffd166; --org: #f78c40; --pur: #9b5de5; --red: #d62828;
   --radius: 22px;
@@ -17,6 +17,8 @@ body {
 a { color: var(--B) }
 button { font-family: inherit; cursor: pointer; color: inherit }
 [hidden] { display: none !important }
+/* Masqué à l'écran, lu par les lecteurs d'écran */
+.vh { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0 }
 h1, h2, h3 { line-height: 1.2 }
 
 /* Jetons sémantiques (à utiliser dans tout nouveau code) */
@@ -25,6 +27,8 @@ h1, h2, h3 { line-height: 1.2 }
   --fs-sm: .9rem; --fs-md: 1.05rem; --fs-lg: 1.3rem; --fs-xl: 1.6rem; --fs-xxl: 2.6rem;
   --touch: 48px;                 /* cible tactile minimale */
   --good: var(--C); --bad: var(--red); --focus: #3a86ff;
+  /* Vert et bleu foncés : texte blanc sur fond coloré et texte vert sur blanc (contraste >= 4,5:1) */
+  --C-strong: #047857; --C-strong-edge: #035e44; --B-strong: #0b7da3; --B-strong-edge: #08607e;
   --shadow-card: 0 6px 0 var(--line), 0 10px 30px rgba(0,0,0,.05);
   /* Couleurs des matières */
   --subj-maths: #f78c40; --subj-francais: #ef476f; --subj-anglais: #118ab2; --subj-univers: #06a77d; --subj-sciences: #9b5de5; --subj-musique: #e85d9e;

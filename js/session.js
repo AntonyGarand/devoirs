@@ -36,6 +36,13 @@
     const ungraded = M.isUngraded(q);
     const subj = sk ? M.subjectById[M.subjectOf(sk)] : null;
     const isSteps = fmtName === 'steps';
+    // Typographie française (M.typo) à l'AFFICHAGE seulement : consigne, libellés de choix, rétroaction, indice, explication.
+    // La voix lit toujours le texte d'origine (q.say, q.prompt, c.say…) : les clés des clips enregistrés ne changent pas.
+    const enQ = /^en/i.test(q.lang || q.sayLang || '');
+    const ty = (h, lang) => (h && M.typo && !enQ && !/^en/i.test(lang || '') ? M.typo(h) : h);
+    const tyItems = (arr) => arr.map((c) => (c && typeof c.label === 'string' ? { ...c, label: ty(c.label, c.lang) } : c));
+    const qv = /^(choice|multi|order|tf)$/.test(fmtName) && !enQ && (Array.isArray(q.choices) || Array.isArray(q.labels))
+      ? { ...q, ...(Array.isArray(q.choices) ? { choices: tyItems(q.choices) } : {}), ...(Array.isArray(q.labels) ? { labels: tyItems(q.labels) } : {}) } : q;
     // Texte : HTML ou jetons touchables ({w, s}; '¶' = paragraphe)
     const passageBody = passage ? (passage.tokens
       ? passage.tokens.map((t, i) => (t.w === '¶' ? '<span class="p-br"></span>' : `<span class="ptok" data-i="${i}">${M.esc(t.w)}</span>`)).join(' ')
@@ -58,7 +65,7 @@
           <div class="q-left"><div class="q-viz"></div><div class="q-tools"></div></div>
           <div class="q-right">
             <div class="q-input"></div>
-            <div class="q-feedback"></div>
+            <div class="q-feedback" aria-live="polite"></div>
             <div class="q-explain"></div>
             <button class="btn primary big q-next" hidden>${opts.nextLabel || 'Suivant ➜'}</button>
           </div>
@@ -72,8 +79,9 @@
     // Consigne (avec case en ligne {?} si le format la gère)
     const promptHtml = q.prompt || '';
     const hasInline = promptHtml.includes('{?}');
+    const promptView = ty(promptHtml);
     function setInline(html) {
-      el('.q-prompt').innerHTML = hasInline ? promptHtml.replace('{?}', html) : promptHtml;
+      el('.q-prompt').innerHTML = hasInline ? promptView.replace('{?}', html) : promptView;
     }
     setInline('<span class="ans-box">?</span>');
 
@@ -150,7 +158,7 @@
       const f = el('.q-feedback');
       if (!f) return;
       f.className = 'q-feedback ' + cls;
-      f.innerHTML = html ? `<div class="fb-in">${html}</div>` : '';
+      f.innerHTML = html ? `<div class="fb-in">${ty(html)}</div>` : '';
     }
     feedback('', fmt.instruction ? fmt.instruction(q) : 'Réponds 👇');
 
@@ -177,7 +185,7 @@
         if (S.inst && S.inst.reveal) S.inst.reveal();
         runShowMe();
       }
-      if (q.explain) el('.q-explain').innerHTML = `<div class="callout">🦫 ${q.explain}</div>`;
+      if (q.explain) el('.q-explain').innerHTML = `<div class="callout">🦫 ${ty(q.explain)}</div>`;
       if (opts.onNext) { const n = el('.q-next'); n.hidden = false; n.onclick = opts.onNext; }
       if (typeof q.onResult === 'function') { try { q.onResult({ first, ok, ungraded }); } catch (e) { console.error(e); } }
       if (opts.onResult) opts.onResult({ first, ok, ungraded });
@@ -203,7 +211,17 @@
       },
       onKey(fn) { S.keyFn = fn; },
     };
-    try { S.inst = fmt.render(inputEl, q, ctx) || {}; } catch (e) { console.error('format', fmtName, e); inputEl.innerHTML = '<div class="callout warn">Oups, cette question a un problème.</div>'; }
+    /** Question impossible à afficher : message + « Suivant » (rien n'est enregistré, l'enfant n'est jamais bloqué). */
+    function broken() {
+      S.done = true;
+      inputEl.innerHTML = '<div class="callout warn">Oups, cette question a un problème. Passe à la suivante.</div>';
+      feedback('', '');
+      if (opts.onNext) { const n = el('.q-next'); n.hidden = false; n.onclick = opts.onNext; }
+    }
+    if (q._broken) broken();
+    else {
+      try { S.inst = fmt.render(inputEl, qv, ctx) || {}; } catch (e) { console.error('format', fmtName, e); broken(); }
+    }
 
     function keyHandler(e) {
       if (!host.isConnected) return;
@@ -218,7 +236,20 @@
     // Question d'écoute : la musique se fait presque muette.
     const listening = !!(audio || (passage && passage.listenOnly));
     if (M.music) M.music.focus(listening);
-    return { destroy() { document.removeEventListener('keydown', keyHandler); if (listening && M.music) M.music.focus(false); }, ctx };
+    // Question de musique (même dans la révision de toutes les matières) : l'ambiance se tait.
+    const musicQ = !!(q._mu || (subj && subj.id === 'musique'));
+    if (musicQ && M.music && M.music.hold) M.music.hold(true, 'q');
+    let destroyed = false;
+    return {
+      destroy() {
+        if (destroyed) return;
+        destroyed = true;
+        document.removeEventListener('keydown', keyHandler);
+        if (listening && M.music) M.music.focus(false);
+        if (musicQ && M.music && M.music.hold) M.music.hold(false, 'q');
+      },
+      ctx,
+    };
   };
 
   /* =====================================================================
@@ -264,13 +295,14 @@
           items.splice(S.i, items.length - S.i, ...rest);
           return S.i < items.length ? show() : end();
         }
-      } catch (e) { console.error('gen', id, e); q = { prompt: 'Oups, une erreur. Passe à la suivante.', format: 'choice', answer: 1, choices: [{ label: 'OK', value: 1 }] }; }
+      } catch (e) { console.error('gen', id, e); q = { prompt: 'Oups, une erreur.', format: 'info', _broken: true }; }
       el('.progress i').style.width = (S.i / items.length) * 100 + '%';
       el('.s-count').textContent = `${S.i + 1} / ${items.length}`;
       S.current = M.renderQuestion(el('.s-card'), q, {
         skill: sk,
         nextLabel: S.i === items.length - 1 ? 'Voir mes résultats 🏆' : 'Suivant ➜',
         onResult: ({ first, ungraded }) => {
+          if (q._broken) return; // question de secours : jamais comptée
           if (ungraded) { M.progress.participate(sk.id); return; }
           M.progress.record(sk.id, first);
           S.results.push({ id: sk.id, first });

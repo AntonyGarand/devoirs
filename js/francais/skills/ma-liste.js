@@ -81,7 +81,7 @@
     id: SK, domain: 'fr-orthographe', title: 'Ma liste de la semaine', icon: '📝', learn: 'fr-ma-liste-etude',
     desc: 'Pratique les mots que ton enseignante t\'a donnés cette semaine.',
     pda: 'Orthographe d\'usage A.1 — mots à l\'étude (pistes : mémoriser des mots)',
-    needs: ['speech:fr'],
+    needs: ['speech:fr'], sayTexts: () => { const l = FR.listeActive(); return l ? l.mots.flatMap((o) => [o.t, phraseOf(o)].filter(Boolean)) : []; },
     available: () => (FR.listeActive() ? true : 'Demande à un adulte d\'ajouter ta liste de mots (page Parents).'),
     parentNote: 'Tapez la liste de mots de la semaine dans la section « 📝 Ma liste de mots de la semaine » ci-dessous. Les mots les plus souvent ratés reviennent plus souvent.',
     gen({ lvl }) {

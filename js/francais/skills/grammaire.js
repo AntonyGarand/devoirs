@@ -17,10 +17,16 @@
     v: 'Truc : on peut encadrer le verbe avec <b>ne… pas</b>.',
   };
   const taggedHtml = (ws) => M.ui.tagged(ws.map((x) => ({ w: x.w, tag: TAG[x.tag] || '' })));
-  // Mots sans double classe, pour les trucs (manipulations)
-  const VERBES = ['dort', 'mange', 'saute', 'chante', 'pleure', 'picore', 'grignote', 'jappe', 'galope', 'croque', 'construit', 'dessine', 'attrape', 'arrose', 'conduit', 'boit', 'prépare', 'trouve', 'regarde', 'promène', 'joue', 'écrit', 'mange', 'parle'];
-  const ADJS = ['petit', 'grand', 'gros', 'joli', 'noir', 'gentil', 'vieux', 'content', 'mouillé', 'fatigué', 'heureux', 'froid', 'chaud'];
+  // Mots sans double classe, pour les trucs (manipulations) : aucun verbe qui est aussi un nom (un écrit, la joue, un conduit,
+  // une attrape) ou qui sonne comme un nom (boit/bois, rit/riz, mord/mors, oublie/oubli, sourit/souris, pleure/pleur, galope/galop).
+  const VERBES = ['dort', 'mange', 'chante', 'picore', 'grignote', 'jappe', 'dessine', 'arrose', 'prépare', 'trouve', 'regarde', 'promène', 'parle', 'arrive', 'aime', 'habite', 'ouvre', 'grimpe', 'raconte', 'cherche', 'ramasse', 'éternue'];
+  // Adjectifs qui ne sont pas aussi des noms (le froid, le noir, un petit, un grand…)
+  const ADJS = ['joli', 'gentil', 'content', 'mouillé', 'fatigué', 'heureux', 'joyeux', 'triste', 'timide', 'fâché', 'doux', 'lent', 'facile', 'bruyant'];
+  // Noms qui sont aussi un verbe (il livre, il neige, il fête, il mouche…), un adjectif (orange, chocolat, très bébé…)
+  // ou qui sonnent comme un verbe (pain/peint, nid/nie, fée/fait, nez/naît, loup/loupe, cygne/signe) : jamais dans les trucs.
+  const DOUBLE = ['livre', 'fête', 'neige', 'bouche', 'souris', 'mouche', 'orange', 'chocolat', 'café', 'citron', 'fraise', 'cochon', 'vache', 'bébé', 'fille', 'garçon', 'cygne', 'nid', 'pain', 'loup', 'fée', 'nez', 'carotte', 'patate', 'prince', 'reine', 'lune'];
   const NOMS = () => FR.mots((m) => m.cls === 'nom' && m.em && (m.g === 'm' || m.g === 'f') && !['lit', 'porte', 'marche', 'bois', 'été', 'pied'].includes(m.w) && /^[a-zàâçéèêîôûœ]+$/.test(m.w));
+  const NOMS1 = () => NOMS().filter((m) => !DOUBLE.includes(m.w));
   const DETS = ['un', 'une', 'mon', 'ma', 'mes', 'ton', 'ta', 'tes', 'ce', 'cette', 'notre', 'votre', 'chaque', 'deux', 'trois'];
 
   /* ---------------- 🏷️ Nom, déterminant, adjectif, verbe ---------------- */
@@ -32,7 +38,7 @@
       const targets = lvl === 0 ? ['n', 'd'] : lvl === 1 ? ['n', 'd', 'v'] : ['n', 'd', 'v', 'a'];
       const r = Math.random();
       if (lvl === 0 && r < 0.4) {
-        const ns = M.shuffle(NOMS()).slice(0, 3), ds = M.shuffle(DETS).slice(0, 3);
+        const ns = M.shuffle(NOMS1()).slice(0, 3), ds = M.shuffle(DETS).slice(0, 3);
         return {
           prompt: 'Classe les mots : <b>nom</b> ou <b>déterminant</b> ?', format: 'sort',
           bins: [{ id: 'n', label: '🔵 Nom' }, { id: 'd', label: '🟣 Déterminant' }],
@@ -45,14 +51,15 @@
         const t = M.pick(targets.filter((x) => x !== 'd'));
         const yes = Math.random() < 0.5;
         let w, test;
-        if (t === 'n') { w = yes ? M.pick(NOMS()).w : M.pick(VERBES); test = `« un ${w} » ou « une ${w} »`; }
-        else if (t === 'v') { w = yes ? M.pick(VERBES) : M.pick(NOMS()).w; test = `« Il ne ${w} pas. »`; }
-        else { w = yes ? M.pick(ADJS) : M.pick(NOMS()).w; test = `« très ${w} »`; }
+        // nom : seulement le BON déterminant (« un mouton », jamais « une mouton »); verbe : n' devant voyelle ou h muet
+        if (t === 'n') { const m = yes ? M.pick(NOMS1()) : null; w = yes ? m.w : M.pick(VERBES); test = `« ${yes ? FR.un(m) : M.pick(['un', 'une'])} ${w} »`; }
+        else if (t === 'v') { w = yes ? M.pick(VERBES) : M.pick(NOMS1()).w; test = `« Il ${M.fr.ne(w)} pas. »`; }
+        else { w = yes ? M.pick(ADJS) : M.pick(NOMS1()).w; test = `« très ${w} »`; }
         return {
-          prompt: `${TRUC[t]}<br>Est-ce qu'on peut dire ${test} ?<br>Alors, <b>${w}</b> est-il ${NOMCLS[t].replace('le ', 'un ')} ?`,
+          prompt: `Peut-on dire ${test} ?<br>Alors, le mot <b>${w}</b> est-il ${NOMCLS[t].replace('le ', 'un ')} ?`,
           format: 'tf', answer: yes, labels: [{ label: `✔️ Oui, c'est ${NOMCLS[t].replace('le ', 'un ').replace(/<\/?b>/g, '')}` }, { label: '✖️ Non' }],
-          hint: 'Dis la phrase à voix haute. Est-ce que ça se dit ?',
-          explain: yes ? `On peut dire ${test} : <b>${w}</b> est ${NOMCLS[t].replace('le ', 'un ')}.` : `${test} ne se dit pas : <b>${w}</b> n'est pas ${NOMCLS[t].replace('le ', 'un ')}.`,
+          hint: `${TRUC[t]} Dis-le à voix haute : est-ce que ça se dit ?`,
+          explain: (yes ? `On peut dire ${test} : <b>${w}</b> est ${NOMCLS[t].replace('le ', 'un ')}.` : `${test} ne se dit pas : <b>${w}</b> n'est pas ${NOMCLS[t].replace('le ', 'un ')}.`) + ` ${TRUC[t]}`,
         };
       }
       const t = M.pick(targets);
@@ -124,7 +131,8 @@
           explain: `Un ${m.w}, deux <b>${m.pl}</b>. ${/al$/.test(m.w) ? '<b>-al</b> → <b>-aux</b>' : 'On ajoute un <b>x</b>'}.`,
         };
       }
-      const m = M.pick(FR.mots((x) => x.fem && x.fem === x.w + 'e'));
+      // seulement des noms et des adjectifs (jamais un déterminant comme « tout »)
+      const m = M.pick(FR.mots((x) => x.fem && x.fem === x.w + 'e' && (x.cls === 'nom' || x.cls === 'adj')));
       const adj = m.cls === 'adj';
       return {
         prompt: adj ? `Écris l'adjectif au féminin.<div class="fr-big" style="font-size:1.5rem">Il est ${m.w}.</div>` : `Écris le nom au féminin.<div class="fr-big" style="font-size:1.5rem">un ${m.w}</div>`,

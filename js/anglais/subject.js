@@ -87,7 +87,8 @@
     if (q.choices) {
       for (const c of q.choices) {
         if (hasEn(c.label) && !c.say) return `choix anglais sans audio : ${M.text ? c.value : ''}`;
-        if (c.say && !/^en/.test(c.lang || q.lang || '')) return 'choix avec say sans lang anglaise';
+        // say français permis seulement s'il est explicite (lang: 'fr-CA') sur un choix sans anglais (ex. situations lues)
+        if (c.say && !/^en/.test(c.lang || q.lang || '') && !(/^fr/.test(c.lang || '') && !hasEn(c.label))) return 'choix avec say sans lang anglaise';
       }
       const labels = q.choices.map((c) => String(c.label));
       if (new Set(labels).size !== labels.length) return 'deux choix ont la même image/étiquette';
@@ -141,7 +142,7 @@
     .en-bubble .txt { background: #fff; border: 3px solid var(--line); border-radius: 18px; padding: 6px 12px; font-size: 1.15rem; font-weight: 700 }
     .en-bubble.r { flex-direction: row-reverse } .en-bubble.r .txt { background: var(--Bb) }
     .en-pairs { display: flex; flex-wrap: wrap; gap: 10px }
-    .en-pair { display: flex; align-items: center; gap: 6px; background: #fff; border: 3px solid var(--line); border-radius: 16px; padding: 6px 10px; font-weight: 800 }
+    .en-pair { display: flex; flex-wrap: wrap; max-width: 100%; align-items: center; gap: 6px; background: #fff; border: 3px solid var(--line); border-radius: 16px; padding: 6px 10px; font-weight: 800 }
     .en-pair .en-emo { font-size: 1.8rem }
     button.en-pair { cursor: pointer; font: inherit; font-weight: 800; min-height: var(--touch) }
     .en-pair.sel { border-color: var(--B); background: var(--Bb) }

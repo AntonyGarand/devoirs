@@ -36,6 +36,30 @@
       obs: 'L\'aimant attire le trombone, mais pas la canette.', od: ['Je pense que l\'aimant va tout attirer.', 'Est-ce que l\'aimant est lourd ?'],
       concl: 'L\'aimant n\'attire pas tous les métaux.', cd: ['L\'aimant attire tous les métaux.', 'Les canettes sont vides.'],
       pareil: null },
+    { id: 'eponge', titre: 'Une éponge et un sac de plastique : on verse un peu d\'eau sur chacun.', who: 'Noah', svg: () => '<div style="font-size:2.6rem;text-align:center">💧🧽 &nbsp; 💧🛍️</div>',
+      question: 'Est-ce que l\'éponge absorbe l\'eau mieux que le plastique ?', qd: ['L\'éponge est jaune.', 'L\'eau est entrée dans l\'éponge.'],
+      pred: 'Je pense que l\'eau va entrer dans l\'éponge, mais pas dans le sac.', pd: ['L\'eau est restée sur le sac.', 'Le sac est léger.'],
+      obs: 'L\'eau est entrée dans l\'éponge; sur le sac, elle forme des gouttes.', od: ['Je pense que l\'eau va rester sur l\'éponge.', 'Pourquoi l\'éponge est-elle molle ?'],
+      concl: 'L\'éponge absorbe l\'eau; le plastique ne l\'absorbe pas.', cd: ['Le plastique absorbe l\'eau.', 'Les éponges sont jaunes.'],
+      pareil: { a: 'La quantité d\'eau versée', d: [['L\'objet : éponge ou sac', 'C\'est justement ce qu\'on compare : on le change exprès.'], ['Rien du tout', 'Si on verse plus d\'eau sur un objet, la comparaison n\'est pas juste.']], q: 'Pour comparer l\'éponge et le sac, que dois-tu garder <b>pareil</b> ?' } },
+    { id: 'balles', titre: 'Une balle de ping-pong et une bille de verre dans un bac d\'eau.', who: 'Mei', svg: () => '<div style="font-size:2.6rem;text-align:center">🏓 ⚪ 🌊</div>',
+      question: 'Est-ce que les deux balles vont flotter ?', qd: ['La bille est petite.', 'La bille est au fond du bac.'],
+      pred: 'Je pense que la bille va couler et la balle de ping-pong va flotter.', pd: ['La bille est au fond du bac.', 'Le bac est rempli d\'eau.'],
+      obs: 'La balle de ping-pong reste sur l\'eau; la bille est au fond.', od: ['Je pense que les deux balles vont couler.', 'Pourquoi la bille est-elle ronde ?'],
+      concl: 'La bille de verre coule, mais la balle de ping-pong flotte.', cd: ['Toutes les balles flottent.', 'Le bac est trop petit.'],
+      pareil: { a: 'Le bac et l\'eau', d: [['La sorte de balle', 'C\'est justement ce qu\'on compare : on la change exprès.'], ['Rien du tout', 'Si on change aussi le bac, on ne saura pas ce qui a fait la différence.']], q: 'Pour comparer les deux balles, que dois-tu garder <b>pareil</b> ?' } },
+    { id: 'graines', titre: 'Deux graines de haricot : une dans du coton mouillé, une dans du coton sec.', who: 'Inès', svg: () => '<div style="font-size:2.6rem;text-align:center">💧🫘 &nbsp; 🫘</div>',
+      question: 'Est-ce que la graine a besoin d\'eau pour germer ?', qd: ['Les graines sont brunes.', 'La graine mouillée a une petite racine.'],
+      pred: 'Je pense que seule la graine mouillée va germer.', pd: ['La graine mouillée a une petite racine.', 'Le coton est blanc.'],
+      obs: 'Après une semaine, la graine mouillée a une petite racine; l\'autre n\'a pas changé.', od: ['Je pense que les deux graines vont germer.', 'Est-ce que les graines aiment le coton ?'],
+      concl: 'La graine a besoin d\'eau pour germer.', cd: ['Les graines n\'ont pas besoin d\'eau.', 'Le coton fait pousser les graines.'],
+      pareil: { a: 'La sorte de graine et l\'endroit', d: [['L\'eau : coton mouillé ou sec', 'C\'est justement ce qu\'on teste : on le change exprès.'], ['Rien du tout', 'Si on change plusieurs choses, on ne saura pas laquelle a fait la différence.']], q: 'Pour savoir si l\'<b>eau</b> aide la graine, que dois-tu garder <b>pareil</b> ?' } },
+    { id: 'neige', titre: 'En hiver, deux bols de neige : un dans la maison, un dehors.', who: 'Hugo', svg: () => '<div style="font-size:2.6rem;text-align:center">🏠❄️ &nbsp; 🌨️❄️</div>',
+      question: 'Est-ce que la chaleur de la maison fait fondre la neige ?', qd: ['La neige est blanche.', 'Le bol de la maison est plein d\'eau.'],
+      pred: 'Je pense que la neige dans la maison va fondre.', pd: ['Le bol de la maison est plein d\'eau.', 'Les bols sont bleus.'],
+      obs: 'Après une heure, le bol de la maison est plein d\'eau; dehors, la neige est encore là.', od: ['Je pense que les deux bols vont fondre pareil.', 'Pourquoi la neige est-elle froide ?'],
+      concl: 'La chaleur fait fondre la neige.', cd: ['Le froid fait fondre la neige.', 'La neige ne fond jamais.'],
+      pareil: { a: 'La quantité de neige et les bols', d: [['L\'endroit : maison ou dehors', 'C\'est justement ce qu\'on veut tester : on le change exprès.'], ['Rien du tout', 'Si tout change, on ne saura pas pourquoi la neige a fondu.']], q: 'Pour savoir si la <b>chaleur</b> fait fondre la neige, que dois-tu garder <b>pareil</b> ?' } },
   ];
 
   M.registerSkill({
@@ -90,10 +114,10 @@
       }
       const ch = (good, bad) => M.shuffle([good, ...bad]).map((s) => ({ label: s, value: s }));
       return {
-        prompt: `<b>L'expérience de ${x.who}</b> : ${x.titre}`, format: 'steps',
+        prompt: `<b>L'expérience ${SC.de(x.who)}</b> : ${x.titre}`, format: 'steps',
         steps: [
           { label: '❓ Je me questionne', prompt: 'Quelle est la <b>question</b> de l\'expérience ?', format: 'choice', answer: x.question, choices: ch(x.question, x.qd), viz(el) { el.innerHTML = x.svg(); } },
-          { label: '🤔 Je prédis', prompt: `Quelle phrase est la <b>prédiction</b> de ${x.who} ?`, format: 'choice', answer: x.pred, choices: ch(x.pred, x.pd), hint: 'Une prédiction se dit avant l\'expérience : « Je pense que… »' },
+          { label: '🤔 Je prédis', prompt: `Quelle phrase est la <b>prédiction</b> ${SC.de(x.who)} ?`, format: 'choice', answer: x.pred, choices: ch(x.pred, x.pd), hint: 'Une prédiction se dit avant l\'expérience : « Je pense que… »' },
           { label: '👀 J\'observe', prompt: 'Quelle phrase est une <b>observation</b> ?', format: 'choice', answer: x.obs, choices: ch(x.obs, x.od), hint: 'Une observation dit ce qu\'on a vraiment vu.' },
           { label: '💬 Je conclus', prompt: 'Quelle est la bonne <b>conclusion</b> ?', format: 'choice', answer: x.concl, choices: ch(x.concl, x.cd), hint: 'La conclusion répond à la question du début.' },
         ],

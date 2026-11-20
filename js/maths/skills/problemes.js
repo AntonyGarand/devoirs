@@ -31,7 +31,8 @@
   `);
 
   const chk = (q) => M.pb.checkQ(q);
-  const reg = (def) => M.registerSkill({ domain: D, check: chk, ...def });
+  // élision et typographie sur tout le texte produit (« de Amira » → « d'Amira »), y compris les étapes ajoutées après coup
+  const reg = (def) => M.registerSkill({ domain: D, check: chk, ...def, gen(o) { const q = def.gen.call(this, o); M.pb.polish(q); return q; } });
   const attach = (q, pb) => M.pb.attach(q, pb);
   const explainOf = (pb) => `${pb.explain} ${M.esc(pb.reply)}`;
   /** Question simple (un format) bâtie à partir d'une étape du générateur, avec le texte du problème. */
@@ -191,6 +192,8 @@
   /* ==================================================================
      4. Les mots des maths (sens, jamais une liste mot → opération)
      ================================================================== */
+  /** « que</b> Léa » / « qu'</b>Amira » : élision quand « que » est en gras. */
+  const queB = (nm) => (/^[AEIOUYÀÂÉÈÊÎÏÔÛ]/i.test(nm) ? `qu'</b>${nm}` : `que</b> ${nm}`);
   const dots = (n, e = '🔵') => e.repeat(n);
   const pic = (rows) => `<span class="pb-pic">${rows.map(([nm, n, e]) => `<span class="pb-row"><b>${M.esc(nm)}</b>${dots(n, e)}</span>`).join('')}</span>`;
   const plates = (groups, e) => `<span class="pb-plates">${groups.map((n) => `<span class="pb-plate">${dots(n, e)}</span>`).join('')}</span>`;
@@ -205,15 +208,15 @@
     },
     deplus(P, Q) {
       const q = rnd(2, 4), d = rnd(1, 3);
-      return { prompt: T(`<b>${P.n}</b> a ${d} ${d > 1 ? 'billes' : 'bille'} <b>de plus que</b> ${Q.n}. Quelle image va avec la phrase ?`), format: 'choice', cols: 1, answer: 'ok', choices: shuffle([{ label: pic([[P.n, q + d], [Q.n, q]]), value: 'ok' }, { label: pic([[P.n, q], [Q.n, q + d]]), value: 'inv', why: `Ici, c'est ${Q.n} qui en a plus.` }, { label: pic([[P.n, q], [Q.n, q]]), value: 'eq', why: 'Ici, ils en ont autant.' }]), hint: `${P.n} en a plus. Sa rangée est plus longue.`, explain: `${P.n} a toutes les billes de ${Q.n}, et encore ${d} de plus.` };
+      return { prompt: T(`<b>${P.n}</b> a ${d} ${d > 1 ? 'billes' : 'bille'} <b>de plus ${queB(Q.n)}. Quelle image va avec la phrase ?`), format: 'choice', cols: 1, answer: 'ok', choices: shuffle([{ label: pic([[P.n, q + d], [Q.n, q]]), value: 'ok' }, { label: pic([[P.n, q], [Q.n, q + d]]), value: 'inv', why: `Ici, c'est ${Q.n} qui en a plus.` }, { label: pic([[P.n, q], [Q.n, q]]), value: 'eq', why: `Ici, ${P.f && Q.f ? 'elles' : 'ils'} en ont autant.` }]), hint: `${P.n} en a plus. Sa rangée est plus longue.`, explain: `${P.n} a toutes les billes de ${Q.n}, et encore ${d} de plus.` };
     },
     demoins(P, Q) {
       const q = rnd(2, 4), d = rnd(1, 3);
-      return { prompt: T(`<b>${P.n}</b> a ${d} ${d > 1 ? 'billes' : 'bille'} <b>de moins que</b> ${Q.n}. Quelle image va avec la phrase ?`), format: 'choice', cols: 1, answer: 'ok', choices: shuffle([{ label: pic([[P.n, q], [Q.n, q + d]]), value: 'ok' }, { label: pic([[P.n, q + d], [Q.n, q]]), value: 'inv', why: `Ici, c'est ${P.n} qui en a plus.` }, { label: pic([[P.n, q + d], [Q.n, q + d]]), value: 'eq', why: 'Ici, ils en ont autant.' }]), hint: `${P.n} en a moins. Sa rangée est plus courte.`, explain: `Il manque ${d} ${d > 1 ? 'billes' : 'bille'} à ${P.n} pour en avoir autant que ${Q.n}.` };
+      return { prompt: T(`<b>${P.n}</b> a ${d} ${d > 1 ? 'billes' : 'bille'} <b>de moins ${queB(Q.n)}. Quelle image va avec la phrase ?`), format: 'choice', cols: 1, answer: 'ok', choices: shuffle([{ label: pic([[P.n, q], [Q.n, q + d]]), value: 'ok' }, { label: pic([[P.n, q + d], [Q.n, q]]), value: 'inv', why: `Ici, c'est ${P.n} qui en a plus.` }, { label: pic([[P.n, q + d], [Q.n, q + d]]), value: 'eq', why: `Ici, ${P.f && Q.f ? 'elles' : 'ils'} en ont autant.` }]), hint: `${P.n} en a moins. Sa rangée est plus courte.`, explain: `Il manque ${d} ${d > 1 ? 'billes' : 'bille'} à ${P.n} pour en avoir autant que ${Q.n}.` };
     },
     autant(P, Q) {
       const q = rnd(2, 5);
-      return { prompt: T(`<b>${P.n}</b> a <b>autant</b> de billes <b>que</b> ${Q.n}. Quelle image va avec la phrase ?`), format: 'choice', cols: 1, answer: 'ok', choices: shuffle([{ label: pic([[P.n, q], [Q.n, q]]), value: 'ok' }, { label: pic([[P.n, q + 1], [Q.n, q]]), value: 'p', why: `Ici, ${P.n} en a plus.` }, { label: pic([[P.n, q], [Q.n, q + 2]]), value: 'q', why: `Ici, ${Q.n} en a plus.` }]), hint: '« Autant », c\'est le même nombre.', explain: '« Autant que », c\'est pareil : chaque bille a une partenaire.' };
+      return { prompt: T(`<b>${P.n}</b> a <b>autant</b> de billes <b>${queB(Q.n)}. Quelle image va avec la phrase ?`), format: 'choice', cols: 1, answer: 'ok', choices: shuffle([{ label: pic([[P.n, q], [Q.n, q]]), value: 'ok' }, { label: pic([[P.n, q + 1], [Q.n, q]]), value: 'p', why: `Ici, ${P.n} en a plus.` }, { label: pic([[P.n, q], [Q.n, q + 2]]), value: 'q', why: `Ici, ${Q.n} en a plus.` }]), hint: '« Autant », c\'est le même nombre.', explain: '« Autant que », c\'est pareil : chaque bille a une partenaire.' };
     },
     motComparer(P, Q) {
       const b = rnd(2, 6), d = rnd(2, 4), a = b + d;
@@ -234,7 +237,7 @@
     piege(P, Q) {
       const g = rnd(9, 15), e = rnd(2, 5);
       const ok = Math.random() < 0.4;
-      return { prompt: T(`${P.n} a ${g} billes. ${P.Il} a ${e} billes <b>de plus que</b> ${Q.n}. Pour trouver les billes de ${Q.n}, on fait <b>${g} ${ok ? MINUS : '+'} ${e}</b>.`), format: 'tf', answer: ok, hint: `Qui en a le moins : ${P.n} ou ${Q.n} ?`, explain: `${Q.n} en a <b>moins</b> que ${P.n} : on fait ${g} ${MINUS} ${e} = ${g - e}. Les mots « de plus » ne veulent pas toujours dire + !` };
+      return { prompt: T(`${P.n} a ${g} billes. ${P.Il} a ${e} billes <b>de plus ${queB(Q.n)}. Pour trouver les billes de ${Q.n}, on fait <b>${g} ${ok ? MINUS : '+'} ${e}</b>.`), format: 'tf', answer: ok, hint: `Qui en a le moins : ${P.n} ou ${Q.n} ?`, explain: `${Q.n} en a <b>moins</b> que ${P.n} : on fait ${g} ${MINUS} ${e} = ${g - e}. Les mots « de plus » ne veulent pas toujours dire + !` };
     },
   };
   reg({
@@ -362,7 +365,7 @@
     }
     const ref = M.pb.senseRef(pb);
     return {
-      demarche: 4, prompt: T(`${F.n} dit que la réponse est <b>${w}</b>. Est-ce possible ?`), format: 'tf', answer: w === pb.answer,
+      demarche: 4, prompt: T(`${F.n} dit que la réponse est <b>${w}</b>. Est-ce la bonne réponse ?`), format: 'tf', answer: w === pb.answer, labels: [{ label: '👍 Oui' }, { label: '👎 Non' }],
       hint: `Vérifie à l'envers, ou demande-toi : plus ou moins que ${ref} ?`,
       after: w === pb.answer ? T(`Oui ! ${M.pb.expr(s)} = ${pb.answer}.`) : T(`Non : ${M.pb.expr(s)} = ${pb.answer}, pas ${w}.`),
     };

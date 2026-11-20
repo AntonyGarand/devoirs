@@ -139,12 +139,26 @@
   };
 
   /* ================================================================ 10 */
+  /** « De quel matériau… » : nom sans le matériau; exclus : cuillère, sac, règle, bocal (matériau variable). */
+  const MAT_NOM = { canette: 'la canette', bille: 'la bille', crayon: 'le crayon à mine', chaussette: 'la chaussette', tshirt: 'le t-shirt' };
+  const MAT_EXCLU = ['cuillere', 'sac', 'regle', 'bocal'];
   M.registerSkill({
     id: 'sc-proprietes', domain: 'sc-matiere', title: 'Les propriétés des objets', icon: '🧽',
     desc: 'Doux ou rugueux; absorbe l\'eau ou non; transparent, translucide ou opaque; de quoi c\'est fait.',
     pda: 'Univers matériel A.1.a–d — classer des objets selon leurs propriétés (texture…), absorption, perméabilité, transparence (1er cycle); enrichissement en lvl 2 : A.1.k — matériaux qui composent un objet (3e cycle)',
     gen({ lvl }) {
-      const t = lvl === 0 ? 'texture' : lvl === 1 ? M.pick(['absorbe', 'absorbe', 'texture']) : M.pick(['transp', 'transp', 'materiau', 'absorbe']);
+      const t = lvl === 0 ? M.pick(['texture', 'texture', 'doux']) : lvl === 1 ? M.pick(['absorbe', 'absorbe', 'texture']) : M.pick(['transp', 'transp', 'materiau', 'absorbe']);
+      if (t === 'doux') {
+        const k = M.pick(['doux', 'rugueux']), autre = k === 'doux' ? 'rugueux' : 'doux';
+        const good = M.pick(SC.objetsSurs('texture', k)), bad = Q.pickN(SC.objetsSurs('texture', autre), 2);
+        return {
+          prompt: `Lequel est <b>${k}</b> quand on le touche ?`, format: 'choice', answer: good.id, cols: 3,
+          choices: Q.choicesFrom(good, bad, lbl, (x) => x.id),
+          hint: 'Rugueux : ça gratte un peu sous les doigts, comme une brique. Doux : comme une peluche.',
+          explain: `${cap(good.nom)} est <b>${SC.fem(good) ? { doux: 'douce', rugueux: 'rugueuse' }[k] : k}</b>. La <b>texture</b>, c'est ce que nos doigts sentent : doux, rugueux (qui gratte) ou lisse.`,
+          _sc: { kind: 'doux', k },
+        };
+      }
       if (t === 'texture') {
         const items = [];
         ['doux', 'rugueux'].forEach((k) => Q.pickN(SC.objetsSurs('texture', k), 2).forEach((o) => items.push({ label: lbl(o), bin: k, key: o.id })));
@@ -184,14 +198,17 @@
           _sc: 'transp',
         };
       }
-      const o = M.pick(SC.objetsSurs('mat'));
+      // Nom qui ne dit pas le matériau (sinon la consigne donne la réponse); objets au matériau variable exclus.
+      const o = M.pick(SC.objetsSurs('mat').filter((x) => !MAT_EXCLU.includes(x.id)));
+      const nom = MAT_NOM[o.id] || o.nom;
       const others = Q.pickN(Object.keys(SC.MATERIAUX).filter((m) => m !== o.mat), 2);
+      const matMot = (m) => SC.plain(SC.MATERIAUX[m]).replace(/^(le |la |l')/i, '');
       return {
-        prompt: `De quel <b>matériau</b> est fait${SC.fem(o) ? 'e' : ''} ${o.nom} ?`, format: 'choice', answer: o.mat,
-        scene: [{ emoji: o.emoji && !o.recent ? o.emoji : '', art: o.emoji && !o.recent ? null : o.art, label: o.nom }],
+        prompt: `De quel <b>matériau</b> est fait${SC.fem(o) ? 'e' : ''} ${nom} ?`, format: 'choice', answer: o.mat,
+        scene: [{ emoji: o.emoji && !o.recent ? o.emoji : '', art: o.emoji && !o.recent ? null : o.art, label: nom }],
         choices: M.shuffle([o.mat, ...others]).map((m) => ({ label: SC.MATERIAUX[m], value: m })),
         hint: 'Est-ce que ça vient d\'un arbre ? Est-ce dur et froid comme une clé ? Est-ce que ça se plie comme un vêtement ?',
-        explain: `${cap(o.nom)} est fait${SC.fem(o) ? 'e' : ''} de <b>${SC.plain(SC.MATERIAUX[o.mat]).toLowerCase()}</b>.`,
+        explain: `${cap(nom)} est fait${SC.fem(o) ? 'e' : ''} de <b>${matMot(o.mat)}</b>.`,
         _sc: { kind: 'mat', o: o.id },
       };
     },
@@ -200,7 +217,12 @@
       if (q._sc === 'texture') return Q.checkSort(q, (k) => SC.objet(k).texture);
       if (q._sc === 'transp') return Q.checkSort(q, (k) => SC.objet(k).transp);
       if (q._sc && q._sc.kind === 'absorbe') { const o = SC.objet(q._sc.o); if (o.absorbe === null) return 'objet ambigu'; return Q.checkOne(q.check, (v) => SC.objet(v).absorbe === true); }
-      if (q._sc && q._sc.kind === 'mat') return Q.checkOne(q, (v) => SC.objet(q._sc.o).mat === v);
+      if (q._sc && q._sc.kind === 'mat') {
+        const nom = SC.plain(q.prompt);
+        if (/métal|verre|bois|plastique|coton|aluminium|tissu/i.test(nom.replace(/matériau/, ''))) return 'la consigne nomme le matériau';
+        return Q.checkOne(q, (v) => SC.objet(q._sc.o).mat === v);
+      }
+      if (q._sc && q._sc.kind === 'doux') return Q.checkOne(q, (v) => SC.objet(v).texture === q._sc.k);
     },
   });
 
@@ -236,7 +258,16 @@
     desc: 'Glace, eau, vapeur; chauffer fait fondre ou bouillir, refroidir fait geler; eau douce ou salée.',
     pda: 'Univers matériel A.3.a–d — états de la matière, changements d\'état de l\'eau; A.4.a — conservation de la matière; Terre et espace A.3.b — eau douce et eau salée (1er cycle); enrichissement : A.3.c — cycle de l\'eau (2e cycle)',
     gen({ lvl }) {
-      const t = lvl === 0 ? M.pick(['sort', 'sort', 'pred0']) : lvl === 1 ? M.pick(['pred', 'pred', 'sort', 'salee']) : M.pick(['cloze', 'conservation', 'casserole', 'salee']);
+      const t = lvl === 0 ? M.pick(['sort', 'sort', 'pred0']) : lvl === 1 ? M.pick(['pred', 'pred', 'sort', 'salee']) : M.pick(['cloze', 'conservation', 'casserole', 'salee', 'etat', 'etat', 'pred']);
+      if (t === 'etat') {
+        const x = M.pick(SC.ETAT_Q);
+        return {
+          prompt: x.t, format: 'choice', answer: x.a, cols: 1,
+          choices: M.shuffle([{ label: x.a, value: x.a }, ...x.d.map(([l, w]) => ({ label: l, value: l, why: w }))]),
+          hint: 'Solide : garde sa forme. Liquide : coule. Gaz : invisible, dans l\'air. La chaleur fait fondre; le froid fait geler.',
+          explain: x.e,
+        };
+      }
       if (t === 'sort') {
         const n = lvl === 0 ? 2 : 3;
         const items = [...Q.pickN(SC.SOLIDE, n).map((l) => ({ label: l, bin: 's', key: l })), ...Q.pickN(SC.LIQUIDE, n).map((l) => ({ label: l, bin: 'l', key: l }))];
@@ -295,10 +326,23 @@
     desc: 'Prédire si un objet flotte ou coule, observer, puis expliquer : l\'air et la forme comptent.',
     pda: 'Enrichissement — PDA Univers matériel A.1.h–i : flottabilité (2e–3e cycle), qualitatif seulement',
     gen({ lvl }) {
-      const t = lvl === 0 ? 'obvious' : lvl === 1 ? M.pick(['why', 'why', 'obvious']) : M.pick(['sort', 'pate', 'why']);
+      const t = lvl === 0 ? M.pick(['obvious', 'obvious', 'sort', 'quel']) : lvl === 1 ? M.pick(['why', 'why', 'obvious', 'sort']) : M.pick(['sort', 'pate', 'why']);
+      if (t === 'quel') {
+        const f = M.pick([true, false]);
+        const good = SC.objet(M.pick(OBVIOUS.filter((id) => SC.objet(id).float === f)));
+        const bad = Q.pickN(OBVIOUS.filter((id) => SC.objet(id).float !== f), 2).map(SC.objet);
+        return {
+          prompt: `Dans un bac d'eau, lequel va <b>${f ? 'flotter' : 'couler'}</b> ?`, format: 'choice', answer: good.id, cols: 3,
+          choices: Q.choicesFrom(good, bad, lbl, (x) => x.id, (x) => `${cap(x.nom)} ${x.float ? 'flotte' : 'coule'}.`),
+          hint: 'Le liège, le bois et l\'air aident à flotter. Le métal plein, la pierre et le verre coulent.',
+          explain: `${cap(good.nom)} ${f ? 'flotte' : 'coule'}. Pour en être sûr, un scientifique fait l'expérience !`,
+          _sc: { kind: 'quel', f },
+        };
+      }
       if (t === 'sort') {
         const items = [];
-        [true, false].forEach((f) => Q.pickN(SC.objetsSurs('float', f).filter((o) => o.id !== 'bateau-pate' && o.id !== 'pate'), 3).forEach((o) => items.push({ label: lbl(o), bin: f ? 'f' : 'c', key: o.id })));
+        const pool = (f) => (lvl === 0 ? OBVIOUS.map(SC.objet).filter((o) => o.float === f) : SC.objetsSurs('float', f).filter((o) => o.id !== 'bateau-pate' && o.id !== 'pate'));
+        [true, false].forEach((f) => Q.pickN(pool(f), lvl === 0 ? 2 : 3).forEach((o) => items.push({ label: lbl(o), bin: f ? 'f' : 'c', key: o.id })));
         return {
           prompt: 'Dans un bac d\'eau, ces objets flottent-ils ou coulent-ils ? Classe-les.', format: 'sort', items,
           bins: [{ id: 'f', label: '🛟 Flotte' }, { id: 'c', label: '⚓ Coule' }],
@@ -330,6 +374,7 @@
     },
     check(q) {
       const d = Q.dataOnce(); if (d) return d;
+      if (q._sc && q._sc.kind === 'quel') return Q.checkOne(q, (v) => SC.objet(v).float === q._sc.f);
       if (q._sc === 'float') return Q.checkSort(q, (k) => { const o = SC.objet(k); return o.float === true ? 'f' : o.float === false ? 'c' : 'ambigu'; });
       if (q._sc && q._sc.kind === 'pred') { const o = SC.objet(q._sc.o); if (o.float === null) return 'objet ambigu tiré'; if ((o.float ? 'flotte' : 'coule') !== q.outcome) return 'outcome incohérent'; }
     },
@@ -337,6 +382,11 @@
 
   /* ================================================================ 13 */
   const elle = (o) => SC.fem(o);
+  const AIMANT_USAGE = [
+    { t: 'Des clous sont tombés dans le gazon. Qu\'est-ce qui t\'aide à les ramasser ?', a: '🧲 Un aimant', d: [['🔍 Une loupe', 'La loupe aide à voir les clous, mais elle ne les ramasse pas.'], ['🧽 Une éponge', 'L\'éponge n\'attire pas les clous.']], e: 'Les clous sont en <b>fer</b> ou en <b>acier</b> : l\'aimant les attire et les ramasse.' },
+    { t: 'Quel objet a une aiguille aimantée qui montre le nord ?', a: '🧭 La boussole', d: [['📏 La règle', 'La règle sert à mesurer.'], ['🌡️ Le thermomètre', 'Le thermomètre mesure la température.']], e: 'La <b>boussole</b> a une petite aiguille aimantée qui pointe toujours vers le nord.' },
+    { t: 'Tu veux savoir si un objet est attiré par un aimant. Que fais-tu ?', a: 'J\'approche un aimant pour essayer', d: [['Je le mets dans l\'eau', 'L\'eau ne dit rien sur l\'aimant : il faut essayer avec un aimant.'], ['Je regarde sa couleur', 'La couleur ne suffit pas : il faut faire l\'expérience.']], e: 'Pour savoir, on fait l\'<b>expérience</b> : si l\'aimant attire l\'objet, c\'est qu\'il contient du fer ou de l\'acier.' },
+  ];
   M.registerSkill({
     id: 'sc-aimants', domain: 'sc-matiere', title: 'Les aimants', icon: '🧲', learn: 'sc-l-demarche',
     desc: 'L\'aimant attire le fer et l\'acier (pas tous les métaux); deux aimants s\'attirent ou se repoussent.',
@@ -365,7 +415,7 @@
             ? { prompt: 'La canette est en métal. Pourquoi l\'aimant ne l\'attire-t-il pas ?', a: 'Elle est en aluminium, un métal que l\'aimant n\'attire pas', d: [['L\'aimant attire tous les métaux', 'Non : l\'aimant attire le fer et l\'acier, pas l\'aluminium.'], ['Elle est trop grosse', 'La taille ne compte pas : c\'est la matière.']] }
             : { prompt: `Pourquoi l'aimant n'attire-t-il pas ${o.nom} ?`, a: `${elle(o) ? 'Elle n\'est' : 'Il n\'est'} pas en fer ni en acier`, d: [[`${elle(o) ? 'Elle est' : 'Il est'} trop gros${elle(o) ? 'se' : ''}`, 'La taille ne compte pas : un gros clou est attiré !'], [`${elle(o) ? 'Elle n\'a' : 'Il n\'a'} pas la bonne couleur`, 'La couleur ne change rien : c\'est la matière qui compte.']] };
         return {
-          prompt: `Castor approche son aimant de <b>${o.nom}</b>. Que va-t-il se passer ?`, format: 'predict',
+          prompt: `Castor approche son aimant <b>${SC.de(o.nom)}</b>. Que va-t-il se passer ?`, format: 'predict',
           predict: { prompt: 'Je prédis que…', choices: [{ label: '🧲 L\'aimant va l\'attirer', value: 'oui' }, { label: '😶 Rien ne va bouger', value: 'non' }] },
           outcome: o.magnet ? 'oui' : 'non', simulate: (el) => SIM.aimant(el, o),
           check: { prompt: check.prompt, format: 'choice', answer: check.a, hint: 'De quoi l\'objet est-il fait ?', choices: M.shuffle([{ label: check.a, value: check.a }, ...check.d.map(([l, w]) => ({ label: l, value: l, why: w }))]) },
@@ -389,6 +439,14 @@
           },
           explain: 'Chaque aimant a deux côtés (deux pôles) : <b>N</b> et <b>S</b>. Deux côtés <b>différents</b> s\'attirent; deux côtés <b>pareils</b> se repoussent.',
           _sc: { kind: 'poles', same },
+        };
+      }
+      if (Math.random() < 0.6) {
+        const x = M.pick(AIMANT_USAGE);
+        return {
+          prompt: x.t, format: 'choice', answer: x.a, cols: 1,
+          choices: M.shuffle([{ label: x.a, value: x.a }, ...x.d.map(([l, w]) => ({ label: l, value: l, why: w }))]),
+          hint: 'L\'aimant attire les objets en fer ou en acier.', explain: x.e,
         };
       }
       return {

@@ -26,7 +26,7 @@
         ui.section({ icon: '🧣', title: '4. Vivre les saisons au Québec', intro: 'Au Québec, les saisons sont très différentes. On s\'habille et on s\'amuse selon la saison.',
           body: ui.vocab([
             { emoji: M.art.html('us-tuque', { size: 52, alt: 'tuque' }), word: 'tuque', note: 'hiver', say: 'une tuque, pour l\'hiver' }, { emoji: '🧤', word: 'mitaines', note: 'hiver' },
-            { emoji: '⛸️', word: 'patin', note: 'hiver' }, { emoji: '🍯', word: 'cabane à sucre', note: 'printemps' },
+            { emoji: '⛸️', word: 'patin', note: 'hiver' }, { emoji: '🍁', word: 'cabane à sucre', note: 'printemps' },
             { emoji: '🏊', word: 'baignade', note: 'été' }, { emoji: '🍎', word: 'cueillette de pommes', note: 'automne' },
           ]) }),
         ui.section({ icon: '✅', title: '5. Vérifie ta compréhension', body: '<div class="us-mq"></div>' }),

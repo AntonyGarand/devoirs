@@ -18,7 +18,7 @@
     },
     {
       id: 'colours-snow', title: 'Colours in the Snow', fr: 'Les couleurs dans la neige',
-      lines: [C('Red, red, my hat is red.', 'art:en-tuque:red'), C('Blue, blue, my mittens are blue.', 'art:en-mittens:blue'), C('Green, green, the tree is green.', '🌲'), C('White, white, the snow is white!', '❄️')],
+      lines: [C('Red, red, my toque is red.', 'art:en-tuque:red'), C('Blue, blue, my mittens are blue.', 'art:en-mittens:blue'), C('Green, green, the tree is green.', '🌲'), C('White, white, the snow is white!', '❄️')],
     },
     {
       id: 'five-beavers', title: 'Five Little Beavers', fr: 'Cinq petits castors (on compte à rebours)',
@@ -45,7 +45,7 @@
   /* ---------- Mots qui riment : imageables, prononciation sûre ---------- */
   const RW = {};
   [
-    ['cat', '🐱', 'a cat', 'chat'], ['hat', 'art:en-tuque:red', 'a hat', 'tuque'], ['bat', '🦇', 'a bat', 'chauve-souris'],
+    ['cat', '🐱', 'a cat', 'chat'], ['hat', '👒', 'a hat', 'chapeau'], ['bat', '🦇', 'a bat', 'chauve-souris'],
     ['bee', '🐝', 'a bee', 'abeille'], ['tree', '🌲', 'a tree', 'arbre'], ['key', '🔑', 'a key', 'clé'],
     ['frog', '🐸', 'a frog', 'grenouille'], ['dog', '🐶', 'a dog', 'chien'], ['log', '🪵', 'a log', 'bûche'],
     ['cake', '🍰', 'a cake', 'gâteau'], ['snake', '🐍', 'a snake', 'serpent'],

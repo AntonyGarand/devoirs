@@ -20,7 +20,8 @@
       const it = page === 'pratique' ? M.skillById[arg] : page === 'apprendre' ? M.learnById[arg] : null;
       const subj = page === 'matiere' || page === 'revision' ? arg : it ? M.subjectOf(it) : null;
       M.music.focus(false);
-      M.music.hold(subj === 'musique');
+      M.music.hold(false, 'q'); // filet : une carte-question de musique oubliée ne garde pas la musique muette
+      M.music.hold(subj === 'musique', 'route');
       M.music.mood(page === 'pratique' || page === 'revision' ? 'calme' : 'jeu', subj);
     }
     if (!page) return home();
@@ -30,9 +31,25 @@
     if (page === 'apprendre' && arg && M.learnById[arg]) return learn(arg);
     if (page === 'apprendre') return learnIndex();
     if (page === 'parents') return parents();
-    if (page === 'style' && M.styleguide) return M.styleguide(app);
-    if (page === 'test' && M.selfTest) { app.innerHTML = '<p class="card">🧪 Test en cours…</p>'; return M.selfTest(app); }
+    if (page === 'style') return lazy(['js/styleguide.js'], () => M.styleguide(app));
+    if (page === 'test') return lazy(['js/styleguide.js', 'js/selftest.js'], () => { app.innerHTML = '<p class="card">🧪 Test en cours…</p>'; return M.selfTest(app); });
     home();
+  }
+  /* Scripts chargés à la demande (guide de style, auto-test) : balises <script>, donc fonctionne aussi en file:// */
+  const loaded = {};
+  M.loadScript = (src) => loaded[src] || (loaded[src] = new Promise((res, rej) => {
+    const sc = document.createElement('script');
+    sc.src = src;
+    sc.onload = () => res();
+    sc.onerror = () => { delete loaded[src]; rej(new Error('script introuvable : ' + src)); };
+    document.body.appendChild(sc);
+  }));
+  function lazy(srcs, run) {
+    const h = location.hash;
+    app.innerHTML = '<p class="card">⏳ Chargement…</p>';
+    srcs.reduce((p, src) => p.then(() => M.loadScript(src)), Promise.resolve())
+      .then(() => { if (location.hash === h) run(); })
+      .catch((e) => { if (location.hash === h) app.innerHTML = M.ui.callout('Oups, cette page n’a pas pu être chargée. ' + M.esc(e.message), { tone: 'warn' }); });
   }
   window.addEventListener('hashchange', route);
   const musicBtn = M.$('#musicBtn');
@@ -201,14 +218,16 @@
       <p>Calculées sur les 10 dernières réponses du premier coup : ★ = 50 % et plus (au moins 3 essais), ★★ = 75 % (au moins 6), ★★★ = 90 % (au moins 10). Les questions deviennent un peu plus difficiles à mesure que la maîtrise augmente.</p>
 
       <h2>Correspondance avec le programme</h2>
-      <table><thead><tr><th>Domaine</th><th>Habileté</th><th>Référence au programme</th><th>Maîtrise</th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="table-wrap"><table><thead><tr><th>Domaine</th><th>Habileté</th><th>Référence au programme</th><th>Maîtrise</th></tr></thead><tbody>${rows}</tbody></table></div>
 
       ${notes ? `<h2>Notes aux parents</h2><ul>${notes}</ul>` : ''}
       ${participation ? `<h2>Cartes de discussion</h2><p>Nombre de fois où une carte de réflexion a été faite (aucune réponse n'est enregistrée) :</p><ul>${participation}</ul>` : ''}
 
       <h2>Voix de lecture</h2>
       <div id="voiceDiag" class="row"></div>
-      <p class="muted">Sans voix française, la lecture à voix haute et les dictées ne fonctionnent pas; sans voix anglaise, les activités d'écoute en anglais sont verrouillées.
+      <p class="muted">Les consignes, les dictées et l'anglais de l'application sont <b>préenregistrés</b> : ils fonctionnent sans rien installer.
+      La voix de l'appareil sert seulement pour <b>vos propres listes de mots</b> (« Ma liste de la semaine »), pour une phrase qui n'a pas encore été enregistrée,
+      ou si vous choisissez « Voix : celle de l'appareil » ci-dessous. Sans voix française sur l'appareil, « Ma liste de la semaine » reste verrouillée tant que ses mots ne peuvent pas être lus.
       Windows : Paramètres → Heure et langue → Voix. Android : Paramètres → Synthèse vocale (Google). iPad/iPhone : Réglages → Accessibilité → Contenu énoncé → Voix.</p>
 
       <h2>Réglages</h2>
@@ -220,7 +239,19 @@
         <button class="btn" id="resetProg">🗑️ Effacer la progression</button>
         <a class="btn" href="#/style">🎨 Guide de style</a>
       </div>
-      <p class="muted">La voix enregistrée (${M.clips ? M.clips.count() : 0} phrases préenregistrées) est utilisée quand la phrase existe; sinon, la voix de l'appareil prend le relais. La lecture automatique lit chaque consigne à voix haute (utile pour un lecteur débutant). La progression est enregistrée seulement dans ce navigateur, sur cet appareil.</p>
+      <p class="muted">La voix enregistrée (${M.clips ? M.clips.count() : 0} phrases préenregistrées) est utilisée quand la phrase existe; sinon, la voix de l'appareil prend le relais. La lecture automatique lit chaque consigne à voix haute (utile pour un lecteur débutant).</p>
+
+      <h2>💾 Sauvegarde de la progression</h2>
+      <p>La progression (étoiles, maîtrise), les réglages et vos listes de mots sont enregistrés <b>seulement dans ce navigateur, sur cet appareil</b>.
+      Exportez-les de temps en temps dans un fichier : il permet de les récupérer ou de les transférer sur un autre appareil.</p>
+      <div class="row">
+        <button class="btn" id="exportProg">⬇️ Exporter la progression</button>
+        <label class="btn" id="importLbl">⬆️ Importer la progression<input type="file" id="importProg" accept="application/json,.json" class="vh"></label>
+      </div>
+      <p class="muted" id="persistInfo">Stockage : vérification…</p>
+      <div class="callout">📱 <b>iPad / iPhone :</b> Safari peut effacer les données d'un site qui n'a pas été ouvert depuis 7 jours.
+      Pour l'éviter, ajoutez l'application à l'écran d'accueil (bouton Partager → « Sur l'écran d'accueil ») et utilisez-la depuis l'icône.
+      Attention : l'application de l'écran d'accueil a <b>son propre stockage</b>, séparé de Safari : pour y transférer la progression, faites « Exporter » dans Safari puis « Importer » dans l'application.</div>
       <div id="parentTools"></div>
     </div>`;
     M.$('#toggleSound').onclick = (e) => { M.settings.set('sound', !M.sfx.on); e.target.textContent = M.sfx.on ? '🔊 Sons activés' : '🔇 Sons désactivés'; };
@@ -243,8 +274,57 @@
       toolsEl.appendChild(sec);
       try { t.render(sec.lastElementChild); } catch (e) { console.error('outil parent', t.id, e); }
     });
+    M.$('#exportProg').onclick = () => {
+      const json = JSON.stringify(M.backup.export(), null, 1);
+      const d = new Date(), stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+      a.download = 'mes-devoirs-progression-' + stamp + '.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    };
+    M.$('#importProg').onchange = (e) => {
+      const f = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!f) return;
+      const rd = new FileReader();
+      rd.onload = () => {
+        let obj = null;
+        try { obj = JSON.parse(rd.result); } catch (err) { obj = null; }
+        const r = M.backup.check(obj);
+        if (!r.ok) { alert('Importation impossible : ' + (r.error || 'fichier illisible.')); return; }
+        const when = r.summary.exported ? ' (exporté le ' + new Date(r.summary.exported).toLocaleDateString('fr-CA') + ')' : '';
+        if (!confirm('Remplacer la progression de cet appareil par celle du fichier' + when + ' ?\n⭐ ' + r.summary.stars + ' étoiles, ' + r.summary.skills + ' habiletés pratiquées.\nLa progression actuelle sera effacée.')) return;
+        if (!M.backup.apply(r.data)) { alert('Importation incomplète : l’espace de stockage est peut-être plein.'); return; }
+        location.reload();
+      };
+      rd.readAsText(f);
+    };
+    (function persistInfo() {
+      const box = M.$('#persistInfo');
+      const st = navigator.storage;
+      if (!st || !st.persisted) { box.textContent = 'Stockage : ce navigateur ne permet pas de le protéger; pensez à exporter la progression.'; return; }
+      st.persisted().then((p) => (p ? true : M.persistStorage())).then((p) => {
+        if (!box.isConnected) return;
+        box.textContent = p ? '🔒 Stockage protégé : le navigateur ne l’effacera pas de lui-même.' : '⚠️ Stockage non protégé : le navigateur pourrait l’effacer s’il manque d’espace ou après une longue absence. Exportez la progression de temps en temps.';
+      }).catch(() => { box.textContent = 'Stockage : état inconnu.'; });
+    })();
     M.$('#resetProg').onclick = () => { if (confirm('Effacer toutes les étoiles et la progression ?')) { M.progress.reset(); parents(); } };
   }
+
+  /* ---------- Hors ligne et mises à jour (service worker, http(s) seulement — jamais en file://) ---------- */
+  const inSession = () => /^#\/(pratique|revision)\b/.test(location.hash) && !M.$('.card.end', app);
+  let reloadPending = false;
+  if (/^https?:$/.test(location.protocol) && 'serviceWorker' in navigator) {
+    const hadController = !!navigator.serviceWorker.controller; // 1re visite : pas de rechargement
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloadPending === 'done') return;
+      if (inSession()) reloadPending = true; // nouvelle version : rechargée à la fin de la série
+      else { reloadPending = 'done'; location.reload(); }
+    });
+    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+  }
+  window.addEventListener('hashchange', () => { if (reloadPending === true && !inSession()) { reloadPending = 'done'; location.reload(); } });
 
   M.updateStars();
   route();

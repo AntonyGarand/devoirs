@@ -6,10 +6,15 @@
 (function () {
   'use strict';
   const M = window.M;
+  const US_NOTE = 'Au 1<sup>er</sup> cycle, la géographie, l\'histoire et l\'éducation à la citoyenneté ne sont pas une matière distincte au bulletin : '
+    + 'ces apprentissages sont intégrés aux autres matières (PFEQ, ch. 7). La Culture et citoyenneté québécoise (CCQ) est enseignée, avec peu de temps en classe. '
+    + 'Ici, c\'est du contenu d\'intégration et d\'enrichissement : pour découvrir et en parler, sans pression.';
 
   M.registerSubject({
     id: 'univers', title: 'Univers social', icon: '🗺️', color: '#06a77d', soft: '#dcf7ee',
     desc: 'Mon monde, ma communauté, mon Québec : émotions, règles, familles, quartier, plans, fêtes, avant et maintenant.',
+    /** Note aux parents (répétée sur le domaine us-moi-autres : la page Parents affiche les notes des domaines). */
+    parentNote: US_NOTE,
     /** Règles de la matière (R5, R4) : rien sur la vie privée dans le noté; une seule réponse « ok » si les choix sont étiquetés. */
     lint(q, skill) {
       if ((q.format || q.input) === 'reflect') return;
@@ -27,7 +32,7 @@
   [
     { id: 'us-moi-autres', title: 'Moi et les autres', icon: '💛', color: '#06a77d', soft: '#dcf7ee',
       pda: 'CCQ — Connaissance de soi (émotions, besoins); Relations entre les individus : rôles et responsabilités, civilité',
-      parentNote: 'Les questions d\'émotions sont notées seulement à partir d\'<b>indices visibles</b> (visage, gestes, paroles) chez des personnages fictifs. On ne demande jamais à l\'enfant ce qu\'il ressent : les cartes « 💬 Parles-en » ne sont pas notées et rien n\'est enregistré.' },
+      parentNote: '<b>Univers social au 1<sup>er</sup> cycle</b> : ' + US_NOTE + '<br>Les questions d\'émotions sont notées seulement à partir d\'<b>indices visibles</b> (visage, gestes, paroles) chez des personnages fictifs. On ne demande jamais à l\'enfant ce qu\'il ressent : les cartes « 💬 Parles-en » ne sont pas notées et rien n\'est enregistré.' },
     { id: 'us-communaute', title: 'Ma famille et ma communauté', icon: '🏘️', color: '#058a68', soft: '#d6f2e8',
       pda: 'CCQ — Relations (diversité des familles, relations intergénérationnelles); Rapports aux autres êtres vivants · GHEC — Groupes et éléments humains (2.3, 2.4, A.2, A.4)',
       parentNote: 'Toutes sortes de familles sont montrées (un parent, deux mamans, deux papas, recomposée, d\'accueil, adoptive, grands-parents…), toujours comme également valables. Aucune question ne porte sur la famille de l\'enfant.' },

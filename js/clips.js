@@ -62,15 +62,19 @@
   };
 
   /* ---- Lecture : deux éléments <audio> en alternance (le suivant se charge pendant le premier) ---- */
-  let cur = null, playTok = 0;
+  let cur = null, playTok = 0, pending = null;
   const mk = () => { const a = new Audio(); a.preload = 'auto'; return a; };
   const els = typeof Audio === 'function' ? [mk(), mk()] : [];
   const url = (id) => C.base + id + '.mp3';
-  C.stop = () => { playTok++; if (cur) { try { cur.pause(); } catch (e) {} } cur = null; };
+  C.stop = () => { playTok++; if (cur) { try { cur.pause(); } catch (e) {} } cur = null; const p = pending; pending = null; if (p) p(false); };
   /** Joue les ids à la suite. Résout true (fini), false (arrêté) ou 'fail' (fichier introuvable). */
-  C.play = (ids, rate = 1) => new Promise((res) => {
-    if (!els.length) return res('fail');
+  C.play = (ids, rate = 1) => new Promise((resolve) => {
+    if (!els.length) return resolve('fail');
+    if (pending) { const p = pending; pending = null; p(false); } // lecture précédente interrompue
     const tok = ++playTok;
+    let settled = false;
+    const res = (v) => { if (settled) return; settled = true; if (pending === res) pending = null; resolve(v); };
+    pending = res;
     let i = 0;
     const next = () => {
       if (tok !== playTok) return res(false);

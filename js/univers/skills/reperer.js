@@ -45,15 +45,18 @@
         p.places.forEach((a) => p.places.forEach((b) => { if (a !== b && dir(a, b)) pairs.push([a, b]); }));
         const [A, B] = M.pick(pairs);
         const ans = dir(A, B);
-        const ch = ['nord', 'sud', 'est', 'ouest'].map((d) => ({ label: d, value: d }));
+        // « au nord », « au sud », « à l'est », « à l'ouest » + « du salon », « de la cuisine », « de l'école », « des casiers »
+        const LOC = { nord: 'au nord', sud: 'au sud', est: 'à l\'est', ouest: 'à l\'ouest' };
+        const ch = ['nord', 'sud', 'est', 'ouest'].map((d) => ({ label: LOC[d], value: d }));
         const where = { nord: 'plus haut', sud: 'plus bas', est: 'à droite', ouest: 'à gauche' }[ans];
+        const est = /^les /.test(A.nom) ? 'sont' : 'est';
         return {
-          prompt: `Regarde la rose des vents 🧭. ${The(A.nom)} ${A.emoji} est au ▢ de ${B.nom} ${B.emoji}.`,
-          say: `Regarde la rose des vents. ${A.nom} est au quoi de ${B.nom} ?`,
+          prompt: `Regarde la rose des vents 🧭. ${The(A.nom)} ${A.emoji} ${est} ▢ ${M.fr.de(B.nom)} ${B.emoji}.`,
+          say: `Regarde la rose des vents. Où ${est === 'sont' ? 'sont' : 'est'} ${A.nom}, par rapport ${M.fr.a(B.nom)} ?`,
           format: 'choice', choices: ch, answer: ans, cols: 4,
           viz: (el) => { el.innerHTML = U.planHtml(p, { north: true }); },
-          hint: 'Le nord est en haut, le sud en bas, l\'est à droite et l\'ouest à gauche. Pars de ' + B.nom + '.',
-          explain: `Pars de ${B.nom} ${B.emoji} : ${A.nom} ${A.emoji} est ${where}. ${The(A.nom)} est donc <b>au ${ans}</b> de ${B.nom}.`,
+          hint: `Le nord est en haut, le sud en bas, l'est à droite et l'ouest à gauche. Pars ${M.fr.de(B.nom)}.`,
+          explain: `Pars ${M.fr.de(B.nom)} ${B.emoji} : ${A.nom} ${A.emoji} ${est} ${where}. ${The(A.nom)} ${est} donc <b>${LOC[ans]}</b> ${M.fr.de(B.nom)}.`,
         };
       }
       const p = M.pick(lvl === 0 ? plans.filter((x) => x.id !== 'classe') : plans);
@@ -64,10 +67,10 @@
           const others = M.shuffle(p.places.filter((o) => o !== X && o !== N && !neighbours(X, p.places).includes(o))).slice(0, 2);
           const s = U.simple(`${N.emoji} ${N.label}`, others.map((o) => `${o.emoji} ${o.label}`));
           return {
-            prompt: `Sur le plan, qu'y a-t-il <b>juste à côté</b> de ${X.nom} ${X.emoji} ?`, format: 'choice', ...s, cols: 3,
+            prompt: `Sur le plan, qu'y a-t-il <b>juste à côté</b> ${M.fr.de(X.nom)} ${X.emoji} ?`, format: 'choice', ...s, cols: 3,
             viz: (el) => { el.innerHTML = U.planHtml(p); },
-            hint: `Trouve ${X.nom} ${X.emoji} sur le plan, puis regarde ce qui le touche presque.`,
-            explain: `Sur le plan « ${p.titre} », ${N.nom} ${N.emoji} est juste à côté de ${X.nom} ${X.emoji}.`,
+            hint: `Trouve ${X.nom} ${X.emoji} sur le plan, puis regarde ce qui est tout près.`,
+            explain: `Sur le plan « ${p.titre} », ${N.nom} ${N.emoji} ${/^les /.test(N.nom) ? 'sont' : 'est'} juste à côté ${M.fr.de(X.nom)} ${X.emoji}.`,
           };
         }
       }

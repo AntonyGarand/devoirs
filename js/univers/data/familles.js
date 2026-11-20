@@ -21,6 +21,18 @@
       { emoji: '👶', mot: 'bébé' }, { emoji: '👵', mot: 'grand-mère' }, { emoji: '👴', mot: 'grand-père' },
       { emoji: '👧', mot: 'fille' }, { emoji: '👦', mot: 'garçon' },
     ],
+    /* Vrai ou faux sur la diversité des familles (R7 : toutes les familles sont valides; jamais « vraie » famille). */
+    faits: [
+      { t: 'Une famille peut avoir un seul parent.', v: true },
+      { t: 'Une famille peut avoir deux mamans.', v: true },
+      { t: 'Une famille peut avoir deux papas.', v: true },
+      { t: 'Des grands-parents peuvent s\'occuper de leurs petits-enfants à la maison.', v: true },
+      { t: 'Un enfant adopté fait partie de sa famille.', v: true },
+      { t: 'Une famille a toujours un papa et une maman.', v: false, e: 'Il y a toutes sortes de familles : un parent, deux mamans, deux papas, des grands-parents…' },
+      { t: 'Toutes les familles ont le même nombre de personnes.', v: false, e: 'Certaines familles sont petites, d\'autres sont grandes.' },
+      { t: 'Dans une famille, on prend soin les uns des autres.', v: true },
+      { t: 'Dans une famille recomposée, il peut y avoir un beau-père ou une belle-mère.', v: true },
+    ],
     /* Liens de parenté (définitions générales) */
     liens: [
       { q: 'La mère de ma mère, c\'est ma…', ok: 'grand-mère', d: ['tante', 'cousine'] },
