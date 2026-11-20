@@ -44,7 +44,7 @@
       return any ? { voice: any, state: 'fallback' } : { voice: null, state: 'none' };
     },
     status(lang) { const f = this.find(lang); return { state: f.state, name: f.voice ? f.voice.name + ' (' + f.voice.lang + ')' : null }; },
-    has(lang) { return !('speechSynthesis' in window) ? false : this.find(lang).state !== 'none'; },
+    has(lang) { if (M.clips && M.clips.enabled()) return true; return !('speechSynthesis' in window) ? false : this.find(lang).state !== 'none'; },
     choose(base, name) { VO.chosen[base] = name; },
     all: () => VO.list.slice(),
   };
@@ -59,21 +59,33 @@
    */
   M.say = function (text, opts = {}) {
     try {
-      if (!('speechSynthesis' in window) || !text || (Array.isArray(text) && !text.length)) return Promise.resolve(false);
-      speechSynthesis.cancel();
+      const C = M.clips, clipsOn = !!(C && C.enabled());
+      if ((!('speechSynthesis' in window) && !clipsOn) || !text || (Array.isArray(text) && !text.length)) return Promise.resolve(false);
+      try { speechSynthesis.cancel(); } catch (e) {}
+      if (C) C.stop();
       const tok = ++sayTok;
       const segs = Array.isArray(text) ? text : [{ text }];
       let anySpoken = false;
       const speakOne = (seg) => new Promise((res) => {
         const lang = seg.lang || opts.lang || 'fr-CA';
         const f = M.voices.find(lang);
-        if (f.state === 'none' && VO.list.length) return res(false);
         let t = String(seg.text);
         if (!(seg.raw ?? opts.raw) && lang.startsWith('fr')) t = FR_MATH(t);
+        const rate = seg.rate || opts.rate || (M.settings && M.settings.get('rate')) || 0.9;
+        // 1) voix préenregistrée (vitesse normale = 0.9)
+        const ids = clipsOn && C.plan(t, lang);
+        if (ids) {
+          anySpoken = true;
+          return C.play(ids, rate / 0.9).then((r) => (r === 'fail' ? speakTts(t, lang, f, rate, seg).then(res) : res(r)));
+        }
+        speakTts(t, lang, f, rate, seg).then(res);
+      });
+      const speakTts = (t, lang, f, rate, seg) => new Promise((res) => {
+        if (!('speechSynthesis' in window) || (f.state === 'none' && VO.list.length)) return res(false);
         const u = new SpeechSynthesisUtterance(t);
         u.lang = lang;
         if (f.voice) u.voice = f.voice;
-        u.rate = seg.rate || opts.rate || (M.settings && M.settings.get('rate')) || 0.9;
+        u.rate = rate;
         if (seg.pitch || opts.pitch) u.pitch = seg.pitch || opts.pitch;
         u.onend = () => res(true);
         u.onerror = () => res(false);
@@ -81,14 +93,18 @@
         speechSynthesis.speak(u);
         setTimeout(() => res(true), 1500 + t.length * 120); // filet de sécurité
       });
+      const mu = M.music;
+      if (mu) mu.speaking(true);
       return (async () => {
-        for (const seg of segs) {
-          if (tok !== sayTok) return false;
-          await speakOne(seg);
-          const pause = seg.pauseAfter ?? opts.pause ?? (segs.length > 1 ? 500 : 0);
-          if (pause && tok === sayTok) await M.sleep(pause);
-        }
-        return anySpoken;
+        try {
+          for (const seg of segs) {
+            if (tok !== sayTok) return false;
+            await speakOne(seg);
+            const pause = seg.pauseAfter ?? opts.pause ?? (segs.length > 1 ? 500 : 0);
+            if (pause && tok === sayTok) await M.sleep(pause);
+          }
+          return anySpoken;
+        } finally { if (mu && tok === sayTok) mu.speaking(false); }
       })();
     } catch (e) { return Promise.resolve(false); }
   };
@@ -109,7 +125,7 @@
     segs.forEach((s) => { const last = merged[merged.length - 1]; if (last && last.lang === s.lang) last.text += ' ' + s.text; else merged.push({ ...s, pauseAfter: 150 }); });
     return M.say(merged, opts);
   };
-  M.hush = () => { sayTok++; try { speechSynthesis.cancel(); } catch (e) {} };
+  M.hush = () => { sayTok++; try { speechSynthesis.cancel(); } catch (e) {} if (M.clips) M.clips.stop(); if (M.music) M.music.speaking(false); };
 
   /* ================= Stockage ================= */
   const safeGet = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };

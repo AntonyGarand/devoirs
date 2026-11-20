@@ -1,0 +1,9 @@
+{
+  "name": "devoirs-tools",
+  "private": true,
+  "description": "Outils hors ligne (voix préenregistrée). Le site lui-même n'a aucune dépendance.",
+  "devDependencies": {
+    "jsdom": "^26.0.0",
+    "node-web-audio-api": "^2.2.0"
+  }
+}

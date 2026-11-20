@@ -87,3 +87,16 @@ main { max-width: 1120px; margin: 0 auto; padding: 20px 16px 80px }
   main { padding: 14px 10px 60px }
   .card { padding: 16px }
 }
+
+/* Bouton musique (en-tête) */
+.music-btn { flex: none; display: grid; place-items: center; font-size: 1.2rem; line-height: 1; width: 42px; height: 42px; padding: 0; margin: 0 2px 0 6px; border-radius: 999px; border: 3px solid var(--line, #e2e6f0); background: #fff; cursor: pointer; transition: transform var(--dur-1, .15s) var(--ease-spring, ease), opacity .2s, filter .2s }
+.music-btn:hover { transform: scale(1.08) rotate(-6deg) }
+.music-btn:active { transform: scale(.94) }
+.music-btn.off { opacity: .45; filter: grayscale(1) }
+.music-vol { display: inline-flex; align-items: center; gap: 8px }
+.music-vol input { width: 110px; accent-color: var(--blue, #3b82f6) }
+@media (max-width: 560px) { .music-btn { width: 34px; height: 34px; font-size: 1rem; border-width: 2px; margin-left: 2px } }
+@media (max-width: 420px) {
+  .brand .tag { display: none }
+  .topbar nav a { padding: 4px 5px }
+}

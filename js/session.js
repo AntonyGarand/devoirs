@@ -215,7 +215,10 @@
       if (S.keyFn) S.keyFn(e);
     }
     document.addEventListener('keydown', keyHandler);
-    return { destroy() { document.removeEventListener('keydown', keyHandler); }, ctx };
+    // Question d'écoute : la musique se fait presque muette.
+    const listening = !!(audio || (passage && passage.listenOnly));
+    if (M.music) M.music.focus(listening);
+    return { destroy() { document.removeEventListener('keydown', keyHandler); if (listening && M.music) M.music.focus(false); }, ctx };
   };
 
   /* =====================================================================
@@ -225,6 +228,17 @@
   M.runSession = function (root, opts) {
     const items = opts.items.slice();
     const S = { i: 0, results: [], current: null };
+    const seen = new Set();            // jamais deux fois la même question dans une série
+    const avoid = opts.avoid || null;  // série précédente (« Encore ! ») : évitée si possible
+    /** Question nouvelle : niveau de l'enfant d'abord, puis les niveaux voisins; null si l'habileté est épuisée. */
+    const make = (sk) => {
+      const lvl = Math.min(2, M.progress.mastery(sk.id));
+      for (const l of [lvl, lvl - 1, lvl + 1, lvl - 2, lvl + 2].filter((x) => x >= 0 && x <= 2)) {
+        const q = M.genUnique(() => sk.gen({ lvl: l }), seen, { avoid });
+        if (q) return q;
+      }
+      return null;
+    };
     M.heard.clear();
     root.innerHTML = `
       <div class="session">
@@ -241,9 +255,16 @@
     function show() {
       if (S.current) S.current.destroy();
       const id = items[S.i], sk = M.skillById[id];
-      const lvl = Math.min(2, M.progress.mastery(id));
       let q;
-      try { q = sk.gen({ lvl }); } catch (e) { console.error('gen', id, e); q = { prompt: 'Oups, une erreur. Passe à la suivante.', format: 'choice', answer: 1, choices: [{ label: 'OK', value: 1 }] }; }
+      try {
+        q = make(sk);
+        if (!q) {
+          // Plus aucune question nouvelle pour cette habileté : on raccourcit la série plutôt que de répéter.
+          const rest = items.slice(S.i + 1).filter((x) => x !== id);
+          items.splice(S.i, items.length - S.i, ...rest);
+          return S.i < items.length ? show() : end();
+        }
+      } catch (e) { console.error('gen', id, e); q = { prompt: 'Oups, une erreur. Passe à la suivante.', format: 'choice', answer: 1, choices: [{ label: 'OK', value: 1 }] }; }
       el('.progress i').style.width = (S.i / items.length) * 100 + '%';
       el('.s-count').textContent = `${S.i + 1} / ${items.length}`;
       S.current = M.renderQuestion(el('.s-card'), q, {
@@ -280,7 +301,7 @@
       </div>`;
       M.confetti();
       M.say(M.$('h2', root).textContent + ' ' + M.$('.lead', root).textContent);
-      M.$('.again', root).onclick = () => M.runSession(root, { ...opts, items: opts.regen ? opts.regen() : M.shuffle(items) });
+      M.$('.again', root).onclick = () => M.runSession(root, { ...opts, avoid: seen, items: opts.regen ? opts.regen() : M.shuffle(items) });
     }
     show();
   };

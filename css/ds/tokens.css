@@ -27,7 +27,7 @@ h1, h2, h3 { line-height: 1.2 }
   --good: var(--C); --bad: var(--red); --focus: #3a86ff;
   --shadow-card: 0 6px 0 var(--line), 0 10px 30px rgba(0,0,0,.05);
   /* Couleurs des matières */
-  --subj-maths: #f78c40; --subj-francais: #ef476f; --subj-anglais: #118ab2; --subj-univers: #06a77d; --subj-sciences: #9b5de5;
+  --subj-maths: #f78c40; --subj-francais: #ef476f; --subj-anglais: #118ab2; --subj-univers: #06a77d; --subj-sciences: #9b5de5; --subj-musique: #e85d9e;
 }
 :focus-visible { outline: 4px solid var(--focus); outline-offset: 2px }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important } }

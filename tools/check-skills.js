@@ -42,7 +42,7 @@ for (const f of scripts) {
 // Fichiers présents mais oubliés dans index.html
 for (const d of fs.readdirSync(path.join(root, 'js'), { withFileTypes: true }).filter((d) => d.isDirectory())) {
   const walk = (dir) => fs.readdirSync(path.join(root, dir), { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(dir + '/' + e.name) : e.name.endsWith('.js') ? [dir + '/' + e.name] : []));
-  walk('js/' + d.name).forEach((f) => { if (!scripts.includes(f)) console.log(`⚠ ${f} n'est pas chargé par index.html`); });
+  walk('js/' + d.name).forEach((f) => { if (!scripts.includes(f) && f !== 'js/musique/samples.js' /* chargé à la demande par M.MU.load */) console.log(`⚠ ${f} n'est pas chargé par index.html`); });
 }
 
 const M = ctx.M;

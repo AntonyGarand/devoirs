@@ -414,4 +414,63 @@ Pages Apprendre : **Le jour, la nuit et les ombres** (La Terre tourne, l'ombre c
 
 Pages Apprendre : **Comme une scientifique** (Se questionner, prédire, observer… avec des aimants !)
 
+# 🎵 Musique (12 habiletés)
+
+## 🔊 Les sons
+
+*Langage musical (A.1 intensité, A.2 durée, A.3 hauteur, A.5 qualité du son); représentation graphique (B.2 code non traditionnel)*
+
+| Habileté | Référence au programme | Page Apprendre |
+|---|---|---|
+| 📢 Fort ou doux (`mu-fort-doux`) | Langage musical A.1.a — sons forts et doux (1er cycle); B.2.a — symboles fort / doux (code non traditionnel); lvl 2 : A.1.b crescendo / decrescendo (2e cycle, enrichissement) | Les secrets des sons |
+| 🐦 Aigu ou grave (`mu-aigu-grave`) | Langage musical A.3.b — registres aigu et grave; organisation mélodique G.4.a — série de sons ascendants, descendants, répétés (1er cycle); B.2.a — symboles aigu / grave, ascendant / descendant | Les secrets des sons |
+| 〰️ Long ou court (`mu-long-court`) | Langage musical A.2.a — durée : long, très long, court, très court, silence (code non traditionnel); B.2.a — symboles de durée (1er cycle) | Les secrets des sons |
+| 🔔 Sec ou résonnant (`mu-sec-resonnant`) | Langage musical A.5.a — qualités du son : sec, résonnant (1er cycle); B.2.a — symboles sec / résonnant | Les instruments de la classe |
+
+Pages Apprendre : **Les secrets des sons** (Fort ou doux, aigu ou grave, long ou court)
+
+## 🥁 Rythme et tempo
+
+*Durée (A.2 noire, croches, silence); organisation rythmique (G.3 pulsation); tempo (G.2 lent, rapide); code traditionnel (B.1)*
+
+| Habileté | Référence au programme | Page Apprendre |
+|---|---|---|
+| 🐇 Rapide ou lent (`mu-vite-lent`) | Structures G.2.a — tempos lent et rapide (1er cycle); lvl 2 : accelerando / rallentando (G.2.c, 3e cycle, enrichissement : « accélère / ralentit ») | Ta, ti-ti, chut ! |
+| 💓 La pulsation (`mu-pulsation`) | Structures G.3.a — organisation rythmique : la pulsation (1er cycle); Règles de groupe E.b — directives indiquant la pulsation | Ta, ti-ti, chut ! |
+| 🎶 Ta, ti-ti, chut ! (`mu-ta-titi`) | Durée A.2.a — noire, deux croches, silence; organisation rythmique G.3.a; code traditionnel B.1.a — symboles de durée (1er cycle); lvl 2 : la blanche (A.2.b, 2e cycle, enrichissement) | Ta, ti-ti, chut ! |
+
+Pages Apprendre : **Ta, ti-ti, chut !** (La pulsation, le tempo et les rythmes)
+
+## 🪇 Instruments et sources sonores
+
+*Sources sonores (C.1 voix et corps, C.2 instruments de percussion, C.3 objets de bois et de métal); timbre (A.4.a)*
+
+| Habileté | Référence au programme | Page Apprendre |
+|---|---|---|
+| 🪇 Les instruments de la classe (`mu-instruments`) | Sources sonores C.2.a — nommer des instruments de percussion; C.3.a — objets de bois et de métal; Timbre A.4.a — instruments de percussion de la classe (1er cycle) | Les instruments de la classe |
+| 👏 La voix et le corps (`mu-voix-corps`) | Sources sonores C.1.a — voix chantée, effets vocaux, percussions corporelles (1er cycle) | Les instruments de la classe |
+
+Pages Apprendre : **Les instruments de la classe** (Bois, métal, peau; sec ou résonnant; le corps et la voix)
+
+## 🎹 Do, ré, mi
+
+*Hauteur (A.3 noms des sons de la gamme : do, ré, mi…); organisation mélodique (G.4 sons ascendants, descendants)*
+
+| Habileté | Référence au programme | Page Apprendre |
+|---|---|---|
+| 🎹 Do, ré, mi (`mu-do-re-mi`) | Langage musical A.3 — hauteur : nommer les sons de la gamme (do, ré, mi…) à l'aide du piano; G.4.a — sons ascendants (vers la droite, plus aigu) | Le piano do-ré-mi |
+
+Pages Apprendre : **Le piano do-ré-mi** (La gamme, les touches et de petites chansons)
+
+## 🎧 Écouter et inventer
+
+*Structures (G.1 forme A-B, G.4 organisation mélodique); procédés de composition (F.a); compétence 3 « Apprécier »*
+
+| Habileté | Référence au programme | Page Apprendre |
+|---|---|---|
+| 🧩 Pareil ou différent ? (forme A-B) (`mu-forme`) | Structures G.1.a — forme personnelle et forme A-B; procédés de composition F.a — contraste, reproduction sonore (1er cycle); lvl 2 : forme A-B-A (G.1.b, 2e cycle, enrichissement) | Écouter une musique |
+| 😊 Ce que la musique exprime (`mu-caractere`) | Compétence 3 — Apprécier des œuvres musicales : exprimer ce qu'on ressent et le justifier avec le vocabulaire (tempo, nuances, registre) (1er cycle) | Écouter une musique |
+
+Pages Apprendre : **Écouter une musique** (Les parties A et B, question-réponse, ce que la musique exprime)
+
 🌟 = enrichissement (au-delà du programme de 2e année, exclu de la révision automatique) · 💬 = carte de discussion non notée.

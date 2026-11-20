@@ -10,9 +10,11 @@ Programme de formation de l'école québécoise (PFEQ) et ses Progressions des a
 | 🗣️ Anglais | 16 | écoute (voix anglaise), vocabulaire illustré, consignes, situations, histoires et comptines originales |
 | 🗺️ Univers social | 14 | émotions, besoins, civilité, règles, familles, communauté, plans, fêtes, symboles du Québec, avant et maintenant |
 | 🔬 Sciences | 16 | le vivant, la matière (prédire → observer → expliquer), la Terre et le ciel, la démarche scientifique |
+| 🎵 Musique | 12 | fort / doux, aigu / grave, long / court, sec / résonnant; tempo, pulsation, rythmes (ta, ti-ti, chut); instruments de percussion, voix et corps; do, ré, mi et petit piano jouable; forme A-B, ce que la musique exprime — vrais instruments enregistrés (CC0), compositeur de rythmes, jeu de l'écho |
 
 - **Pratiquer** : séries de 8 questions avec visuel à manipuler, indice, 👀 démonstration et explication.
-- **Apprendre** : 49 petites leçons interactives.
+- **Apprendre** : 54 petites leçons interactives.
+- **Voix et musique** : voix préenregistrée (repli sur la voix de l'appareil), musique d'ambiance générée en direct (bouton 🎵).
 - **Révision du jour** : questions entrelacées qui priorisent ce qui est le moins maîtrisé ou vu il y a longtemps.
 - **Parents** : méthodologie, correspondance avec le programme, diagnostic des voix, réglages, outils (liste de mots).
 
@@ -31,6 +33,7 @@ Aucun serveur, aucune dépendance : ouvrir `index.html` (ou la version GitHub Pa
 
 ```
 node tools/check-skills.js          # génère 900 questions par habileté et valide chacune (formats, sens, règles de matière)
+node tools/check-dupes.js           # niveaux qui ont peu de questions différentes (à enrichir)
 node tools/check-skills.js --only fr-
 ```
 

@@ -70,9 +70,11 @@
 
   /* ---------- Son ---------- */
   let actx;
+  const audioCtx = () => (actx = actx || new (window.AudioContext || window.webkitAudioContext)());
   function tone(freqs, dur = 0.12, type = 'triangle', vol = 0.18) {
     try {
-      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      audioCtx();
+      if (actx.state === 'suspended') actx.resume();
       const t = actx.currentTime;
       freqs.forEach((f, i) => {
         const o = actx.createOscillator(), g = actx.createGain();
@@ -95,6 +97,7 @@
     bad() { this.on && tone([300, 220], 0.16, 'sawtooth', 0.07); },
     pop() { this.on && tone([880], 0.05, 'square', 0.05); },
     tone,
+    ctx: audioCtx,
   };
 
   /* Voix : voir services.js (M.say, M.voices) */
@@ -247,6 +250,47 @@
     def.order = def.order ?? M.skills.length;
     M.skills.push(def);
     M.skillById[def.id] = def;
+  };
+  /**
+   * Empreinte d'une question : deux questions de même empreinte sont « la même question » pour l'enfant
+   * (même consigne, même réponse, mêmes choix, mêmes sons), même si l'ordre des choix diffère.
+   * Les id générés (SVG) sont retirés pour ne pas rendre deux questions identiques « différentes ».
+   */
+  M.qSig = (q) => {
+    if (!q) return '';
+    const txt = (h) => h.replace(/\s(id|href|clip-path|mask|filter)="[^"]*"/g, '').replace(/url\(#[^)]*\)/g, '').replace(/\s+/g, ' ').trim();
+    // Sérialisation canonique : fonctions (viz…) ignorées, listes d'objets triées (l'ordre mélangé ne compte pas),
+    // listes simples gardées dans l'ordre (ex. une réponse « 3, 1, 2 »).
+    const canon = (v, depth = 0) => {
+      if (depth > 8 || v == null || typeof v === 'function') return null;
+      if (typeof v === 'string') return txt(v);
+      if (typeof v !== 'object') return v;
+      if (Array.isArray(v)) {
+        const a = v.map((x) => canon(x, depth + 1));
+        return v.some((x) => x && typeof x === 'object') ? a.map((x) => JSON.stringify(x)).sort() : a;
+      }
+      const o = {};
+      Object.keys(v).sort().forEach((k) => { if (k !== 'hint' && typeof v[k] !== 'function') o[k] = canon(v[k], depth + 1); });
+      return o;
+    };
+    return JSON.stringify(canon(q));
+  };
+  /**
+   * Génère une question dont l'empreinte n'est PAS dans seen (Set), l'y ajoute et la retourne;
+   * null si `tries` essais ne donnent que des questions déjà vues (habileté à peu de questions : à l'appelant de décider).
+   * avoid (Set, facultatif) : à éviter si possible (ex. la série précédente), sans garantie.
+   */
+  M.genUnique = (make, seen, { avoid = null, tries = 40 } = {}) => {
+    let fallback = null;
+    for (let k = 0; k < tries; k++) {
+      const q = make(), s = M.qSig(q);
+      if (seen.has(s)) continue;
+      if (avoid && avoid.has(s)) { if (!fallback) fallback = [q, s]; continue; }
+      seen.add(s);
+      return q;
+    }
+    if (fallback) { seen.add(fallback[1]); return fallback[0]; }
+    return null;
   };
   /** def = { id, domain, title, icon, intro, render(el) } */
   M.registerLearn = (def) => {

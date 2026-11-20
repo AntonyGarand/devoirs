@@ -100,15 +100,18 @@
 
   ui.miniQuiz = function (el, questions, { title = 'Vérifie ta compréhension' } = {}) {
     let i = 0, ok = 0, cur = null;
+    const all = questions.slice();
+    let seen = new Set(), prev = null; // jamais deux fois la même question; « Recommencer » évite la ronde précédente
     const show = () => {
       if (cur) cur.destroy();
       if (i >= questions.length) {
         el.innerHTML = `<div class="callout green">🎉 ${ok} sur ${questions.length} du premier coup ! <button class="btn mq-again">Recommencer</button></div>`;
-        M.$('.mq-again', el).onclick = () => { i = 0; ok = 0; show(); };
+        M.$('.mq-again', el).onclick = () => { i = 0; ok = 0; prev = seen; seen = new Set(); questions = all.slice(); show(); };
         return;
       }
       el.innerHTML = `<div class="mq-head"><b>${title}</b> <span class="chip">${i + 1} / ${questions.length}</span></div><div class="mq-q"></div>`;
-      const q = typeof questions[i] === 'function' ? questions[i]() : questions[i];
+      const q = typeof questions[i] === 'function' ? M.genUnique(questions[i], seen, { avoid: prev }) : questions[i];
+      if (!q) { questions = questions.filter((_, k) => k !== i); return show(); } // plus de question nouvelle : on la saute
       cur = M.renderQuestion(M.$('.mq-q', el), q, {
         record: false,
         nextLabel: i === questions.length - 1 ? 'Terminer ✔' : 'Suivant ➜',

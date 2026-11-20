@@ -16,6 +16,13 @@
     const [page, arg] = hash.split('/');
     M.$$('.topbar nav a').forEach((a) => a.classList.toggle('on', a.dataset.nav === (page || '')));
     window.scrollTo(0, 0);
+    if (M.music) {
+      const it = page === 'pratique' ? M.skillById[arg] : page === 'apprendre' ? M.learnById[arg] : null;
+      const subj = page === 'matiere' || page === 'revision' ? arg : it ? M.subjectOf(it) : null;
+      M.music.focus(false);
+      M.music.hold(subj === 'musique');
+      M.music.mood(page === 'pratique' || page === 'revision' ? 'calme' : 'jeu', subj);
+    }
     if (!page) return home();
     if (page === 'matiere' && M.subjectById[arg]) return subject(arg);
     if (page === 'pratique' && M.skillById[arg]) return practice(arg);
@@ -28,6 +35,10 @@
     home();
   }
   window.addEventListener('hashchange', route);
+  const musicBtn = M.$('#musicBtn');
+  const paintMusic = () => { if (!musicBtn) return; const on = M.music && M.music.on(); musicBtn.classList.toggle('off', !on); musicBtn.setAttribute('aria-pressed', on ? 'true' : 'false'); musicBtn.title = on ? 'Musique : oui' : 'Musique : non'; };
+  if (musicBtn) musicBtn.onclick = () => { M.music.toggle(); paintMusic(); };
+  paintMusic();
 
   const skillsOf = (subjectId) => M.skills.filter((s) => M.subjectOf(s) === subjectId);
   const pctOf = (skills) => (skills.length ? Math.round((skills.reduce((a, s) => a + M.progress.mastery(s.id), 0) / (skills.length * 3)) * 100) : 0);
@@ -203,14 +214,18 @@
       <h2>Réglages</h2>
       <div class="row">
         <button class="btn" id="toggleSound">${M.sfx.on ? '🔊 Sons activés' : '🔇 Sons désactivés'}</button>
+        ${M.clips && M.clips.count() ? `<button class="btn" id="toggleVoice">${(M.settings.get('voice') === 'browser' ? '🎙️ Voix : celle de l’appareil' : '🎙️ Voix : enregistrée')}</button>` : ''}
+        <label class="btn music-vol">🎵 Musique <input type="range" id="musicVol" min="0" max="1" step="0.05" value="${M.settings.get('musicVol') ?? 0.5}"></label>
         <button class="btn" id="toggleRead">${M.settings.get('autoRead') ? '🗣️ Lecture automatique : oui' : '🗣️ Lecture automatique : non'}</button>
         <button class="btn" id="resetProg">🗑️ Effacer la progression</button>
         <a class="btn" href="#/style">🎨 Guide de style</a>
       </div>
-      <p class="muted">La lecture automatique lit chaque consigne à voix haute (utile pour un lecteur débutant). La progression est enregistrée seulement dans ce navigateur, sur cet appareil.</p>
+      <p class="muted">La voix enregistrée (${M.clips ? M.clips.count() : 0} phrases préenregistrées) est utilisée quand la phrase existe; sinon, la voix de l'appareil prend le relais. La lecture automatique lit chaque consigne à voix haute (utile pour un lecteur débutant). La progression est enregistrée seulement dans ce navigateur, sur cet appareil.</p>
       <div id="parentTools"></div>
     </div>`;
     M.$('#toggleSound').onclick = (e) => { M.settings.set('sound', !M.sfx.on); e.target.textContent = M.sfx.on ? '🔊 Sons activés' : '🔇 Sons désactivés'; };
+    if (M.$('#toggleVoice')) M.$('#toggleVoice').onclick = (e) => { M.settings.set('voice', M.settings.get('voice') === 'browser' ? 'clips' : 'browser'); e.target.textContent = (M.settings.get('voice') === 'browser' ? '🎙️ Voix : celle de l’appareil' : '🎙️ Voix : enregistrée'); M.say('Bonjour ! Je suis la voix française.'); };
+    M.$('#musicVol').oninput = (e) => { const v = +e.target.value; M.music.volume(v); if (v > 0 && !M.music.on()) { M.music.set(true); paintMusic(); } };
     M.$('#toggleRead').onclick = (e) => { M.settings.set('autoRead', !M.settings.get('autoRead')); e.target.textContent = M.settings.get('autoRead') ? '🗣️ Lecture automatique : oui' : '🗣️ Lecture automatique : non'; };
     M.voices.ready().then(() => {
       const box = M.$('#voiceDiag');

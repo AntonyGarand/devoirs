@@ -33,6 +33,7 @@ js/<matière>/skills/*.js      habiletés (générateurs de questions)
 js/<matière>/learn/*.js       pages Apprendre
 js/<matière>/data/*.js        données (listes de mots, textes) — optionnel
 tools/check-skills.js         vérification automatique (node)
+tools/check-dupes.js          habiletés / niveaux qui ont peu de questions distinctes (node)
 ```
 
 Pas de modules ES ni de compilation : chaque fichier est un IIFE qui utilise `window.M`, et le site fonctionne en `file://`
@@ -60,6 +61,7 @@ Champs facultatifs d'une habileté :
 - `available: () => true | 'raison'` — ex. « Demande à un adulte d'ajouter ta liste de mots ».
 - `parentNote: 'html'` — note affichée sur la page Parents (aussi sur domaines et pages Apprendre).
 - `check(q)` / `lint(q)` — contrôles de sens propres à l'habileté, exécutés par `tools/check-skills.js` (retourner un message = erreur).
+- **Jamais deux fois la même question** dans une série ni dans un mini-quiz : `M.qSig(q)` (empreinte de la question entière, fonctions et ordre des listes d'objets ignorés) et `M.genUnique(make, seen, {avoid})`. Si le niveau de l'enfant n'a plus de question nouvelle, la série emprunte aux niveaux voisins, puis se raccourcit plutôt que de répéter. « Encore ! » / « Recommencer » évitent la ronde précédente si possible. `tools/check-dupes.js` liste les niveaux à enrichir.
 Une matière peut définir `lint(q, skill)` (ex. anglais : pas de format `text`) et `cheers: [{ text, lang }]` (encouragements dans sa langue).
 
 **`gen({ lvl })`** : retourne une question; `lvl` = 0, 1 ou 2 selon la maîtrise (★). `gen` **ne touche jamais au DOM**
@@ -161,6 +163,26 @@ Services (`services.js`) : `M.voices.status(lang)`, `M.say(text|segments, opts) 
 `M.registerData(id, value)` / `M.data[id]`, `M.people.pick()` → `{n, f, il, Il, e, ami, un}`, `M.fr.de/que/nb/fill/cap`,
 `M.typo`, `M.tokenize(text)`, `M.progress.item(skill, key).record(ok)`, `M.pickWeighted(items, keyFn, skill)`, `M.lint.noPrivate`.
 
+### Voix préenregistrée (`js/clips.js`, `audio/`)
+
+`M.say` essaie d'abord un enregistrement (`audio/<id>.mp3`, liste dans `audio/index.js`), sinon la voix de l'appareil.
+Une phrase absente qui contient des nombres est recollée à partir de morceaux (« 57 » + « plus » + « 30 » + « égale combien »),
+seulement si **tous** les morceaux existent : jamais deux voix dans la même phrase. Les parents peuvent revenir à la voix
+de l'appareil (page Parents).
+
+Après avoir ajouté ou modifié du texte lu à voix haute :
+
+```
+cd tools && npm i            # une seule fois (jsdom)
+node tools/tts-collect.js    # → tools/tts/phrases.json : toutes les phrases que l'app peut lire
+node tools/tts-bake.js       # synthétise ce qui manque (audio.cpp local), met audio/index.js à jour
+node tools/tts-bake.js --prune   # retire les enregistrements qui ne servent plus
+```
+
+Voix : français = OmniVoice avec clonage (`VOICE_FR`, défaut `antony_bws`, dans `audiocpp/voices`); anglais = Kokoro
+(`EN_VOICE`, défaut `af_heart`), voix native pour la prononciation. Une phrase sans enregistrement fonctionne quand même
+(voix de l'appareil) : rien ne casse si on oublie de recuire.
+
 Le CSS propre à une matière passe par `M.css()` avec un préfixe de classe (`fr-`, `en-`…), et seulement pour des visuels
 spécifiques. Les boutons, cartes, couleurs et espacements viennent toujours des jetons et composants communs.
 
@@ -205,3 +227,12 @@ spécifiques. Les boutons, cartes, couleurs et espacements viennent toujours des
    Sans aperçu intégré : `python -m http.server` puis Chrome sans tête, p. ex.
    `chrome --headless=new --screenshot=out.png --window-size=1100,1400 "http://localhost:8000/#/matiere/francais"`.
 6. Mettre à jour `docs/curriculum.md`.
+
+### Musique d'ambiance (`js/music.js`)
+
+Générée en direct avec Web Audio (aucun fichier) : nappe, basse, arpèges de marimba, petite mélodie de boîte à musique et
+shaker, sur une progression d'accords de 8 mesures qui change à chaque section. Le routeur choisit l'humeur
+(`M.music.mood('jeu' | 'calme', matière)`) : *jeu* à l'accueil et dans Apprendre, *calme* en pratique et en révision;
+chaque matière a sa tonalité. La musique baisse pendant la voix (`M.say` → `speaking`) et devient presque muette pendant
+une question d'écoute (`focus`). Bouton 🎵 dans l'en-tête, volume dans Parents (réglages `music`, `musicVol`).
+Pour écouter sans navigateur : `node tools/music-preview.js jeu maths 45 sortie.wav`.
