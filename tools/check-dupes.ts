@@ -88,7 +88,7 @@ vm.createContext(ctx);
 const load = (f: string): unknown => vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f });
 
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map((m) => m[1]).filter((f) => !f.endsWith('app.js'));
+const scripts = [...html.matchAll(/<script src="([^"?]+)(?:[?][^"]*)?"><\/script>/g)].map((m) => m[1]).filter((f) => !f.endsWith('app.js'));
 /** window.M (erreur claire si les scripts ne l'ont pas créé). */
 const getM = (): ToolM => {
   if (!ctx.M) throw new Error('window.M absent : dist/ est-il compilé (node scripts/build.ts) ?');

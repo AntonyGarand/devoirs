@@ -49,10 +49,30 @@ console.log(`tsrs : ${errors ? `${errors} erreur(s) de types` : 'aucune erreur'}
 // Fichiers statiques (le code TypeScript est déjà compilé)
 ['index.html', 'manifest.webmanifest', 'CNAME', '.nojekyll', 'css', 'icons', 'audio', 'js/musique/samples.js'].forEach(copy);
 
-// Service worker : coquille = tout ce que index.html charge + scripts chargés à la demande
-const html = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');
-const LAZY = ['js/styleguide.js', 'js/selftest.js']; // chargés par app.js (#/style, #/test)
 const local = (u: string): boolean => !/^(data:|https?:|\/\/)/.test(u);
+const file = (url: string): string => url.split('?')[0] ?? url; // « js/core.js?v=… » → « js/core.js »
+
+// Empreinte dans l'URL des scripts et feuilles de style (js/core.js?v=…) : GitHub Pages laisse navigateurs et CDN garder
+// un fichier 10 minutes; sans empreinte, une page pourrait mélanger anciens et nouveaux fichiers juste après un déploiement.
+const fingerprint = (rel: string): string =>
+  crypto
+    .createHash('sha256')
+    .update(fs.readFileSync(path.join(dist, rel)))
+    .digest('hex')
+    .slice(0, 10);
+const indexFile = path.join(dist, 'index.html');
+fs.writeFileSync(
+  indexFile,
+  fs
+    .readFileSync(indexFile, 'utf8')
+    .replace(/(<script src="|<link rel="stylesheet" href=")([^"?]+\.(?:js|css))"/g, (m: string, pre: string, rel: string) =>
+      local(rel) && fs.existsSync(path.join(dist, rel)) ? `${pre}${rel}?v=${fingerprint(rel)}"` : m,
+    ),
+);
+
+// Service worker : coquille = tout ce que index.html charge (URL avec empreinte) + scripts chargés à la demande
+const html = fs.readFileSync(indexFile, 'utf8');
+const LAZY = ['js/styleguide.js', 'js/selftest.js']; // chargés par app.js (#/style, #/test)
 const shell = [
   ...new Set(
     [
@@ -65,7 +85,7 @@ const shell = [
     ].filter((u) => u && local(u)),
   ),
 ];
-const missing = shell.filter((f) => !fs.existsSync(path.join(dist, f)));
+const missing = shell.filter((f) => !fs.existsSync(path.join(dist, file(f))));
 if (missing.length) {
   console.error('Fichiers introuvables dans dist/ :', missing.join(', '));
   process.exit(1);
@@ -74,7 +94,7 @@ const hash = (list: string[]): string => {
   const h = crypto.createHash('sha256');
   list.forEach((f) => {
     h.update(f);
-    h.update(fs.readFileSync(path.join(dist, f)));
+    h.update(fs.readFileSync(path.join(dist, file(f))));
   });
   return h.digest('hex').slice(0, 12);
 };

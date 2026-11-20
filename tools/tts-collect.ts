@@ -69,7 +69,7 @@ const MAX = +arg('--max', 1500);
 const BATCH = 40;
 
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)]
+const scripts = [...html.matchAll(/<script src="([^"?]+)(?:[?][^"]*)?"><\/script>/g)]
   .map((m) => m[1])
   .filter((f) => !f.endsWith('app.js'))
   .concat(['js/styleguide.js']); // chargé à la demande dans l'app; ses phrases d'exemple doivent quand même être enregistrées

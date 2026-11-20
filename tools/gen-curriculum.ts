@@ -82,7 +82,7 @@ const ctx: SandboxCtx = {
 ctx.window = ctx;
 vm.createContext(ctx);
 const html = fs.readFileSync(path.join(web, 'index.html'), 'utf8');
-[...html.matchAll(/<script src="([^"]+)"><\/script>/g)]
+[...html.matchAll(/<script src="([^"?]+)(?:[?][^"]*)?"><\/script>/g)]
   .map((m) => m[1])
   .filter((f) => !f.endsWith('app.js'))
   .forEach((f) => vm.runInContext(fs.readFileSync(path.join(web, f), 'utf8'), ctx, { filename: f }));
