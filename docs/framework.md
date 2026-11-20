@@ -1,7 +1,7 @@
 # Cadre commun des devoirs : formats, composants, style
 
 Ce document définit **comment toutes les matières se présentent et se comportent**. Une nouvelle matière ne crée pas sa propre
-interface : elle choisit des *formats de questions* et des *composants* existants. Si un besoin n'est pas couvert, on ajoute un
+interface : elle choisit des _formats de questions_ et des _composants_ existants. Si un besoin n'est pas couvert, on ajoute un
 format ou un composant **au cadre** (avec un exemple dans le guide de style), jamais une variante locale.
 
 Guide de style vivant : ouvrir le site → Parents → 🎨 Guide de style (`#/style`).
@@ -41,12 +41,12 @@ comme sur GitHub Pages. Ordre de chargement : cadre → `subject.js` → `skills
 
 ## 2. Modèle de contenu
 
-| Niveau | Enregistrement | Exemple |
-|---|---|---|
-| Matière | `M.registerSubject({ id, title, icon, color, soft, desc })` | `francais`, Français, 📚 |
-| Domaine | `M.registerDomain({ id, subject, title, icon, color, soft, pda })` | `fr-grammaire`, La grammaire |
-| Habileté | `M.registerSkill({ id, domain, title, icon, desc, pda, learn?, starter?, enrichment?, ungraded?, needs?, available?, parentNote?, check?, lint?, gen })` | `fr-nom-verbe` |
-| Page Apprendre | `M.registerLearn({ id, domain, title, icon, short, intro, render(el) })` | `fr-classes-mots` |
+| Niveau         | Enregistrement                                                                                                                                           | Exemple                      |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| Matière        | `M.registerSubject({ id, title, icon, color, soft, desc })`                                                                                              | `francais`, Français, 📚     |
+| Domaine        | `M.registerDomain({ id, subject, title, icon, color, soft, pda })`                                                                                       | `fr-grammaire`, La grammaire |
+| Habileté       | `M.registerSkill({ id, domain, title, icon, desc, pda, learn?, starter?, enrichment?, ungraded?, needs?, available?, parentNote?, check?, lint?, gen })` | `fr-nom-verbe`               |
+| Page Apprendre | `M.registerLearn({ id, domain, title, icon, short, intro, render(el) })`                                                                                 | `fr-classes-mots`            |
 
 **Identifiants** : préfixe de matière obligatoire pour les nouvelles matières (`fr-`, `en-`, `us-` univers social, `sc-` sciences).
 Les habiletés de mathématique existantes ne sont pas préfixées (rétrocompatibilité de la progression enregistrée). Les ids sont
@@ -55,6 +55,7 @@ stables : les changer efface la progression de l'enfant.
 **`pda`** : référence précise au programme (Progression des apprentissages, PFEQ) — affichée aux parents.
 
 Champs facultatifs d'une habileté :
+
 - `enrichment: true` — au-delà du programme de 2e année : 🌟 affiché, exclue de la révision automatique.
 - `ungraded: true` — habileté de discussion (format `reflect`) : jamais notée, exclue de la révision.
 - `needs: ['speech:en' | 'speech:fr']` — exige une voix; sinon l'habileté est verrouillée avec la raison.
@@ -62,7 +63,7 @@ Champs facultatifs d'une habileté :
 - `parentNote: 'html'` — note affichée sur la page Parents (aussi sur domaines et pages Apprendre).
 - `check(q)` / `lint(q)` — contrôles de sens propres à l'habileté, exécutés par `tools/check-skills.js` (retourner un message = erreur).
 - **Jamais deux fois la même question** dans une série ni dans un mini-quiz : `M.qSig(q)` (empreinte de la question entière, fonctions et ordre des listes d'objets ignorés) et `M.genUnique(make, seen, {avoid})`. Si le niveau de l'enfant n'a plus de question nouvelle, la série emprunte aux niveaux voisins, puis se raccourcit plutôt que de répéter. « Encore ! » / « Recommencer » évitent la ronde précédente si possible. `tools/check-dupes.js` liste les niveaux à enrichir.
-Une matière peut définir `lint(q, skill)` (ex. anglais : pas de format `text`) et `cheers: [{ text, lang }]` (encouragements dans sa langue).
+  Une matière peut définir `lint(q, skill)` (ex. anglais : pas de format `text`) et `cheers: [{ text, lang }]` (encouragements dans sa langue).
 
 **`gen({ lvl })`** : retourne une question; `lvl` = 0, 1 ou 2 selon la maîtrise (★). `gen` **ne touche jamais au DOM**
 (seuls `viz`/`showMe`/les formats le font) et doit produire des questions sans ambiguïté et variées.
@@ -99,28 +100,29 @@ Une matière peut définir `lint(q, skill)` (ex. anglais : pas de format `text`)
 
 ## 4. Formats de questions
 
-| Format | Geste de l'enfant | Champs | Essais |
-|---|---|---|---|
-| `number` | Pavé numérique | `answer` (entier ≥ 0), `unit?`, `{?}` dans `prompt` | 2, « trop grand / trop petit » |
-| `choice` | Touche une réponse (texte, emoji, SVG) | `choices:[{label,value,say?,lang?,why?}]`, `answer`, `cols?`, `audioOnly?` | 1 si 2 choix, sinon 2; `why` = message du distracteur |
-| `tf` | Vrai / Faux | `answer: true/false`, `labels?:[{label},{label}]` (ex. 👍 Yes / 👎 No) | 1 |
-| `multi` | Coche toutes les bonnes réponses + Vérifier | `choices`, `answer:[values]` | 2 |
-| `order` | Touche dans l'ordre | `choices`, `answer:[values]`, `fixed?:[positions déjà placées]` (cycles) | 2 |
-| `text` | Écrit un mot (clavier d'accents intégré) | `answer: str | [str]`, `caseSensitive?: true|'first'`, `accents?` (défaut exigés), `keyboard?: 'accents'|'full'|'none'`, `prefix?`, `suffix?`, `diagnose?`, `lang?` | 2; diagnostic : accents, majuscule, apostrophe, une lettre; lettres alignées |
-| `build` | Construit un mot/une phrase avec des tuiles | `tiles:[str|{label,value,say?}]`, `answer:[values]`, `accept?:[[values]]`, `join?: ''|' '`, `fixedEnd?`, `capitalizeFirst?` | 2; cases justes gardées |
-| `match` | Associe gauche ↔ droite | `pairs:[{left,right,sayLeft?,sayRight?}]`, `shuffleLeft?`, `lang?` | correction immédiate; ⭐ si aucune erreur |
-| `sort` | Classe des éléments dans des boîtes | `bins:[{id,label}]`, `items:[{label,bin,say?}]` | correction immédiate; ⭐ si aucune erreur |
-| `cloze` | Phrase à trous, banque de mots par trou | `text` avec `{0}`, `{1}`…, `blanks:[{choices,answer}]` | 2, trous fautifs en rouge |
-| `tapwords` | Touche le(s) mot(s) dans une phrase **ou dans le texte** | `words:[str]` ('¶' = paragraphe) ou `target:'passage'` (+ `unit?:'word'|'sentence'`, `mark?:'q'|'d'|'x'`), `answer:[indices]`, `select?: 'one'|'many'`, `mode?:'letters'`, `hintSpan?` | 2; marques persistantes sur le texte |
-| `hotspot` | Touche une zone d'une image | `html` (SVG avec `data-hot="id"`), `answer: id | [ids]`, `answerText?`, `answerSay?` | 2 |
-| `label` | Place des étiquettes sur un dessin | `html` (zones `data-hot`, `data-anchor="x,y"`), `labels:[{id,text,say?}]`, `distractors?`, `explore?` | correction immédiate; ⭐ si aucune erreur |
-| `estimate` | Place une valeur sur une droite | `lo`, `hi`, `answer`, `tolerance`, `labelEvery?`, `unit?` | 2 |
-| `steps` | Plusieurs étapes guidées | `steps:[{label?, demarche?:0..5, prompt ({s1} = réponse de l'étape 1), format, …, viz?, after?}]`, `scoreSteps?` | par étape; ⭐ si les étapes comptées sont du 1er coup; texte collant |
-| `predict` | Prédire → voir l'expérience → expliquer | `predict:{prompt?,choices}`, `outcome`, `simulate(el,pred)`, `result?`, `check?:{prompt,format,…}` | prédiction jamais notée; `check` noté |
-| `info` | Lire puis « J'ai lu ✔ » (étape) | `html?`, `button?` | non noté |
-| `reflect` | Carte de discussion avec un adulte | `prompt`, `scene?`, `actions?` (jamais d'`answer`) | jamais noté; participation comptée pour les parents |
+| Format     | Geste de l'enfant                                        | Champs                                                                                                           | Essais                                                                    |
+| ---------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `number`   | Pavé numérique                                           | `answer` (entier ≥ 0), `unit?`, `{?}` dans `prompt`                                                              | 2, « trop grand / trop petit »                                            |
+| `choice`   | Touche une réponse (texte, emoji, SVG)                   | `choices:[{label,value,say?,lang?,why?}]`, `answer`, `cols?`, `audioOnly?`                                       | 1 si 2 choix, sinon 2; `why` = message du distracteur                     |
+| `tf`       | Vrai / Faux                                              | `answer: true/false`, `labels?:[{label},{label}]` (ex. 👍 Yes / 👎 No)                                           | 1                                                                         |
+| `multi`    | Coche toutes les bonnes réponses + Vérifier              | `choices`, `answer:[values]`                                                                                     | 2                                                                         |
+| `order`    | Touche dans l'ordre                                      | `choices`, `answer:[values]`, `fixed?:[positions déjà placées]` (cycles)                                         | 2                                                                         |
+| `text`     | Écrit un mot (clavier d'accents intégré)                 | `answer: str                                                                                                     | [str]`, `caseSensitive?: true                                             | 'first'`, `accents?`(défaut exigés),`keyboard?: 'accents' | 'full'                                     | 'none'`, `prefix?`, `suffix?`, `diagnose?`, `lang?` | 2; diagnostic : accents, majuscule, apostrophe, une lettre; lettres alignées |
+| `build`    | Construit un mot/une phrase avec des tuiles              | `tiles:[str                                                                                                      | {label,value,say?}]`, `answer:[values]`, `accept?:[[values]]`, `join?: '' | ' '`, `fixedEnd?`, `capitalizeFirst?`                     | 2; cases justes gardées                    |
+| `match`    | Associe gauche ↔ droite                                  | `pairs:[{left,right,sayLeft?,sayRight?}]`, `shuffleLeft?`, `lang?`                                               | correction immédiate; ⭐ si aucune erreur                                 |
+| `sort`     | Classe des éléments dans des boîtes                      | `bins:[{id,label}]`, `items:[{label,bin,say?}]`                                                                  | correction immédiate; ⭐ si aucune erreur                                 |
+| `cloze`    | Phrase à trous, banque de mots par trou                  | `text` avec `{0}`, `{1}`…, `blanks:[{choices,answer}]`                                                           | 2, trous fautifs en rouge                                                 |
+| `tapwords` | Touche le(s) mot(s) dans une phrase **ou dans le texte** | `words:[str]` ('¶' = paragraphe) ou `target:'passage'` (+ `unit?:'word'                                          | 'sentence'`, `mark?:'q'                                                   | 'd'                                                       | 'x'`), `answer:[indices]`, `select?: 'one' | 'many'`, `mode?:'letters'`, `hintSpan?`             | 2; marques persistantes sur le texte                                         |
+| `hotspot`  | Touche une zone d'une image                              | `html` (SVG avec `data-hot="id"`), `answer: id                                                                   | [ids]`, `answerText?`, `answerSay?`                                       | 2                                                         |
+| `label`    | Place des étiquettes sur un dessin                       | `html` (zones `data-hot`, `data-anchor="x,y"`), `labels:[{id,text,say?}]`, `distractors?`, `explore?`            | correction immédiate; ⭐ si aucune erreur                                 |
+| `estimate` | Place une valeur sur une droite                          | `lo`, `hi`, `answer`, `tolerance`, `labelEvery?`, `unit?`                                                        | 2                                                                         |
+| `steps`    | Plusieurs étapes guidées                                 | `steps:[{label?, demarche?:0..5, prompt ({s1} = réponse de l'étape 1), format, …, viz?, after?}]`, `scoreSteps?` | par étape; ⭐ si les étapes comptées sont du 1er coup; texte collant      |
+| `predict`  | Prédire → voir l'expérience → expliquer                  | `predict:{prompt?,choices}`, `outcome`, `simulate(el,pred)`, `result?`, `check?:{prompt,format,…}`               | prédiction jamais notée; `check` noté                                     |
+| `info`     | Lire puis « J'ai lu ✔ » (étape)                          | `html?`, `button?`                                                                                               | non noté                                                                  |
+| `reflect`  | Carte de discussion avec un adulte                       | `prompt`, `scene?`, `actions?` (jamais d'`answer`)                                                               | jamais noté; participation comptée pour les parents                       |
 
 Règles communes :
+
 - **Une seule bonne réponse** dans `choice` ; pas de choix en double ; libellés courts.
 - **Distracteurs plausibles** (erreurs typiques), jamais farfelus.
 - `text` : exiger l'orthographe exacte (accents compris) sauf si l'habileté ne porte pas sur l'orthographe (`accents:false`).
@@ -129,34 +131,34 @@ Règles communes :
 
 ## 5. Composants d'interface (`M.ui`)
 
-| Composant | Usage |
-|---|---|
-| `section({icon,title,intro,body})` | Bloc d'une page Apprendre |
-| `callout(html,{tone:'tip'|'info'|'success'|'warn'})` | Astuce de Castor 🦫, info, bravo, attention |
-| `speak(text,{lang})` | Bouton 🔊 déclaratif |
-| `tag(text,color,soft)` | Étiquette colorée |
-| `vocab([{emoji,word,say?,lang?,note?}])` | Grille de mots illustrés qui se lisent au toucher |
-| `flashcards(el,[{front,back,say?,lang?}])` | Cartes-éclair à retourner |
-| `reading(el,{title,text,lang})` | Texte où chaque mot se lit au toucher |
-| `tabs(el,[{id,label,render}])` | Onglets (ex. : changer de modèle visuel) |
-| `stepper(el,{label,value,min,max,onChange})` | Contrôle − valeur + |
-| `demarche(steps?,active?)` | Pictogrammes de la démarche de résolution |
-| `miniQuiz(el,[questions])` | Questions « Vérifie ta compréhension » dans une page Apprendre (non comptées) |
-| `slider(el,{label,stops|min/max,value,onChange})` | Curseur à paliers illustrés (simulations) |
-| `cycle({stages,hide})` | Cycle en cercle (zones `data-hot="c<i>"` pour hotspot) |
-| `wordParts(word,parts,{mode,say})` | Mot découpé en syllabes/sons, chaque partie lue au toucher |
-| `tagged([{w,tag}],{arrows})` | Phrase annotée avec classes de mots (couleurs `--cls-*`) |
-| `gloss(word,fr,{lang})` | Mot étranger avec 🔊 et sens au 2e toucher |
-| `feelings(el)` | Sélecteur d'émotions (rien n'est enregistré) |
-| `compare({left,right})` | Deux colonnes : avant/maintenant, ici/ailleurs |
-| `M.renderQuestion(el,q,opts)` | Une carte-question n'importe où |
-| `M.viz.counters / blocks / base10Html / numberLine` | Cadres de dix, blocs base 10, droite numérique |
-| `M.viz.barModel(el,spec) / barModelHtml(spec)` | Modèle en barres (tout, comparaison, groupes; inconnue en jaune) |
-| `M.viz.timeline(spec)` | Ligne du temps SVG (événements et graduations `data-hot`) |
-| `M.viz.plan(spec)` | Plan/carte vue d'oiseau : lieux `data-hot` en tuiles en relief, légende qui fait sauter le lieu, quadrillage lettre-chiffre, rose des vents animée. `ground: 'grass' | 'floor' | 'tiles'`, `water`, `decor` (arbres et fleurs dessinés, jamais en emoji), `alive` (autos sur les rues, nuages qui passent) |
-| `M.art.register(name, fn, emoji) / M.art.html(name)` | Dessins SVG partagés (avec repli emoji) |
+| Composant                                                        | Usage                                                                                                                                                                                                                |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `section({icon,title,intro,body})`                               | Bloc d'une page Apprendre                                                                                                                                                                                            |
+| `callout(html,{tone:'tip'                                        | 'info'                                                                                                                                                                                                               | 'success'                                 | 'warn'})`                                                                                                               | Astuce de Castor 🦫, info, bravo, attention |
+| `speak(text,{lang})`                                             | Bouton 🔊 déclaratif                                                                                                                                                                                                 |
+| `tag(text,color,soft)`                                           | Étiquette colorée                                                                                                                                                                                                    |
+| `vocab([{emoji,word,say?,lang?,note?}])`                         | Grille de mots illustrés qui se lisent au toucher                                                                                                                                                                    |
+| `flashcards(el,[{front,back,say?,lang?}])`                       | Cartes-éclair à retourner                                                                                                                                                                                            |
+| `reading(el,{title,text,lang})`                                  | Texte où chaque mot se lit au toucher                                                                                                                                                                                |
+| `tabs(el,[{id,label,render}])`                                   | Onglets (ex. : changer de modèle visuel)                                                                                                                                                                             |
+| `stepper(el,{label,value,min,max,onChange})`                     | Contrôle − valeur +                                                                                                                                                                                                  |
+| `demarche(steps?,active?)`                                       | Pictogrammes de la démarche de résolution                                                                                                                                                                            |
+| `miniQuiz(el,[questions])`                                       | Questions « Vérifie ta compréhension » dans une page Apprendre (non comptées)                                                                                                                                        |
+| `slider(el,{label,stops                                          | min/max,value,onChange})`                                                                                                                                                                                            | Curseur à paliers illustrés (simulations) |
+| `cycle({stages,hide})`                                           | Cycle en cercle (zones `data-hot="c<i>"` pour hotspot)                                                                                                                                                               |
+| `wordParts(word,parts,{mode,say})`                               | Mot découpé en syllabes/sons, chaque partie lue au toucher                                                                                                                                                           |
+| `tagged([{w,tag}],{arrows})`                                     | Phrase annotée avec classes de mots (couleurs `--cls-*`)                                                                                                                                                             |
+| `gloss(word,fr,{lang})`                                          | Mot étranger avec 🔊 et sens au 2e toucher                                                                                                                                                                           |
+| `feelings(el)`                                                   | Sélecteur d'émotions (rien n'est enregistré)                                                                                                                                                                         |
+| `compare({left,right})`                                          | Deux colonnes : avant/maintenant, ici/ailleurs                                                                                                                                                                       |
+| `M.renderQuestion(el,q,opts)`                                    | Une carte-question n'importe où                                                                                                                                                                                      |
+| `M.viz.counters / blocks / base10Html / numberLine`              | Cadres de dix, blocs base 10, droite numérique                                                                                                                                                                       |
+| `M.viz.barModel(el,spec) / barModelHtml(spec)`                   | Modèle en barres (tout, comparaison, groupes; inconnue en jaune)                                                                                                                                                     |
+| `M.viz.timeline(spec)`                                           | Ligne du temps SVG (événements et graduations `data-hot`)                                                                                                                                                            |
+| `M.viz.plan(spec)`                                               | Plan/carte vue d'oiseau : lieux `data-hot` en tuiles en relief, légende qui fait sauter le lieu, quadrillage lettre-chiffre, rose des vents animée. `ground: 'grass'                                                 | 'floor'                                   | 'tiles'`, `water`, `decor`(arbres et fleurs dessinés, jamais en emoji),`alive` (autos sur les rues, nuages qui passent) |
+| `M.art.register(name, fn, emoji) / M.art.html(name)`             | Dessins SVG partagés (avec repli emoji)                                                                                                                                                                              |
 | `js/art-lib.js` : `pl-*`, `ciel-*`; `M.art.svg(name, {x,y,w,h})` | Bibliothèque d'illustrations (bâtiments, mobilier, Soleil, Terre, Lune) dans un style commun; `M.art.svg` imbrique un dessin dans un autre SVG. Préférer un dessin à un emoji pour tout symbole de plan ou de scène. |
-| `M.SC.svg.terre / ombre / arbre / erable`, `M.SC.earthAngle` | Scènes du ciel (sciences) : la Terre tourne sans être redessinée, ciel selon l'heure, saisons animées |
+| `M.SC.svg.terre / ombre / arbre / erable`, `M.SC.earthAngle`     | Scènes du ciel (sciences) : la Terre tourne sans être redessinée, ciel selon l'heure, saisons animées                                                                                                                |
 
 Services (`services.js`) : `M.voices.status(lang)`, `M.say(text|segments, opts) → Promise`, `M.sayHtml(html)`, `M.settings`,
 `M.userData.get/set(ns, key)` (+ `fixture` pour les tests), `M.registerParentTool({id,subject,title,icon,render})`,
@@ -208,7 +210,7 @@ spécifiques. Les boutons, cartes, couleurs et espacements viennent toujours des
 - **Concret → imagé → abstrait** : proposer un visuel (`viz`) dès que c'est utile; `showMe` montre la démarche.
 - **Rétroaction** : indice ciblé après la 1re erreur; après l'échec, bonne réponse + démonstration + explication.
   Jamais de minuterie ni de pénalité.
-- **Explications** : dire *comment penser*, avec les nombres ou mots de la question.
+- **Explications** : dire _comment penser_, avec les nombres ou mots de la question.
 - **Niveaux** : `lvl 0` = découverte (petits nombres, mots fréquents, 2–3 choix); `lvl 1` = attendu de fin d'année;
   `lvl 2` = défi (sans aller au-delà du programme).
 - **Compréhension** : un texte (`passage`) court, adapté à 7 ans, avec des questions de repérage (qui, quoi, où), d'inférence
@@ -232,7 +234,7 @@ spécifiques. Les boutons, cartes, couleurs et espacements viennent toujours des
 
 Générée en direct avec Web Audio (aucun fichier) : nappe, basse, arpèges de marimba, petite mélodie de boîte à musique et
 shaker, sur une progression d'accords de 8 mesures qui change à chaque section. Le routeur choisit l'humeur
-(`M.music.mood('jeu' | 'calme', matière)`) : *jeu* à l'accueil et dans Apprendre, *calme* en pratique et en révision;
+(`M.music.mood('jeu' | 'calme', matière)`) : _jeu_ à l'accueil et dans Apprendre, _calme_ en pratique et en révision;
 chaque matière a sa tonalité. La musique baisse pendant la voix (`M.say` → `speaking`) et devient presque muette pendant
 une question d'écoute (`focus`). Bouton 🎵 dans l'en-tête, volume dans Parents (réglages `music`, `musicVol`).
 Pour écouter sans navigateur : `node tools/music-preview.js jeu maths 45 sortie.wav`.

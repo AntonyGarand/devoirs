@@ -1,44 +1,223 @@
 /* Design system — 2. Composants génériques (boutons, cartes, encadrés, étiquettes…) */
 /* ===================== Composants ===================== */
-.card { background: var(--card); border-radius: 26px; padding: 22px; box-shadow: 0 6px 0 var(--line), 0 10px 30px rgba(0,0,0,.05) }
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  border: 3px solid var(--line); background: #fff; border-radius: 14px; padding: 8px 14px; min-height: 44px;
-  font-weight: 800; font-size: 1rem; text-decoration: none; color: var(--ink); transition: transform .1s;
+.card {
+  background: var(--card);
+  border-radius: 26px;
+  padding: 22px;
+  box-shadow:
+    0 6px 0 var(--line),
+    0 10px 30px rgba(0, 0, 0, 0.05);
 }
-.btn:active { transform: translateY(2px) }
-.btn:disabled { opacity: .5 }
-.btn.primary { background: var(--C-strong); border-color: var(--C-strong-edge); color: #fff; box-shadow: 0 4px 0 var(--C-strong-edge) }
-.btn.blue { background: var(--B-strong); border-color: var(--B-strong-edge); color: #fff; box-shadow: 0 4px 0 var(--B-strong-edge) }
-.btn.yellow { background: var(--yel); border-color: #e9b949 }
-.btn.ghost { border-radius: 999px }
-.btn.icon { padding: 6px 10px; font-size: 1.3rem; background: var(--yel); border-color: #e9b949 }
-.btn.big { font-size: 1.3rem; padding: 12px 26px; border-radius: 999px }
-.btn.on { background: var(--ink); color: #fff; border-color: var(--ink) }
-.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 10px }
-.row-center { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 16px }
-.tag { display: inline-block; padding: 4px 12px; border-radius: 999px; font-weight: 800; font-size: .95rem }
-.callout { background: #fff8e6; border: 3px dashed var(--yel); border-radius: 18px; padding: 12px 16px; margin: 12px 0; font-size: 1.05rem }
-.callout.blue { background: var(--Bb); border-color: #8fd0e6 }
-.callout.green { background: var(--Cc); border-color: #8fdcc3 }
-.hint-text { font-weight: 700; color: var(--ink); font-size: 1rem; margin-top: 4px }
-.big-num { font-size: 3rem; font-weight: 900 }
-.muted { color: var(--muted) }
-.chip { display: inline-block; border: 3px solid var(--line); border-radius: 999px; padding: 4px 12px; font-weight: 800; background: #fff }
-button.chip { min-height: 44px; cursor: pointer }
-.viz-box { background: #fbfaf6; border: 3px solid var(--line); border-radius: var(--radius); padding: 14px }
-.viz-hint { font-weight: 700; color: var(--muted); margin-bottom: 10px; font-size: 1rem }
-.viz-status { margin-top: 10px; font-size: 1.15rem; font-weight: 800; min-height: 1.4em }
-.mstars { color: #f4b400; font-size: 1.1rem; letter-spacing: 1px; white-space: nowrap }
-.mstars .off { color: #e3dccb }
-.pop { animation: pop .5s }
-.shake { animation: shake .45s }
-@keyframes pop { 40% { transform: scale(1.2) } }
-@keyframes shake { 20%, 60% { transform: translateX(-8px) } 40%, 80% { transform: translateX(8px) } }
-@keyframes bob { 50% { transform: translateY(-8px) rotate(-4deg) } }
-.confetti { position: fixed; top: -20px; width: 12px; height: 16px; z-index: 50; pointer-events: none; animation: fall linear forwards }
-@keyframes fall { to { transform: translateY(1400px) rotate(720deg) } }
-.btn:focus-within { outline: 4px solid var(--focus); outline-offset: 2px } /* label + champ fichier caché */
-.toast { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 70; width: max-content; max-width: 92vw; background: #fff8e6; color: var(--ink); border: 3px solid var(--yel); border-radius: 16px; padding: 10px 16px; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,.12) }
-.flystar { position: fixed; font-size: 3rem; z-index: 60; pointer-events: none; transition: all .8s cubic-bezier(.5,-0.4,.6,1) }
-
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 3px solid var(--line);
+  background: #fff;
+  border-radius: 14px;
+  padding: 8px 14px;
+  min-height: 44px;
+  font-weight: 800;
+  font-size: 1rem;
+  text-decoration: none;
+  color: var(--ink);
+  transition: transform 0.1s;
+}
+.btn:active {
+  transform: translateY(2px);
+}
+.btn:disabled {
+  opacity: 0.5;
+}
+.btn.primary {
+  background: var(--C-strong);
+  border-color: var(--C-strong-edge);
+  color: #fff;
+  box-shadow: 0 4px 0 var(--C-strong-edge);
+}
+.btn.blue {
+  background: var(--B-strong);
+  border-color: var(--B-strong-edge);
+  color: #fff;
+  box-shadow: 0 4px 0 var(--B-strong-edge);
+}
+.btn.yellow {
+  background: var(--yel);
+  border-color: #e9b949;
+}
+.btn.ghost {
+  border-radius: 999px;
+}
+.btn.icon {
+  padding: 6px 10px;
+  font-size: 1.3rem;
+  background: var(--yel);
+  border-color: #e9b949;
+}
+.btn.big {
+  font-size: 1.3rem;
+  padding: 12px 26px;
+  border-radius: 999px;
+}
+.btn.on {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+.row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 10px;
+}
+.row-center {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 16px;
+}
+.tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+.callout {
+  background: #fff8e6;
+  border: 3px dashed var(--yel);
+  border-radius: 18px;
+  padding: 12px 16px;
+  margin: 12px 0;
+  font-size: 1.05rem;
+}
+.callout.blue {
+  background: var(--Bb);
+  border-color: #8fd0e6;
+}
+.callout.green {
+  background: var(--Cc);
+  border-color: #8fdcc3;
+}
+.hint-text {
+  font-weight: 700;
+  color: var(--ink);
+  font-size: 1rem;
+  margin-top: 4px;
+}
+.big-num {
+  font-size: 3rem;
+  font-weight: 900;
+}
+.muted {
+  color: var(--muted);
+}
+.chip {
+  display: inline-block;
+  border: 3px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-weight: 800;
+  background: #fff;
+}
+button.chip {
+  min-height: 44px;
+  cursor: pointer;
+}
+.viz-box {
+  background: #fbfaf6;
+  border: 3px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+.viz-hint {
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 10px;
+  font-size: 1rem;
+}
+.viz-status {
+  margin-top: 10px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  min-height: 1.4em;
+}
+.mstars {
+  color: #f4b400;
+  font-size: 1.1rem;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+.mstars .off {
+  color: #e3dccb;
+}
+.pop {
+  animation: pop 0.5s;
+}
+.shake {
+  animation: shake 0.45s;
+}
+@keyframes pop {
+  40% {
+    transform: scale(1.2);
+  }
+}
+@keyframes shake {
+  20%,
+  60% {
+    transform: translateX(-8px);
+  }
+  40%,
+  80% {
+    transform: translateX(8px);
+  }
+}
+@keyframes bob {
+  50% {
+    transform: translateY(-8px) rotate(-4deg);
+  }
+}
+.confetti {
+  position: fixed;
+  top: -20px;
+  width: 12px;
+  height: 16px;
+  z-index: 50;
+  pointer-events: none;
+  animation: fall linear forwards;
+}
+@keyframes fall {
+  to {
+    transform: translateY(1400px) rotate(720deg);
+  }
+}
+.btn:focus-within {
+  outline: 4px solid var(--focus);
+  outline-offset: 2px;
+} /* label + champ fichier caché */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 70;
+  width: max-content;
+  max-width: 92vw;
+  background: #fff8e6;
+  color: var(--ink);
+  border: 3px solid var(--yel);
+  border-radius: 16px;
+  padding: 10px 16px;
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+.flystar {
+  position: fixed;
+  font-size: 3rem;
+  z-index: 60;
+  pointer-events: none;
+  transition: all 0.8s cubic-bezier(0.5, -0.4, 0.6, 1);
+}

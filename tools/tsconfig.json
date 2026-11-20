@@ -1,0 +1,17 @@
+{
+  // Outils Node (tools/, scripts/) : exécutés directement par Node 24 (types effacés), jamais compilés.
+  "compilerOptions": {
+    "target": "es2024",
+    "lib": ["es2024"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": ["node"],
+    "strict": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["../tools/*.ts", "../scripts/*.ts", "../knip.ts"]
+}

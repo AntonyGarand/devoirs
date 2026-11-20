@@ -1,0 +1,36 @@
+{
+  "name": "devoirs-2e-annee",
+  "private": true,
+  "description": "Devoirs de 2e année (Québec) : site statique en TypeScript, compilé par tsrs vers dist/.",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.ts",
+    "dev": "node scripts/dev.ts",
+    "typecheck": "tsrs -p tsconfig.json --noEmit && tsrs -p tools/tsconfig.json --noEmit",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "knip": "knip",
+    "check:skills": "npm run build && node tools/check-skills.ts",
+    "check:dupes": "npm run build && node tools/check-dupes.ts",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run knip && npm run check:skills",
+    "curriculum": "npm run build && node tools/gen-curriculum.ts",
+    "tts:collect": "npm run build && node tools/tts-collect.ts",
+    "tts:bake": "node tools/tts-bake.ts",
+    "samples": "node tools/mu-samples.ts"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^30.0.0",
+    "@types/node": "^26.6.6",
+    "jsdom": "^31.0.1",
+    "knip": "^6.46.1",
+    "node-web-audio-api": "^2.2.0",
+    "oxfmt": "^0.79.0",
+    "oxlint": "^1.94.0",
+    "tsrs": "^7.1.0-beta.tsrs3"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

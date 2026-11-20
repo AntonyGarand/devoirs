@@ -5,7 +5,7 @@ Statut : proposition de conception (aucun code). Public : auteur·e du site. Por
 Lire avec `docs/framework.md` (cadre commun), `docs/curriculum.md`, `docs/methodologie.md`.
 
 Constat de départ : l'habileté `problemes` (« Petits problèmes », `js/maths/skills/operations.js`) donne une histoire et
-attend **un nombre**. Elle exerce le *calcul en contexte*, pas la *compréhension* : l'enfant peut réussir en devinant
+attend **un nombre**. Elle exerce le _calcul en contexte_, pas la _compréhension_ : l'enfant peut réussir en devinant
 l'opération, sans lire la question, sans modéliser, sans vérifier ni rédiger de phrase-réponse. Le nouveau domaine exerce
 chaque geste de la démarche séparément, puis ensemble.
 
@@ -15,20 +15,20 @@ chaque geste de la démarche séparément, puis ensemble.
 
 ### 1.1 Ce que le programme demande (PFEQ, 1er cycle)
 
-| Source | Ce qui compte ici |
-|---|---|
-| **C1 — Résoudre une situation-problème mathématique.** Composantes : *décoder* les éléments, *modéliser*, *appliquer différentes stratégies*, *valider*, *partager l'information* ([PFEQ primaire, ch. 6](https://cdn-contenu.quebec.ca/cdn-contenu/education/pfeq/primaire/programmes/PFEQ-mathematique-primaire.pdf)) | Une habileté par composante (question, données, schéma, calcul, vérification, phrase-réponse). |
-| **Attente de fin de 1er cycle (C1)** : « résout une situation-problème comportant des **données complètes**. Il détermine la tâche et dégage les données utiles en ayant recours à différents modes de représentation (objets, dessins, tableaux, diagrammes, symboles, mots). Il élabore une solution qui comporte **une ou deux étapes** et vérifie **occasionnellement** le résultat obtenu. Il communique […] une solution (démarche et résultat) en utilisant un langage mathématique élémentaire. » (idem) | Données complètes aux niveaux 0–1; **données superflues = défi (lvl 2, enrichissement 2e cycle)**; jamais plus de 2 étapes; la vérification est exercée, pas exigée partout. |
-| **Cheminement 1er cycle** : « l'élève apprend à reconnaître les données pertinentes […] établit un lien entre les données et la tâche à réaliser […] apprend à modéliser » (idem) | `pb-donnees`, `pb-schema` sont au cœur du domaine. |
-| **Critères C1** (légende par cycle) : solution correcte (démarche et résultat) et explicitation des éléments pertinents dès le 1er cycle; explicitation de la **validation** à partir du 2e cycle (idem; voir aussi [CS Laval — CD1 évaluer](https://sites.google.com/cslaval.qc.ca/denominateurcommun/%C3%A9valuation/cd1-%C3%A9valuer) : compréhension de la situation, mobilisation des concepts, traces de la démarche, validation en rétroaction seulement) | La vérification (`pb-sens`) est formative : jamais pénalisante, ★ normale. |
-| **C2 — Raisonner à l'aide de concepts et de processus.** Critères : analyse adéquate de la situation d'application, choix des concepts et processus appropriés, application adéquate, **justification** d'actions ou d'énoncés (idem) | Étapes « Pourquoi ? » à choix (justification), choix d'opération et de schéma. |
-| **PDA — Sens des opérations A.1–A.3** : reconnaître l'opération; traduire une situation par du matériel, des schémas ou des équations et vice versa : transformation (ajout, retrait), réunion, comparaison; composition de transformations positive/négative (b) puis mixte (c); multiplication/division : disposition rectangulaire, addition répétée, partage, contenance ([PDA mathématique](https://cdn-contenu.quebec.ca/cdn-contenu/education/pfeq/primaire/progressions-apprentissages/PFEQ-progression-apprentissages-mathematique-primaire.pdf)) | Ce sont exactement les **structures** du générateur (§ 3). « Et vice versa » justifie `pb-inventer` (équation → histoire). |
-| **PDA — Opérations sur des nombres A.1a** : approximation du résultat d'une addition ou d'une soustraction | `pb-sens` (estimer avant / après). |
-| **Vocabulaire 1er cycle (PDA)** : plus, moins, *de moins, de plus*, addition, soustraction, somme, différence | `pb-mots`. |
+| Source                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Ce qui compte ici                                                                                                                                                            |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **C1 — Résoudre une situation-problème mathématique.** Composantes : _décoder_ les éléments, _modéliser_, _appliquer différentes stratégies_, _valider_, _partager l'information_ ([PFEQ primaire, ch. 6](https://cdn-contenu.quebec.ca/cdn-contenu/education/pfeq/primaire/programmes/PFEQ-mathematique-primaire.pdf))                                                                                                                                                                                                                                    | Une habileté par composante (question, données, schéma, calcul, vérification, phrase-réponse).                                                                               |
+| **Attente de fin de 1er cycle (C1)** : « résout une situation-problème comportant des **données complètes**. Il détermine la tâche et dégage les données utiles en ayant recours à différents modes de représentation (objets, dessins, tableaux, diagrammes, symboles, mots). Il élabore une solution qui comporte **une ou deux étapes** et vérifie **occasionnellement** le résultat obtenu. Il communique […] une solution (démarche et résultat) en utilisant un langage mathématique élémentaire. » (idem)                                           | Données complètes aux niveaux 0–1; **données superflues = défi (lvl 2, enrichissement 2e cycle)**; jamais plus de 2 étapes; la vérification est exercée, pas exigée partout. |
+| **Cheminement 1er cycle** : « l'élève apprend à reconnaître les données pertinentes […] établit un lien entre les données et la tâche à réaliser […] apprend à modéliser » (idem)                                                                                                                                                                                                                                                                                                                                                                          | `pb-donnees`, `pb-schema` sont au cœur du domaine.                                                                                                                           |
+| **Critères C1** (légende par cycle) : solution correcte (démarche et résultat) et explicitation des éléments pertinents dès le 1er cycle; explicitation de la **validation** à partir du 2e cycle (idem; voir aussi [CS Laval — CD1 évaluer](https://sites.google.com/cslaval.qc.ca/denominateurcommun/%C3%A9valuation/cd1-%C3%A9valuer) : compréhension de la situation, mobilisation des concepts, traces de la démarche, validation en rétroaction seulement)                                                                                           | La vérification (`pb-sens`) est formative : jamais pénalisante, ★ normale.                                                                                                   |
+| **C2 — Raisonner à l'aide de concepts et de processus.** Critères : analyse adéquate de la situation d'application, choix des concepts et processus appropriés, application adéquate, **justification** d'actions ou d'énoncés (idem)                                                                                                                                                                                                                                                                                                                      | Étapes « Pourquoi ? » à choix (justification), choix d'opération et de schéma.                                                                                               |
+| **PDA — Sens des opérations A.1–A.3** : reconnaître l'opération; traduire une situation par du matériel, des schémas ou des équations et vice versa : transformation (ajout, retrait), réunion, comparaison; composition de transformations positive/négative (b) puis mixte (c); multiplication/division : disposition rectangulaire, addition répétée, partage, contenance ([PDA mathématique](https://cdn-contenu.quebec.ca/cdn-contenu/education/pfeq/primaire/progressions-apprentissages/PFEQ-progression-apprentissages-mathematique-primaire.pdf)) | Ce sont exactement les **structures** du générateur (§ 3). « Et vice versa » justifie `pb-inventer` (équation → histoire).                                                   |
+| **PDA — Opérations sur des nombres A.1a** : approximation du résultat d'une addition ou d'une soustraction                                                                                                                                                                                                                                                                                                                                                                                                                                                 | `pb-sens` (estimer avant / après).                                                                                                                                           |
+| **Vocabulaire 1er cycle (PDA)** : plus, moins, _de moins, de plus_, addition, soustraction, somme, différence                                                                                                                                                                                                                                                                                                                                                                                                                                              | `pb-mots`.                                                                                                                                                                   |
 
 ### 1.2 Ce que la recherche recommande
 
-- **Enseignement par schémas** (*schema-based instruction*) : classer le problème selon sa **structure** (changement,
+- **Enseignement par schémas** (_schema-based instruction_) : classer le problème selon sa **structure** (changement,
   réunion/total, comparaison/différence), puis appliquer la stratégie de ce type; les trois schémas additifs couvrent
   tous les problèmes additifs; la comparaison est la plus difficile ([Powell & Fuchs, 2018](https://pmc.ncbi.nlm.nih.gov/articles/PMC6130842)).
   En 1re année, schémas **+ compréhension du langage** > schémas seuls ([Fuchs et al., 2021, n = 391](https://pmc.ncbi.nlm.nih.gov/articles/PMC7989819)).
@@ -38,26 +38,25 @@ chaque geste de la démarche séparément, puis ensemble.
   présenter ensuite des problèmes moins familiers du même type et mélanger les types
   ([résumé WWC](https://ies.ed.gov/ncee/wwc/Docs/PracticeGuide/WWC-PraxGuide-Elementary-Math-Summary-508c.pdf),
   [guide complet](https://ies.ed.gov/ncee/wwc/Docs/PracticeGuide/WWC2021006-Math-PG.pdf)).
-- **Mots-clés : stratégie qui « expire »** ([Karp, Bush & Dougherty, 2014, *13 Rules That Expire*](https://www.nctm.org/Publications/Teaching-Children-Mathematics/2014/Vol21/Issue1/tcm2014-08-18a_pdf/)) :
+- **Mots-clés : stratégie qui « expire »** ([Karp, Bush & Dougherty, 2014, _13 Rules That Expire_](https://www.nctm.org/Publications/Teaching-Children-Mathematics/2014/Vol21/Issue1/tcm2014-08-18a_pdf/)) :
   « de plus » ne veut pas toujours dire « + ». On enseigne le **sens** des mots, pas une table mot → opération.
 - **Modèle en barres** (méthode de Singapour) : effets positifs, surtout sur les problèmes arithmétiques; recherche
   surtout à partir de la 3e année ([Kaur, 2019 — NIE](https://repository.nie.edu.sg/bitstreams/967c9b6e-31d0-4309-9093-06ec80fe69c7/download)).
   À 7 ans : barres **pré-dessinées à choisir**, jamais à construire seul au début; jetons → barres (concret → imagé).
-- **Problèmes sans nombres** et **protocole des trois lectures** : 1) l'histoire (sans nombres), 2) les quantités,
-  3) les questions possibles ([Math Coach's Corner](https://www.mathcoachscorner.com/2022/04/the-3-reads-protocol-for-solving-word-problems/),
+- **Problèmes sans nombres** et **protocole des trois lectures** : 1) l'histoire (sans nombres), 2) les quantités, 3) les questions possibles ([Math Coach's Corner](https://www.mathcoachscorner.com/2022/04/the-3-reads-protocol-for-solving-word-problems/),
   [Illustrative Mathematics — MLR6](https://illustrativemathematics.blog/2022/08/09/tackling-wordy-problems-how-the-three-reads-math-language-routine-supports-access-for-all-learners/)).
 - **Démarches de classe québécoises** : « je lis deux fois, j'encercle la question, je souligne les données utiles, je fais
   un dessin, je calcule, j'écris une réponse complète » ([i+ Interactif, 2e cycle](https://www.iplusinteractif.com/wordpress/site_caractere/2e-cycle-mathematiques/resolution-problemes-ecrits/)).
   Elle correspond déjà à `M.ui.DEMARCHE` (📖 🔍 ✏️ 🧮 ✅ 💬). **On garde ces 6 pictogrammes** partout; seul le geste
-  de surlignage est nommé : 🖍️ *la question en bleu*, ⭕ *les données en rouge*, ✖️ *les données inutiles barrées*.
+  de surlignage est nommé : 🖍️ _la question en bleu_, ⭕ _les données en rouge_, ✖️ _les données inutiles barrées_.
 
 ### 1.3 Plage des nombres
 
-| Niveau | Additif | Groupes / partage | Note |
-|---|---|---|---|
-| lvl 0 | résultats ≤ 10 | 2–3 groupes de 2–5 | 2–3 phrases; lecture auto proposée |
-| lvl 1 | ≤ 20; dizaines rondes ≤ 100 (30 + 40) | ≤ 5 groupes, total ≤ 30 | 3–4 phrases |
-| lvl 2 | ≤ 100 (avec retenue); parfois centaines rondes < 1000 (300 + 200) | total ≤ 40, contenance | 4–5 phrases; 2 étapes; données inutiles |
+| Niveau | Additif                                                           | Groupes / partage       | Note                                    |
+| ------ | ----------------------------------------------------------------- | ----------------------- | --------------------------------------- |
+| lvl 0  | résultats ≤ 10                                                    | 2–3 groupes de 2–5      | 2–3 phrases; lecture auto proposée      |
+| lvl 1  | ≤ 20; dizaines rondes ≤ 100 (30 + 40)                             | ≤ 5 groupes, total ≤ 30 | 3–4 phrases                             |
+| lvl 2  | ≤ 100 (avec retenue); parfois centaines rondes < 1000 (300 + 200) | total ≤ 40, contenance  | 4–5 phrases; 2 étapes; données inutiles |
 
 Toujours des entiers ≥ 0, inconnue ≠ 0, et la réponse n'est jamais égale à une donnée (sinon recopier « marche »).
 
@@ -68,24 +67,25 @@ Toujours des entiers ≥ 0, inconnue ≠ 0, et la réponse n'est jamais égale �
 Ids non préfixés (règle mathématique historique) mais distincts grâce à `pb-`. Tous les problèmes viennent du
 **générateur** (§ 3); chaque habileté choisit une « recette » d'étapes. `learn` renvoie aux pages du § 5.
 
-| # | id · icône · titre | desc (affichée) | pda (référence) | Formats | Niveaux 0 / 1 / 2 | Visuels |
-|---|---|---|---|---|---|---|
-| 0 | `problemes` 📖 Petits problèmes *(déplacée)* | Des histoires à résoudre. | Sens des opérations A.1, A.2 a–b | `number` (inchangé) | inchangé, réécrit sur le générateur | jetons, barres |
-| 1 | `pb-histoire` 🎬 Je comprends l'histoire | Une histoire sans nombres : que se passe-t-il ? | C1 Décoder; PDA Sens des op. A.1 | `choice`, `tf` | 0 : « il y en a plus ou moins à la fin ? » · 1 : quel schéma raconte l'histoire · 2 : quelle question irait avec l'histoire | emoji de scène, barres sans nombres |
-| 2 | `pb-question` 🖍️ Trouve la question | Touche la phrase qui pose la question. | C1 Décoder (déterminer la tâche) | `tapwords` (sur le texte, mode phrase), `choice` « Que cherche-t-on ? » | 0 : question à la fin · 1 : question au milieu ou forme « Trouve combien… » · 2 : texte de 5 phrases + choisir ce qu'on cherche | surlignage bleu |
-| 3 | `pb-donnees` ⭕ Les données | Encercle les nombres utiles et dis ce qu'ils comptent. | C1 Décoder (dégager les données utiles) | `tapwords` (mode mot, plusieurs), `match` nombre ↔ ce qu'il compte | 0 : toucher les 2 nombres · 1 : `match` « 8 → billes de Léa au début » · 2 : nombre écrit en lettres (« trois ») ou nombre non-donnée (« 2e année ») | cercle rouge |
-| 4 | `pb-mots` 🗝️ Les mots des maths | De plus, de moins, en tout, il reste, chacun, autant que. | PDA Vocabulaire 1er cycle; C3 | `choice` avec images, `tf`, `cloze` | 0 : en tout / il reste avec jetons · 1 : de plus / de moins / autant que · 2 : chacun, « 3 de plus que » vs « 3 de plus » | jetons face à face |
-| 5 | `pb-schema` 🧱 Quel schéma ? | Choisis le modèle en barres qui va avec l'histoire. | C1 Modéliser; PDA Sens des op. A.2a, A.3a | `choice` (libellés = barres SVG statiques) | 0 : 2 choix ajout/retrait · 1 : 3 choix, + réunion/comparaison · 2 : + groupes égaux / partage, inconnue au début | `M.viz.barModelHtml` |
-| 6 | `pb-operation` 🔀 Quelle opération ? | Choisis le calcul qui répond à la question. | PDA Sens des op. A.1; C2 choix des processus | `choice` d'équations (`8 + 5`, `13 − 5`, `8 + ? = 13`), `choice` « Pourquoi ? » | 0 : + ou − · 1 : équation à trou acceptée · 2 : **pièges de mots-clés** (« de plus » qui se résout par −) | barres après réponse |
-| 7 | `pb-inconnue` 🕵️ Le début caché | Quand on ne connaît pas le début ou le changement. | PDA Sens des op. A.2a, A.5 (terme manquant) | `steps` (schéma → équation → calcul) | 0 : changement inconnu ≤ 10 · 1 : début inconnu ≤ 20 · 2 : comparaison « grand inconnu » ≤ 100 | barres avec « ? » mobile |
-| 8 | `pb-resoudre` 🧭 Ma démarche complète | Lis, comprends, planifie, calcule, vérifie, réponds. | C1 toutes composantes | `steps` 4–6 étapes (recette complète) | 0 : 4 étapes, ajout/retrait · 1 : 5 étapes, tous types 1 étape · 2 : 6 étapes, + groupes/partage | démarche active + barres |
-| 9 | `pb-deux-etapes` 🪜 Problèmes à deux étapes | D'abord…, ensuite… | PDA Sens des op. A.2 b (positive/négative), c (mixte) | `steps` avec report de valeur | 0 : composition positive ≤ 20 · 1 : négative/mixte ≤ 20 · 2 : mixte ≤ 100 | barres en 2 temps |
-| 10 | `pb-sens` ✅ Ma réponse a-t-elle du sens ? | Estimer, puis vérifier sa réponse. | PDA Opérations A.1a (approximation); C1 Valider (formatif) | `choice` (plus/moins que…), `tf` « Ali dit 11. Possible ? », `number` vérification inverse, `estimate` (G8) | 0 : plus ou moins qu'au début ? · 1 : réponse d'un ami à juger + pourquoi · 2 : estimer à la dizaine | droite numérique |
-| 11 | `pb-phrase` 💬 La phrase-réponse | Réponds par une phrase complète. | C1 Partager l'information; C3 | `cloze` (qui, nombre, unité), `choice` parmi phrases | 0 : 1 trou (nombre) · 1 : 3 trous · 2 : choisir la phrase juste parmi 4 (mauvais nom, unité, nombre, question recopiée) | — |
-| 12 | `pb-inventer` ❓ Invente la question | Quelle question peut-on poser avec cette histoire ? | PDA Sens des op. A.2 « et vice versa »; C1 Décoder | `choice` (questions possibles / impossibles), `match` équation ↔ histoire | 0 : 2 questions, 1 possible · 1 : quelle question va avec `12 − 4` · 2 : quelle question demande **deux** étapes | — |
-| 13 | `pb-inutiles` ✖️ Les données inutiles *(défi)* | Barre le nombre qui ne sert pas. | C1 — données superflues : **2e cycle, enrichissement** | `tapwords` sur le texte (mode « barrer ») | 0 : âge du chien évident · 1 : nombre de même unité, autre personne · 2 : deux nombres inutiles | barré gris |
+| #   | id · icône · titre                             | desc (affichée)                                           | pda (référence)                                            | Formats                                                                                                     | Niveaux 0 / 1 / 2                                                                                                                                    | Visuels                             |
+| --- | ---------------------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| 0   | `problemes` 📖 Petits problèmes _(déplacée)_   | Des histoires à résoudre.                                 | Sens des opérations A.1, A.2 a–b                           | `number` (inchangé)                                                                                         | inchangé, réécrit sur le générateur                                                                                                                  | jetons, barres                      |
+| 1   | `pb-histoire` 🎬 Je comprends l'histoire       | Une histoire sans nombres : que se passe-t-il ?           | C1 Décoder; PDA Sens des op. A.1                           | `choice`, `tf`                                                                                              | 0 : « il y en a plus ou moins à la fin ? » · 1 : quel schéma raconte l'histoire · 2 : quelle question irait avec l'histoire                          | emoji de scène, barres sans nombres |
+| 2   | `pb-question` 🖍️ Trouve la question            | Touche la phrase qui pose la question.                    | C1 Décoder (déterminer la tâche)                           | `tapwords` (sur le texte, mode phrase), `choice` « Que cherche-t-on ? »                                     | 0 : question à la fin · 1 : question au milieu ou forme « Trouve combien… » · 2 : texte de 5 phrases + choisir ce qu'on cherche                      | surlignage bleu                     |
+| 3   | `pb-donnees` ⭕ Les données                    | Encercle les nombres utiles et dis ce qu'ils comptent.    | C1 Décoder (dégager les données utiles)                    | `tapwords` (mode mot, plusieurs), `match` nombre ↔ ce qu'il compte                                          | 0 : toucher les 2 nombres · 1 : `match` « 8 → billes de Léa au début » · 2 : nombre écrit en lettres (« trois ») ou nombre non-donnée (« 2e année ») | cercle rouge                        |
+| 4   | `pb-mots` 🗝️ Les mots des maths                | De plus, de moins, en tout, il reste, chacun, autant que. | PDA Vocabulaire 1er cycle; C3                              | `choice` avec images, `tf`, `cloze`                                                                         | 0 : en tout / il reste avec jetons · 1 : de plus / de moins / autant que · 2 : chacun, « 3 de plus que » vs « 3 de plus »                            | jetons face à face                  |
+| 5   | `pb-schema` 🧱 Quel schéma ?                   | Choisis le modèle en barres qui va avec l'histoire.       | C1 Modéliser; PDA Sens des op. A.2a, A.3a                  | `choice` (libellés = barres SVG statiques)                                                                  | 0 : 2 choix ajout/retrait · 1 : 3 choix, + réunion/comparaison · 2 : + groupes égaux / partage, inconnue au début                                    | `M.viz.barModelHtml`                |
+| 6   | `pb-operation` 🔀 Quelle opération ?           | Choisis le calcul qui répond à la question.               | PDA Sens des op. A.1; C2 choix des processus               | `choice` d'équations (`8 + 5`, `13 − 5`, `8 + ? = 13`), `choice` « Pourquoi ? »                             | 0 : + ou − · 1 : équation à trou acceptée · 2 : **pièges de mots-clés** (« de plus » qui se résout par −)                                            | barres après réponse                |
+| 7   | `pb-inconnue` 🕵️ Le début caché                | Quand on ne connaît pas le début ou le changement.        | PDA Sens des op. A.2a, A.5 (terme manquant)                | `steps` (schéma → équation → calcul)                                                                        | 0 : changement inconnu ≤ 10 · 1 : début inconnu ≤ 20 · 2 : comparaison « grand inconnu » ≤ 100                                                       | barres avec « ? » mobile            |
+| 8   | `pb-resoudre` 🧭 Ma démarche complète          | Lis, comprends, planifie, calcule, vérifie, réponds.      | C1 toutes composantes                                      | `steps` 4–6 étapes (recette complète)                                                                       | 0 : 4 étapes, ajout/retrait · 1 : 5 étapes, tous types 1 étape · 2 : 6 étapes, + groupes/partage                                                     | démarche active + barres            |
+| 9   | `pb-deux-etapes` 🪜 Problèmes à deux étapes    | D'abord…, ensuite…                                        | PDA Sens des op. A.2 b (positive/négative), c (mixte)      | `steps` avec report de valeur                                                                               | 0 : composition positive ≤ 20 · 1 : négative/mixte ≤ 20 · 2 : mixte ≤ 100                                                                            | barres en 2 temps                   |
+| 10  | `pb-sens` ✅ Ma réponse a-t-elle du sens ?     | Estimer, puis vérifier sa réponse.                        | PDA Opérations A.1a (approximation); C1 Valider (formatif) | `choice` (plus/moins que…), `tf` « Ali dit 11. Possible ? », `number` vérification inverse, `estimate` (G8) | 0 : plus ou moins qu'au début ? · 1 : réponse d'un ami à juger + pourquoi · 2 : estimer à la dizaine                                                 | droite numérique                    |
+| 11  | `pb-phrase` 💬 La phrase-réponse               | Réponds par une phrase complète.                          | C1 Partager l'information; C3                              | `cloze` (qui, nombre, unité), `choice` parmi phrases                                                        | 0 : 1 trou (nombre) · 1 : 3 trous · 2 : choisir la phrase juste parmi 4 (mauvais nom, unité, nombre, question recopiée)                              | —                                   |
+| 12  | `pb-inventer` ❓ Invente la question           | Quelle question peut-on poser avec cette histoire ?       | PDA Sens des op. A.2 « et vice versa »; C1 Décoder         | `choice` (questions possibles / impossibles), `match` équation ↔ histoire                                   | 0 : 2 questions, 1 possible · 1 : quelle question va avec `12 − 4` · 2 : quelle question demande **deux** étapes                                     | —                                   |
+| 13  | `pb-inutiles` ✖️ Les données inutiles _(défi)_ | Barre le nombre qui ne sert pas.                          | C1 — données superflues : **2e cycle, enrichissement**     | `tapwords` sur le texte (mode « barrer »)                                                                   | 0 : âge du chien évident · 1 : nombre de même unité, autre personne · 2 : deux nombres inutiles                                                      | barré gris                          |
 
 Règles communes à toutes les `pb-*` :
+
 - `hint` = rappel d'**une** action de la démarche, avec les mots du problème (« Relis la dernière phrase : elle se termine par
   un point d'interrogation. »). `explain` = comment penser, avec les nombres (« Samuel en a **moins** que Rosalie, donc on
   enlève : 15 − 6 = 9. »).
@@ -124,15 +124,15 @@ choisir structure + inconnue (selon habileté, lvl)
 
 ### 3.2 Structures × inconnue
 
-| Structure (`kind`) | Rôles | Inconnues (`unknown`) | Équation-situation → calcul-solution |
-|---|---|---|---|
-| `ajout` (changement +) | `debut`, `change`, `fin` | `fin` · `change` · `debut` | `d + c = ?` → `d + c`; `d + ? = f` → `f − d`; `? + c = f` → `f − c` |
-| `retrait` (changement −) | `debut`, `change`, `fin` | `fin` · `change` · `debut` | `d − c = ?`; `d − ? = f` → `d − f`; `? − c = f` → `f + c` |
-| `reunion` (partie-partie-tout) | `p1`, `p2`, `tout` | `tout` · `partie` | `p1 + p2 = ?`; `p1 + ? = t` → `t − p1` |
-| `comparaison` | `grand`, `petit`, `ecart` (+ `qui` en a le plus) | `ecart` · `petit` · `grand` | `g − p = ?`; `g − e = ?`; `p + e = ?` |
-| `groupes` (groupes égaux) | `nb`, `parGroupe`, `total` | `total` | `k + k + … = ?` (addition répétée) |
-| `partage` | `total`, `nb`, `parPart` | `parPart` (partage) · `nb` (contenance) | « distribue un à la fois » / « fais des paquets de k » |
-| `deux` (composition) | deux sous-problèmes `s1`, `s2`, `s2.debut = s1.fin` | `fin` de `s2` | `positive` (+,+), `negative` (−,−), `mixte` (+,− / −,+) |
+| Structure (`kind`)             | Rôles                                               | Inconnues (`unknown`)                   | Équation-situation → calcul-solution                                |
+| ------------------------------ | --------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------- |
+| `ajout` (changement +)         | `debut`, `change`, `fin`                            | `fin` · `change` · `debut`              | `d + c = ?` → `d + c`; `d + ? = f` → `f − d`; `? + c = f` → `f − c` |
+| `retrait` (changement −)       | `debut`, `change`, `fin`                            | `fin` · `change` · `debut`              | `d − c = ?`; `d − ? = f` → `d − f`; `? − c = f` → `f + c`           |
+| `reunion` (partie-partie-tout) | `p1`, `p2`, `tout`                                  | `tout` · `partie`                       | `p1 + p2 = ?`; `p1 + ? = t` → `t − p1`                              |
+| `comparaison`                  | `grand`, `petit`, `ecart` (+ `qui` en a le plus)    | `ecart` · `petit` · `grand`             | `g − p = ?`; `g − e = ?`; `p + e = ?`                               |
+| `groupes` (groupes égaux)      | `nb`, `parGroupe`, `total`                          | `total`                                 | `k + k + … = ?` (addition répétée)                                  |
+| `partage`                      | `total`, `nb`, `parPart`                            | `parPart` (partage) · `nb` (contenance) | « distribue un à la fois » / « fais des paquets de k »              |
+| `deux` (composition)           | deux sous-problèmes `s1`, `s2`, `s2.debut = s1.fin` | `fin` de `s2`                           | `positive` (+,+), `negative` (−,−), `mixte` (+,− / −,+)             |
 
 Lvl par défaut : 0 = `fin`/`tout`; 1 = + `change`, `partie`, `ecart`; 2 = + `debut`, `petit`/`grand`, `deux` mixte.
 Phrase de comparaison : toujours la forme « X a **n de plus que** Y » / « **n de moins que** », jamais « plus que Y de n ».
@@ -217,13 +217,13 @@ attribuées sans stéréotype (le tirage du prénom est indépendant du contexte
 Texte (`passage`, titre « Le problème ») : « 🐟 Félix pêche sur la glace. Il attrape **4** poissons le matin.
 L'après-midi, il en attrape **3** autres. Combien de poissons Félix a-t-il attrapés en tout ? »
 
-| # | label | Format et champs | hint | after / explain |
-|---|---|---|---|---|
-| 1 | 🔍 Je comprends | `tapwords` cible `passage`, mode `sentence`, `answer: [phrase 3]` (G2) — « Touche la **question**. » | « La question se termine par un point d'interrogation (?). » | « Bravo ! On cherche combien de poissons **en tout**. » (surlignée en bleu, reste visible) |
-| 2 | ⭕ Je comprends | `tapwords` cible `passage`, `select:'many'`, `answer: [jetons '4', '3']` — « Encercle les **données**. » | « Cherche les nombres dans l'histoire. » | « 4 poissons le matin, 3 l'après-midi. » |
-| 3 | ✏️ Je planifie | `choice`, 2 choix SVG : barre `[4][3]` + accolade « ? » au-dessus (✔) / barre « 4 » entière avec une partie « 3 » enlevée | « Félix en attrape d'autres : il en a **plus** à la fin. » | « Deux parties, on cherche le tout. » |
-| 4 | 🧮 Je calcule | `number`, `prompt: '4 + 3 = {?}'`, `answer: 7`, `viz` étape = barres (G3) | « Compte à partir de 4 : 5, 6, 7. » | « 4 + 3 = 7. » |
-| 5 | 💬 Je réponds | `cloze`, `text: 'Félix a attrapé {0} poissons en tout.'`, `blanks: [{ choices: ['7','4','3'], answer: '7' }]` | « Mets le résultat de ton calcul. » | — |
+| #   | label           | Format et champs                                                                                                          | hint                                                         | after / explain                                                                            |
+| --- | --------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| 1   | 🔍 Je comprends | `tapwords` cible `passage`, mode `sentence`, `answer: [phrase 3]` (G2) — « Touche la **question**. »                      | « La question se termine par un point d'interrogation (?). » | « Bravo ! On cherche combien de poissons **en tout**. » (surlignée en bleu, reste visible) |
+| 2   | ⭕ Je comprends | `tapwords` cible `passage`, `select:'many'`, `answer: [jetons '4', '3']` — « Encercle les **données**. »                  | « Cherche les nombres dans l'histoire. »                     | « 4 poissons le matin, 3 l'après-midi. »                                                   |
+| 3   | ✏️ Je planifie  | `choice`, 2 choix SVG : barre `[4][3]` + accolade « ? » au-dessus (✔) / barre « 4 » entière avec une partie « 3 » enlevée | « Félix en attrape d'autres : il en a **plus** à la fin. »   | « Deux parties, on cherche le tout. »                                                      |
+| 4   | 🧮 Je calcule   | `number`, `prompt: '4 + 3 = {?}'`, `answer: 7`, `viz` étape = barres (G3)                                                 | « Compte à partir de 4 : 5, 6, 7. »                          | « 4 + 3 = 7. »                                                                             |
+| 5   | 💬 Je réponds   | `cloze`, `text: 'Félix a attrapé {0} poissons en tout.'`, `blanks: [{ choices: ['7','4','3'], answer: '7' }]`             | « Mets le résultat de ton calcul. »                          | —                                                                                          |
 
 `explain` (après la carte) : « On cherche le **tout** : le matin **et** l'après-midi. 4 + 3 = **7**. Félix a attrapé 7
 poissons en tout. »
@@ -233,14 +233,14 @@ poissons en tout. »
 Texte : « 🃏 Rosalie a **15** cartes de hockey. Elle a **6** cartes de plus que Samuel. Combien de cartes Samuel a-t-il ? »
 `v = { grand: 15, ecart: 6, petit: 9, qui: 'Rosalie' }`, `situation: 9 + 6 = 15` → `solve: 15 − 6 = 9`.
 
-| # | label | Format | hint | after |
-|---|---|---|---|---|
-| 1 | 🔍 Je comprends | `choice` « Qui a **le plus** de cartes ? » `[Rosalie ✔, Samuel]` | « Relis : “Elle a 6 cartes de plus que Samuel.” Elle, c'est Rosalie. » | « Rosalie en a plus. Samuel en a donc **moins**. » |
-| 2 | ✏️ Je planifie | `choice` 3 barres SVG : Rosalie longue « 15 », Samuel courte « ? », écart « 6 » (✔) / Samuel longue / barres égales | « La barre la plus longue est celle de la personne qui en a le plus. » | « Il manque 6 cartes à Samuel pour en avoir autant que Rosalie. » |
-| 3 | ✏️ Je planifie | `choice` `[15 − 6 ✔, 15 + 6, 6 − 15]` | « Samuel en a moins que 15. Ta réponse doit être **plus petite** que 15. » | « Les mots “de plus” ne veulent pas toujours dire + ! » |
-| 4 | 🧮 Je calcule | `number` `15 − 6 = {?}`, `answer: 9` | « Recule de 5 jusqu'à 10, puis encore de 1. » | — |
-| 5 | ✅ Je vérifie | `number` `9 + 6 = {?}`, `answer: 15`, `prompt` « Vérifie : si Samuel en avait 6 de plus… » | « Ajoute l'écart à ta réponse : tu dois retrouver les cartes de Rosalie. » | « On retrouve 15 : ça a du sens ! » |
-| 6 | 💬 Je réponds | `choice` `[Samuel a 9 cartes. ✔ · Rosalie a 9 cartes. · Samuel a 21 cartes. · Samuel a 6 cartes.]` | « Qui ? Combien ? » | — |
+| #   | label           | Format                                                                                                              | hint                                                                       | after                                                             |
+| --- | --------------- | ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| 1   | 🔍 Je comprends | `choice` « Qui a **le plus** de cartes ? » `[Rosalie ✔, Samuel]`                                                    | « Relis : “Elle a 6 cartes de plus que Samuel.” Elle, c'est Rosalie. »     | « Rosalie en a plus. Samuel en a donc **moins**. »                |
+| 2   | ✏️ Je planifie  | `choice` 3 barres SVG : Rosalie longue « 15 », Samuel courte « ? », écart « 6 » (✔) / Samuel longue / barres égales | « La barre la plus longue est celle de la personne qui en a le plus. »     | « Il manque 6 cartes à Samuel pour en avoir autant que Rosalie. » |
+| 3   | ✏️ Je planifie  | `choice` `[15 − 6 ✔, 15 + 6, 6 − 15]`                                                                               | « Samuel en a moins que 15. Ta réponse doit être **plus petite** que 15. » | « Les mots “de plus” ne veulent pas toujours dire + ! »           |
+| 4   | 🧮 Je calcule   | `number` `15 − 6 = {?}`, `answer: 9`                                                                                | « Recule de 5 jusqu'à 10, puis encore de 1. »                              | —                                                                 |
+| 5   | ✅ Je vérifie   | `number` `9 + 6 = {?}`, `answer: 15`, `prompt` « Vérifie : si Samuel en avait 6 de plus… »                          | « Ajoute l'écart à ta réponse : tu dois retrouver les cartes de Rosalie. » | « On retrouve 15 : ça a du sens ! »                               |
+| 6   | 💬 Je réponds   | `choice` `[Samuel a 9 cartes. ✔ · Rosalie a 9 cartes. · Samuel a 21 cartes. · Samuel a 6 cartes.]`                  | « Qui ? Combien ? »                                                        | —                                                                 |
 
 `explain` : « Rosalie a 6 cartes **de plus** que Samuel, donc Samuel en a 6 **de moins** : 15 − 6 = **9**. Vérification :
 9 + 6 = 15. »
@@ -251,14 +251,14 @@ Texte : « 🚌 Il y a **23** élèves dans l'autobus scolaire. Au premier arrê
 **5** élèves descendent. Combien d'élèves y a-t-il maintenant dans l'autobus ? »
 `s1 = ajout {23, 8, 31}`, `s2 = retrait {31, 5, 26}`, `answer: 26`.
 
-| # | label | Format | hint | after |
-|---|---|---|---|---|
-| 1 | ⭕ Je comprends | `tapwords` cible `passage`, many, `answer: [23, 8, 5]` | « Il y a trois nombres dans l'histoire. » | — |
-| 2 | ✏️ Je planifie | `order` « Mets les étapes dans l'ordre. » `[23 + 8 → ?, puis ? − 5]` sous forme de 2 cartes (+ 1 intrus `23 − 5`) — ou `choice` au lvl 1 | « Que se passe-t-il **d'abord** ? » | « D'abord des élèves montent, ensuite d'autres descendent. » |
-| 3 | 🧮 Étape 1 | `number` `23 + 8 = {?}`, `answer: 31` | « 23 + 7 = 30, puis encore 1. » | « Après le 1er arrêt : 31 élèves. » (affiché dans « Mon travail », G5) |
-| 4 | 🧮 Étape 2 | `number` `{s3} − 5 = {?}` → « 31 − 5 = ? », `answer: 26` | « Pars de 31 et recule de 5. » | — |
-| 5 | ✅ Je vérifie | `choice` « À la fin, y a-t-il plus ou moins d'élèves qu'au départ (23) ? » `[plus ✔, moins, autant]` + `after` « 8 montent, seulement 5 descendent : 3 de plus. 23 + 3 = 26 ✔ » | « Compare ceux qui montent et ceux qui descendent. » | — |
-| 6 | 💬 Je réponds | `cloze` `Il y a {0} {1} dans l'autobus maintenant.` `[{['26','31','23'], '26'}, {['élèves','arrêts'], 'élèves'}]` | — | — |
+| #   | label           | Format                                                                                                                                                                          | hint                                                 | after                                                                  |
+| --- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------- |
+| 1   | ⭕ Je comprends | `tapwords` cible `passage`, many, `answer: [23, 8, 5]`                                                                                                                          | « Il y a trois nombres dans l'histoire. »            | —                                                                      |
+| 2   | ✏️ Je planifie  | `order` « Mets les étapes dans l'ordre. » `[23 + 8 → ?, puis ? − 5]` sous forme de 2 cartes (+ 1 intrus `23 − 5`) — ou `choice` au lvl 1                                        | « Que se passe-t-il **d'abord** ? »                  | « D'abord des élèves montent, ensuite d'autres descendent. »           |
+| 3   | 🧮 Étape 1      | `number` `23 + 8 = {?}`, `answer: 31`                                                                                                                                           | « 23 + 7 = 30, puis encore 1. »                      | « Après le 1er arrêt : 31 élèves. » (affiché dans « Mon travail », G5) |
+| 4   | 🧮 Étape 2      | `number` `{s3} − 5 = {?}` → « 31 − 5 = ? », `answer: 26`                                                                                                                        | « Pars de 31 et recule de 5. »                       | —                                                                      |
+| 5   | ✅ Je vérifie   | `choice` « À la fin, y a-t-il plus ou moins d'élèves qu'au départ (23) ? » `[plus ✔, moins, autant]` + `after` « 8 montent, seulement 5 descendent : 3 de plus. 23 + 3 = 26 ✔ » | « Compare ceux qui montent et ceux qui descendent. » | —                                                                      |
+| 6   | 💬 Je réponds   | `cloze` `Il y a {0} {1} dans l'autobus maintenant.` `[{['26','31','23'], '26'}, {['élèves','arrêts'], 'élèves'}]`                                                               | —                                                    | —                                                                      |
 
 Valeur reportée : l'étape 4 affiche toujours la **bonne** valeur de l'étape 3 (révélée en cas d'échec), donc l'étape 4
 reste juste et notable même si l'étape 3 est manquée.
@@ -279,7 +279,9 @@ BarSpec = {
   mode: 'static' | 'reveal' | 'tokens',      // statique · « ? » se remplit au showMe · onglet jetons ↔ barres
 }
 ```
+
 Comportement :
+
 - Largeurs proportionnelles (`prop`), segment minimum 56 px pour que « 3 » reste lisible; largeur max 100 % (360 → 1100 px).
 - `?` = case jaune (couleur d'aide) avec bordure pointillée; `X` = segment barré (retrait); `E` = segment vide (à compléter).
 - `comparaison` : barres alignées à gauche, l'une sous l'autre, étiquette du prénom à gauche; l'écart est pointillé.
@@ -295,11 +297,11 @@ Comportement :
 
 Le passage est rendu en **jetons** (`pb.tokens`) au lieu d'un HTML figé. Trois marques, des couleurs fixes partout :
 
-| Marque | Geste | Rendu | Sens |
-|---|---|---|---|
-| `q` 🖍️ | toucher un mot de la question (mode `sentence` : toute la phrase s'allume) | fond bleu pâle | la question |
-| `d` ⭕ | toucher un nombre (mode `word`) | anneau rouge autour du jeton | une donnée utile |
-| `x` ✖️ | toucher un nombre en mode « barrer » | texte gris barré | une donnée inutile |
+| Marque | Geste                                                                      | Rendu                        | Sens               |
+| ------ | -------------------------------------------------------------------------- | ---------------------------- | ------------------ |
+| `q` 🖍️ | toucher un mot de la question (mode `sentence` : toute la phrase s'allume) | fond bleu pâle               | la question        |
+| `d` ⭕ | toucher un nombre (mode `word`)                                            | anneau rouge autour du jeton | une donnée utile   |
+| `x` ✖️ | toucher un nombre en mode « barrer »                                       | texte gris barré             | une donnée inutile |
 
 - Une étape `tapwords` avec `target: 'passage'` utilise le passage de la question comme surface : pas de copie du texte.
   Correction comme `tapwords` (indices de jetons; en mode `sentence`, l'indice de phrase).
@@ -315,23 +317,23 @@ Le passage est rendu en **jetons** (`pb.tokens`) au lieu d'un HTML figé. Trois 
 
 ## 5. Pages « Apprendre » (domaine `problemes`)
 
-| id | Titre | Contenu |
-|---|---|---|
-| `pb-demarche` | 🧭 Ma démarche | `M.ui.demarche()` en haut; un problème d'exemple (généré, lvl 0) parcouru **pas à pas** : bouton « Étape suivante ➜ » active le pictogramme suivant (`demarche(steps, active)`), applique la marque (question bleue, données rouges), affiche les barres, le calcul, puis la phrase-réponse. Bouton 🔄 « Un autre problème ». Encadré parent : les trois lectures (1. l'histoire, 2. les nombres, 3. la question). `miniQuiz` : 2 étapes `tapwords` sur le passage. |
-| `pb-types` | 🧱 Les types de problèmes | Onglets (`M.ui.tabs`) : Ajouter/Enlever (changement), Réunir (partie-partie-tout), Comparer, Groupes égaux et partage. Chaque onglet : histoire courte, jetons ↔ barres (onglet interne), `stepper` pour changer les nombres et voir la barre s'ajuster, phrase de Castor (« Quand on cherche le tout, on additionne les parties. Quand on cherche une partie, on enlève l'autre partie du tout. »). Renvoie à « Le sens des opérations » (opérations) pour l'aspect calcul, sans le répéter. |
-| `pb-mots` | 🗝️ Les mots-clés… et leurs pièges | `M.ui.vocab` : en tout, il reste, de plus, de moins, autant que, chacun, ensemble — chacun illustré par des jetons, avec phrase lue. Section « Attention, piège ! » : deux histoires avec « de plus » côte à côte, l'une se résout par +, l'autre par − (barres). Règle de Castor : « Un mot ne choisit pas l'opération. **Le dessin** la choisit. » `miniQuiz` 3 `tf`. |
-| `pb-sens` | ✅ Est-ce que ma réponse a du sens ? | Trois questions-réflexes : *Plus ou moins qu'au début ?* (droite numérique, flèche), *Est-ce possible ?* (« 25 poissons pour 4 + 3 ? »), *Je refais à l'envers* (addition ↔ soustraction). Jeu « Le robot calculateur se trompe-t-il ? » : 4 réponses de robot à juger (`tf`). |
-| *(option)* `pb-lire` | 📖 Lire un problème trois fois | Problème sans nombres → nombres qui apparaissent → question qui apparaît (animation pas à pas), questions orales suggérées aux parents. Peut être fusionné dans `pb-demarche`. |
+| id                   | Titre                                | Contenu                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| -------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pb-demarche`        | 🧭 Ma démarche                       | `M.ui.demarche()` en haut; un problème d'exemple (généré, lvl 0) parcouru **pas à pas** : bouton « Étape suivante ➜ » active le pictogramme suivant (`demarche(steps, active)`), applique la marque (question bleue, données rouges), affiche les barres, le calcul, puis la phrase-réponse. Bouton 🔄 « Un autre problème ». Encadré parent : les trois lectures (1. l'histoire, 2. les nombres, 3. la question). `miniQuiz` : 2 étapes `tapwords` sur le passage.                           |
+| `pb-types`           | 🧱 Les types de problèmes            | Onglets (`M.ui.tabs`) : Ajouter/Enlever (changement), Réunir (partie-partie-tout), Comparer, Groupes égaux et partage. Chaque onglet : histoire courte, jetons ↔ barres (onglet interne), `stepper` pour changer les nombres et voir la barre s'ajuster, phrase de Castor (« Quand on cherche le tout, on additionne les parties. Quand on cherche une partie, on enlève l'autre partie du tout. »). Renvoie à « Le sens des opérations » (opérations) pour l'aspect calcul, sans le répéter. |
+| `pb-mots`            | 🗝️ Les mots-clés… et leurs pièges    | `M.ui.vocab` : en tout, il reste, de plus, de moins, autant que, chacun, ensemble — chacun illustré par des jetons, avec phrase lue. Section « Attention, piège ! » : deux histoires avec « de plus » côte à côte, l'une se résout par +, l'autre par − (barres). Règle de Castor : « Un mot ne choisit pas l'opération. **Le dessin** la choisit. » `miniQuiz` 3 `tf`.                                                                                                                       |
+| `pb-sens`            | ✅ Est-ce que ma réponse a du sens ? | Trois questions-réflexes : _Plus ou moins qu'au début ?_ (droite numérique, flèche), _Est-ce possible ?_ (« 25 poissons pour 4 + 3 ? »), _Je refais à l'envers_ (addition ↔ soustraction). Jeu « Le robot calculateur se trompe-t-il ? » : 4 réponses de robot à juger (`tf`).                                                                                                                                                                                                                |
+| _(option)_ `pb-lire` | 📖 Lire un problème trois fois       | Problème sans nombres → nombres qui apparaissent → question qui apparaît (animation pas à pas), questions orales suggérées aux parents. Peut être fusionné dans `pb-demarche`.                                                                                                                                                                                                                                                                                                                |
 
 ---
 
 ## 6. Extras de mathématique
 
-| Extra | Statut programme | Où |
-|---|---|---|
-| L'argent | **Enrichissement** (voir 6.1) | domaine `defis` ou `nombres` |
+| Extra                                                  | Statut programme                                                                           | Où                                              |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------ | ----------------------------------------------- |
+| L'argent                                               | **Enrichissement** (voir 6.1)                                                              | domaine `defis` ou `nombres`                    |
 | Énigmes logiques (régularités, sudoku 4 × 4, balances) | Régularités = **officiel** (Opérations A.13–A.14); sudoku/balances = **enrichissement C2** | nouveau domaine `defis` « Défis et énigmes » 🧠 |
-| Défi calcul mental | **Officiel** (répertoire mémorisé A.2, calcul mental) — c'est un *mode*, pas du contenu | `M.runSession` |
+| Défi calcul mental                                     | **Officiel** (répertoire mémorisé A.2, calcul mental) — c'est un _mode_, pas du contenu    | `M.runSession`                                  |
 
 ### 6.1 L'argent (enrichissement)
 
@@ -347,22 +349,22 @@ Donc : **jamais de virgule**, et on ne mélange **jamais** dollars et cents dans
 - Visuels : **pièces génériques** en SVG (cercle de couleur/taille relative + valeur écrite), pas de reproduction des
   dessins officiels (G11).
 
-| id | Titre | Formats / niveaux |
-|---|---|---|
-| `argent-reconnaitre` | 🪙 Les pièces et les billets | `match` pièce ↔ valeur; `choice` « Laquelle vaut le plus ? » (la plus grande pièce n'est pas toujours la plus chère : 10 ¢ vs 5 ¢) |
-| `argent-compter` | 💰 Compter l'argent | lvl 0 : pièces identiques (bonds de 5, de 10) < 100 ¢ · lvl 1 : 2 sortes de pièces < 100 ¢ ou dollars ≤ 20 $ · lvl 2 : dollars ≤ 50 $ avec billets (dizaines/unités = valeur de position) |
-| `argent-payer` | 🛒 Au dépanneur | `multi` « Touche les pièces pour payer exactement 35 ¢ »; problèmes du générateur avec contexte `depanneur` (dollars entiers seulement), structures `ajout`, `retrait` (« il lui reste »), `comparaison` (« combien de plus coûte… ») |
+| id                   | Titre                        | Formats / niveaux                                                                                                                                                                                                                     |
+| -------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `argent-reconnaitre` | 🪙 Les pièces et les billets | `match` pièce ↔ valeur; `choice` « Laquelle vaut le plus ? » (la plus grande pièce n'est pas toujours la plus chère : 10 ¢ vs 5 ¢)                                                                                                    |
+| `argent-compter`     | 💰 Compter l'argent          | lvl 0 : pièces identiques (bonds de 5, de 10) < 100 ¢ · lvl 1 : 2 sortes de pièces < 100 ¢ ou dollars ≤ 20 $ · lvl 2 : dollars ≤ 50 $ avec billets (dizaines/unités = valeur de position)                                             |
+| `argent-payer`       | 🛒 Au dépanneur              | `multi` « Touche les pièces pour payer exactement 35 ¢ »; problèmes du générateur avec contexte `depanneur` (dollars entiers seulement), structures `ajout`, `retrait` (« il lui reste »), `comparaison` (« combien de plus coûte… ») |
 
 Page Apprendre `argent` : pièces et billets, compter par bonds, « 100 ¢ = 1 $ » (mention seulement, pas de conversion).
 
 ### 6.2 Énigmes logiques (domaine `defis`)
 
-| id | Titre | Statut | Formats |
-|---|---|---|---|
-| `defi-suites` | 🔁 Qu'est-ce qui vient après ? | Officiel (A.13–14) — **ne pas dupliquer `suites`** : ici motifs à **deux attributs** (couleur + forme), motifs qui grandissent, trouver l'erreur dans la suite | `choice`, `tapwords` sur une rangée d'emoji (« touche l'intrus ») |
-| `defi-sudoku` | 🧩 Mini-sudoku | Enrichissement C2 | `grid` 4 × 4 avec 4 emoji (🍎🍌🍇🍓), lvl 0 : 1 case vide par rangée; lvl 1 : 6–8 vides; lvl 2 : 9–10 vides, solution unique garantie (G10) |
-| `defi-balances` | ⚖️ Les balances mystères | Enrichissement C2 (égalité, A.4) | `M.viz.balance` (G14) avec emoji : « 🍎 + 🍎 = 6 → 🍎 = ? », lvl 2 : deux balances en chaîne (🍎 = 3, 🍎 + 🍌 = 8). Réponse `number`. Ne pas dupliquer `egalite` (nombres) : ici objets de valeur inconnue. |
-| `defi-qui-suis-je` | 🕵️ Qui suis-je ? | Officiel (nombres < 100, pair/impair, dizaines) + C2 | `choice` : « Je suis pair, entre 20 et 30, mon chiffre des unités est 4 » — indices au fil des étapes (`steps`) avec grille de 100 qui s'éteint |
+| id                 | Titre                          | Statut                                                                                                                                                         | Formats                                                                                                                                                                                                     |
+| ------------------ | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `defi-suites`      | 🔁 Qu'est-ce qui vient après ? | Officiel (A.13–14) — **ne pas dupliquer `suites`** : ici motifs à **deux attributs** (couleur + forme), motifs qui grandissent, trouver l'erreur dans la suite | `choice`, `tapwords` sur une rangée d'emoji (« touche l'intrus »)                                                                                                                                           |
+| `defi-sudoku`      | 🧩 Mini-sudoku                 | Enrichissement C2                                                                                                                                              | `grid` 4 × 4 avec 4 emoji (🍎🍌🍇🍓), lvl 0 : 1 case vide par rangée; lvl 1 : 6–8 vides; lvl 2 : 9–10 vides, solution unique garantie (G10)                                                                 |
+| `defi-balances`    | ⚖️ Les balances mystères       | Enrichissement C2 (égalité, A.4)                                                                                                                               | `M.viz.balance` (G14) avec emoji : « 🍎 + 🍎 = 6 → 🍎 = ? », lvl 2 : deux balances en chaîne (🍎 = 3, 🍎 + 🍌 = 8). Réponse `number`. Ne pas dupliquer `egalite` (nombres) : ici objets de valeur inconnue. |
+| `defi-qui-suis-je` | 🕵️ Qui suis-je ?               | Officiel (nombres < 100, pair/impair, dizaines) + C2                                                                                                           | `choice` : « Je suis pair, entre 20 et 30, mon chiffre des unités est 4 » — indices au fil des étapes (`steps`) avec grille de 100 qui s'éteint                                                             |
 
 ### 6.3 Mode « Défi calcul mental »
 
@@ -386,6 +388,7 @@ Toutes vont dans le cadre (`formats.js`, `ui.js`, `viz.js`, `core.js`, `session.
 en jaune; libellés ≥ 1 rem; fonctionne de 360 à 1100 px; aucun accès DOM dans `barModelHtml`. Exemple au guide de style.
 
 **G2 — Passage à jetons et marquage (`passage.tokens`, `tapwords.target: 'passage'`).**
+
 - `passage` accepte `tokens: [{ w, s, data?, q? }]` en plus de `html`; s'il y a des jetons, le passage est rendu en boutons.
 - `tapwords` accepte `target: 'passage'` (pas de `words`; les indices réfèrent aux jetons du passage), `unit: 'word' |
   'sentence'`, `mark: 'q' | 'd' | 'x'`. `validate` vérifie que les indices existent dans `passage.tokens`.
@@ -393,7 +396,8 @@ en jaune; libellés ≥ 1 rem; fonctionne de 360 à 1100 px; aucun accès DOM da
 - Hors marquage, toucher un jeton le lit (comportement de `M.ui.reading`).
 
 **G3 — Améliorations de `steps` (présentation).**
-- Le passage reste accessible pendant toutes les étapes : collant (*sticky*) en colonne gauche à ≥ 800 px; sous 800 px,
+
+- Le passage reste accessible pendant toutes les étapes : collant (_sticky_) en colonne gauche à ≥ 800 px; sous 800 px,
   bouton « 📖 Relire le problème » qui déroule le texte au-dessus de l'étape courante.
 - `step.viz?: (el) => {}` : visuel propre à l'étape (barres, droite numérique), affiché dans l'étape.
 - `step.demarche?: 0..5` : bandeau `M.ui.demarche(steps, active)` compact au-dessus, pictogramme actif mis à jour.
@@ -453,32 +457,32 @@ valeur inconnue et chaînage de deux balances.
 
 ## 8. Risques, ambiguïtés et parades
 
-| Risque | Parade |
-|---|---|
-| **Charge de lecture** : un enfant de 7 ans qui lit lentement échoue en *lecture*, pas en *mathématique*. | Phrases ≤ 12 mots, 2–5 phrases selon lvl; mots fréquents; nombres en chiffres (sauf défi `pb-donnees` lvl 2); prénoms courts; 🔊 toujours, lecture automatique au lvl 0 (G9); passage toujours visible (G3); interligne 1,8; étapes courtes (≤ 6). |
-| **Mots-clés trompeurs** : « de plus » → +, « il reste » → −… apprendre la règle donne de bons résultats au début puis des erreurs systématiques (Karp et al., 2014). | On enseigne le sens et le schéma; items-pièges dès le lvl 1 dans `pb-operation`/`pb-resoudre` (≈ 1 sur 4); `explain` qui nomme le piège; page `pb-mots`. |
-| **Langage ambigu** (« Combien de plus ? » sans référence; « chacun » en partage vs groupes; pronoms à deux personnages de même genre). | Formes fixes (§ 3.2), invariants § 3.4 n° 8, relecture de chaque gabarit par un adulte avant ajout à la banque. |
-| **Correction automatique de réponses ouvertes** (phrase-réponse, justification, dessin). | Pas de texte libre : `cloze` à banques de mots, `choice` dont les distracteurs ne diffèrent que sur **un** critère (qui / combien / unité); justifications à choisir; schémas à choisir, pas à dessiner. Encourager les parents à faire **dire** la phrase à voix haute (C3). |
-| **Surcharge des `steps`** : longues cartes, étoile difficile. | lvl 0 = 3–4 étapes; G7 (étoile sur les étapes clés); une seule nouveauté par étape. |
-| **Fidélité au programme** : données inutiles (2e cycle), validation (critère 2e cycle), argent/décimaux (2e cycle). | Marqués « défi » ou « enrichissement » dans `pda` et dans `curriculum.md`; jamais dans les `starter`. |
-| **Doublons avec `operations`** (problemes, groupes-egaux, partage, egalite, suites). | § 2.1 (déplacement + générateur commun); les `pb-*` exercent la compréhension, les habiletés d'opérations le calcul; renvois croisés `learn`. |
-| **Plausibilité/culture** (87 tires mangées, stéréotypes). | `ctx.range`, prénoms tirés indépendamment des activités, contextes québécois variés (§ 3.5). |
-| **Synthèse vocale absente ou anglaise** sur certains appareils. | Repli : bouton 🔊 désactivé avec info-bulle; le texte reste lisible; ne jamais rendre l'audio obligatoire. |
-| **Répétition** (même histoire deux fois dans une série). | `pb.id` mémorisé dans la série; contexte et structure non répétés deux fois de suite. |
+| Risque                                                                                                                                                               | Parade                                                                                                                                                                                                                                                                        |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Charge de lecture** : un enfant de 7 ans qui lit lentement échoue en _lecture_, pas en _mathématique_.                                                             | Phrases ≤ 12 mots, 2–5 phrases selon lvl; mots fréquents; nombres en chiffres (sauf défi `pb-donnees` lvl 2); prénoms courts; 🔊 toujours, lecture automatique au lvl 0 (G9); passage toujours visible (G3); interligne 1,8; étapes courtes (≤ 6).                            |
+| **Mots-clés trompeurs** : « de plus » → +, « il reste » → −… apprendre la règle donne de bons résultats au début puis des erreurs systématiques (Karp et al., 2014). | On enseigne le sens et le schéma; items-pièges dès le lvl 1 dans `pb-operation`/`pb-resoudre` (≈ 1 sur 4); `explain` qui nomme le piège; page `pb-mots`.                                                                                                                      |
+| **Langage ambigu** (« Combien de plus ? » sans référence; « chacun » en partage vs groupes; pronoms à deux personnages de même genre).                               | Formes fixes (§ 3.2), invariants § 3.4 n° 8, relecture de chaque gabarit par un adulte avant ajout à la banque.                                                                                                                                                               |
+| **Correction automatique de réponses ouvertes** (phrase-réponse, justification, dessin).                                                                             | Pas de texte libre : `cloze` à banques de mots, `choice` dont les distracteurs ne diffèrent que sur **un** critère (qui / combien / unité); justifications à choisir; schémas à choisir, pas à dessiner. Encourager les parents à faire **dire** la phrase à voix haute (C3). |
+| **Surcharge des `steps`** : longues cartes, étoile difficile.                                                                                                        | lvl 0 = 3–4 étapes; G7 (étoile sur les étapes clés); une seule nouveauté par étape.                                                                                                                                                                                           |
+| **Fidélité au programme** : données inutiles (2e cycle), validation (critère 2e cycle), argent/décimaux (2e cycle).                                                  | Marqués « défi » ou « enrichissement » dans `pda` et dans `curriculum.md`; jamais dans les `starter`.                                                                                                                                                                         |
+| **Doublons avec `operations`** (problemes, groupes-egaux, partage, egalite, suites).                                                                                 | § 2.1 (déplacement + générateur commun); les `pb-*` exercent la compréhension, les habiletés d'opérations le calcul; renvois croisés `learn`.                                                                                                                                 |
+| **Plausibilité/culture** (87 tires mangées, stéréotypes).                                                                                                            | `ctx.range`, prénoms tirés indépendamment des activités, contextes québécois variés (§ 3.5).                                                                                                                                                                                  |
+| **Synthèse vocale absente ou anglaise** sur certains appareils.                                                                                                      | Repli : bouton 🔊 désactivé avec info-bulle; le texte reste lisible; ne jamais rendre l'audio obligatoire.                                                                                                                                                                    |
+| **Répétition** (même histoire deux fois dans une série).                                                                                                             | `pb.id` mémorisé dans la série; contexte et structure non répétés deux fois de suite.                                                                                                                                                                                         |
 
 ---
 
 ## 9. Plan de mise en œuvre
 
-| Phase | Contenu | Fini quand |
-|---|---|---|
-| **P0 — Cadre** | G4 (`M.people`, `M.fr`), G1 (barres), G2 (passage à jetons + `tapwords target`), G3 (`steps` : passage collant, `viz` d'étape, `demarche`), G7; exemples dans `M.FORMAT_SAMPLES`; `framework.md` mis à jour | guide de style : nouvel exemple `steps` « Félix » (exemple A) jouable à 390 et 1100 px |
-| **P1 — Générateur** | `js/maths/pb.js` + `data/pb-contextes.js` (≥ 24 contextes), `M.pb.check`, G13 | `check-skills` : 500 tirages × structure × inconnue × lvl sans erreur; relecture de 50 textes tirés au hasard |
-| **P2 — Habiletés lot 1** | `pb-histoire`, `pb-question`, `pb-donnees`, `pb-mots`, `pb-schema`, `pb-operation`, `pb-resoudre`, `pb-phrase`; déplacement de `problemes` (même id) | progression existante de `problemes` conservée; aucune erreur de console |
-| **P3 — Apprendre** | `pb-demarche`, `pb-types`, `pb-mots`, `pb-sens` | `miniQuiz` fonctionnels; liens `learn` des habiletés |
-| **P4 — Habiletés lot 2** | G5, G6, G8; `pb-inconnue`, `pb-deux-etapes`, `pb-sens`, `pb-inventer`, `pb-inutiles` | essai avec l'enfant : 3 séances, noter les étapes qui bloquent (lecture vs math) |
-| **P5 — Extras** | domaine `defis` (G10, G14), argent (G11), mode défi (G12) | marqués « enrichissement » dans `curriculum.md` |
-| **Docs** | `curriculum.md` (section 🧩 Comprendre et résoudre), `methodologie.md` § 1 (C1/C2 mis à jour, schémas, trois lectures, mots-clés) | — |
+| Phase                    | Contenu                                                                                                                                                                                                     | Fini quand                                                                                                    |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| **P0 — Cadre**           | G4 (`M.people`, `M.fr`), G1 (barres), G2 (passage à jetons + `tapwords target`), G3 (`steps` : passage collant, `viz` d'étape, `demarche`), G7; exemples dans `M.FORMAT_SAMPLES`; `framework.md` mis à jour | guide de style : nouvel exemple `steps` « Félix » (exemple A) jouable à 390 et 1100 px                        |
+| **P1 — Générateur**      | `js/maths/pb.js` + `data/pb-contextes.js` (≥ 24 contextes), `M.pb.check`, G13                                                                                                                               | `check-skills` : 500 tirages × structure × inconnue × lvl sans erreur; relecture de 50 textes tirés au hasard |
+| **P2 — Habiletés lot 1** | `pb-histoire`, `pb-question`, `pb-donnees`, `pb-mots`, `pb-schema`, `pb-operation`, `pb-resoudre`, `pb-phrase`; déplacement de `problemes` (même id)                                                        | progression existante de `problemes` conservée; aucune erreur de console                                      |
+| **P3 — Apprendre**       | `pb-demarche`, `pb-types`, `pb-mots`, `pb-sens`                                                                                                                                                             | `miniQuiz` fonctionnels; liens `learn` des habiletés                                                          |
+| **P4 — Habiletés lot 2** | G5, G6, G8; `pb-inconnue`, `pb-deux-etapes`, `pb-sens`, `pb-inventer`, `pb-inutiles`                                                                                                                        | essai avec l'enfant : 3 séances, noter les étapes qui bloquent (lecture vs math)                              |
+| **P5 — Extras**          | domaine `defis` (G10, G14), argent (G11), mode défi (G12)                                                                                                                                                   | marqués « enrichissement » dans `curriculum.md`                                                               |
+| **Docs**                 | `curriculum.md` (section 🧩 Comprendre et résoudre), `methodologie.md` § 1 (C1/C2 mis à jour, schémas, trois lectures, mots-clés)                                                                           | —                                                                                                             |
 
 Ordre de priorité si le temps manque : P0 (G1–G3) → P1 → `pb-question`, `pb-donnees`, `pb-schema`, `pb-resoudre` →
 page `pb-demarche`. C'est le minimum qui comble le manque observé (compréhension avant calcul).
@@ -487,17 +491,17 @@ page `pb-demarche`. C'est le minimum qui comble le manque observé (compréhensi
 
 ## Sources
 
-- MEQ, *PFEQ — Mathématique, primaire* (compétences, attentes de fin de cycle) : https://cdn-contenu.quebec.ca/cdn-contenu/education/pfeq/primaire/programmes/PFEQ-mathematique-primaire.pdf
-- MEQ, *Progression des apprentissages — Mathématique* : https://cdn-contenu.quebec.ca/cdn-contenu/education/pfeq/primaire/progressions-apprentissages/PFEQ-progression-apprentissages-mathematique-primaire.pdf
-- MEQ, *Arithmétique — 2e cycle* (décimaux) : https://cdn-contenu.quebec.ca/cdn-contenu/education/pfeq/formations/Arithmetic-2e-cycle-math-primaire.pdf
-- CS Laval, *Dénominateur commun — CD1 évaluer* : https://sites.google.com/cslaval.qc.ca/denominateurcommun/%C3%A9valuation/cd1-%C3%A9valuer
-- CSBE, *Caractéristiques d'un bon problème* : https://se.csbe.qc.ca/mathprimaire/2020/03/13/caracteristiques-dun-bon-probleme/
-- i+ Interactif, *Résolution de problèmes écrits* : https://www.iplusinteractif.com/wordpress/site_caractere/2e-cycle-mathematiques/resolution-problemes-ecrits/
-- Powell & Fuchs (2018), *Effective Word-Problem Instruction: Using Schemas* : https://pmc.ncbi.nlm.nih.gov/articles/PMC6130842
-- Fuchs et al. (2021), *Closing the Word-Problem Achievement Gap in First Grade* : https://pmc.ncbi.nlm.nih.gov/articles/PMC7989819
-- *Implementing Schema Instruction to Support Young Children* (J. Numerical Cognition) : https://jnc.psychopen.eu/index.php/jnc/article/download/17649/17649.pdf/
-- IES/WWC (2021), *Assisting Students Struggling with Mathematics*, rec. 5 : https://ies.ed.gov/ncee/wwc/Docs/PracticeGuide/WWC2021006-Math-PG.pdf
-- Karp, Bush & Dougherty (2014), *13 Rules That Expire* : https://www.nctm.org/Publications/Teaching-Children-Mathematics/2014/Vol21/Issue1/tcm2014-08-18a_pdf/
-- Kaur (2019), *The why, what and how of the “Model” method* : https://repository.nie.edu.sg/bitstreams/967c9b6e-31d0-4309-9093-06ec80fe69c7/download
+- MEQ, _PFEQ — Mathématique, primaire_ (compétences, attentes de fin de cycle) : https://cdn-contenu.quebec.ca/cdn-contenu/education/pfeq/primaire/programmes/PFEQ-mathematique-primaire.pdf
+- MEQ, _Progression des apprentissages — Mathématique_ : https://cdn-contenu.quebec.ca/cdn-contenu/education/pfeq/primaire/progressions-apprentissages/PFEQ-progression-apprentissages-mathematique-primaire.pdf
+- MEQ, _Arithmétique — 2e cycle_ (décimaux) : https://cdn-contenu.quebec.ca/cdn-contenu/education/pfeq/formations/Arithmetic-2e-cycle-math-primaire.pdf
+- CS Laval, _Dénominateur commun — CD1 évaluer_ : https://sites.google.com/cslaval.qc.ca/denominateurcommun/%C3%A9valuation/cd1-%C3%A9valuer
+- CSBE, _Caractéristiques d'un bon problème_ : https://se.csbe.qc.ca/mathprimaire/2020/03/13/caracteristiques-dun-bon-probleme/
+- i+ Interactif, _Résolution de problèmes écrits_ : https://www.iplusinteractif.com/wordpress/site_caractere/2e-cycle-mathematiques/resolution-problemes-ecrits/
+- Powell & Fuchs (2018), _Effective Word-Problem Instruction: Using Schemas_ : https://pmc.ncbi.nlm.nih.gov/articles/PMC6130842
+- Fuchs et al. (2021), _Closing the Word-Problem Achievement Gap in First Grade_ : https://pmc.ncbi.nlm.nih.gov/articles/PMC7989819
+- _Implementing Schema Instruction to Support Young Children_ (J. Numerical Cognition) : https://jnc.psychopen.eu/index.php/jnc/article/download/17649/17649.pdf/
+- IES/WWC (2021), _Assisting Students Struggling with Mathematics_, rec. 5 : https://ies.ed.gov/ncee/wwc/Docs/PracticeGuide/WWC2021006-Math-PG.pdf
+- Karp, Bush & Dougherty (2014), _13 Rules That Expire_ : https://www.nctm.org/Publications/Teaching-Children-Mathematics/2014/Vol21/Issue1/tcm2014-08-18a_pdf/
+- Kaur (2019), _The why, what and how of the “Model” method_ : https://repository.nie.edu.sg/bitstreams/967c9b6e-31d0-4309-9093-06ec80fe69c7/download
 - Three Reads : https://www.mathcoachscorner.com/2022/04/the-3-reads-protocol-for-solving-word-problems/ · https://illustrativemathematics.blog/2022/08/09/tackling-wordy-problems-how-the-three-reads-math-language-routine-supports-access-for-all-learners/
-- Gouvernement du Canada, *Budget 2012 — élimination de la pièce d'un cent* : https://www.budget.canada.ca/2012/themes/theme2-fra.html
+- Gouvernement du Canada, _Budget 2012 — élimination de la pièce d'un cent_ : https://www.budget.canada.ca/2012/themes/theme2-fra.html

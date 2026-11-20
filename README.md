@@ -3,14 +3,14 @@
 Site de pratique et d'apprentissage pour un enfant de **2e année du primaire** au Québec, aligné sur le
 Programme de formation de l'école québécoise (PFEQ) et ses Progressions des apprentissages.
 
-| Matière | Habiletés | Contenu |
-|---|---|---|
-| 🔢 Mathématique | 60 | nombres, opérations, **comprendre et résoudre des problèmes** (démarche, schémas en barres, marquer la question et les données), géométrie, mesure, statistique et probabilité, défis 🌟 |
-| 📚 Français | 24 | sons et syllabes, lecture et compréhension de textes, apprécier une histoire, écrire des phrases, dictées (liste orthographique du MEQ), grammaire, phrase, verbes, vocabulaire; **Ma liste de la semaine** (saisie par le parent) |
-| 🗣️ Anglais | 16 | écoute (voix anglaise), vocabulaire illustré, consignes, situations, histoires et comptines originales |
-| 🗺️ Univers social | 15 | émotions, besoins, civilité, dialogue, règles, familles, communauté, plans, fêtes, symboles du Québec, avant et maintenant |
-| 🔬 Sciences | 16 | le vivant, la matière (prédire → observer → expliquer), la Terre et le ciel, la démarche scientifique |
-| 🎵 Musique | 12 | fort / doux, aigu / grave, long / court, sec / résonnant; tempo, pulsation, rythmes (ta, ti-ti, chut); instruments de percussion, voix et corps; do, ré, mi et petit piano jouable; forme A-B, ce que la musique exprime — vrais instruments enregistrés (CC0), compositeur de rythmes, jeu de l'écho |
+| Matière           | Habiletés | Contenu                                                                                                                                                                                                                                                                                               |
+| ----------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 🔢 Mathématique   | 60        | nombres, opérations, **comprendre et résoudre des problèmes** (démarche, schémas en barres, marquer la question et les données), géométrie, mesure, statistique et probabilité, défis 🌟                                                                                                              |
+| 📚 Français       | 24        | sons et syllabes, lecture et compréhension de textes, apprécier une histoire, écrire des phrases, dictées (liste orthographique du MEQ), grammaire, phrase, verbes, vocabulaire; **Ma liste de la semaine** (saisie par le parent)                                                                    |
+| 🗣️ Anglais        | 16        | écoute (voix anglaise), vocabulaire illustré, consignes, situations, histoires et comptines originales                                                                                                                                                                                                |
+| 🗺️ Univers social | 15        | émotions, besoins, civilité, dialogue, règles, familles, communauté, plans, fêtes, symboles du Québec, avant et maintenant                                                                                                                                                                            |
+| 🔬 Sciences       | 16        | le vivant, la matière (prédire → observer → expliquer), la Terre et le ciel, la démarche scientifique                                                                                                                                                                                                 |
+| 🎵 Musique        | 12        | fort / doux, aigu / grave, long / court, sec / résonnant; tempo, pulsation, rythmes (ta, ti-ti, chut); instruments de percussion, voix et corps; do, ré, mi et petit piano jouable; forme A-B, ce que la musique exprime — vrais instruments enregistrés (CC0), compositeur de rythmes, jeu de l'écho |
 
 - **Pratiquer** : séries de 8 questions avec visuel à manipuler, indice, 👀 démonstration et explication.
 - **Apprendre** : 54 petites leçons interactives.

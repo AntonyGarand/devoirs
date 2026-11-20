@@ -6,11 +6,11 @@ Les choix pédagogiques du site, et d'où ils viennent.
 
 Le programme québécois ne vise pas seulement des réponses justes. Il vise trois compétences :
 
-| Compétence | Dans le site |
-|---|---|
-| **C1. Résoudre une situation-problème** | Habiletés « Petits problèmes », terme manquant, deux étapes; révision entrelacée qui oblige à choisir la démarche. |
-| **C2. Raisonner à l'aide de concepts et de processus** | 👀 *Montre-moi* (démonstration animée), explication après chaque réponse, balance de l'égalité. |
-| **C3. Communiquer à l'aide du langage mathématique** | Vocabulaire de la PDA employé partout (somme, différence, dizaine, face, arête, diagramme à bandes…); lecture à voix haute 🔊; pages *Apprendre*. |
+| Compétence                                             | Dans le site                                                                                                                                      |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **C1. Résoudre une situation-problème**                | Habiletés « Petits problèmes », terme manquant, deux étapes; révision entrelacée qui oblige à choisir la démarche.                                |
+| **C2. Raisonner à l'aide de concepts et de processus** | 👀 _Montre-moi_ (démonstration animée), explication après chaque réponse, balance de l'égalité.                                                   |
+| **C3. Communiquer à l'aide du langage mathématique**   | Vocabulaire de la PDA employé partout (somme, différence, dizaine, face, arête, diagramme à bandes…); lecture à voix haute 🔊; pages _Apprendre_. |
 
 ## 2. Concret → imagé → abstrait
 
@@ -19,18 +19,18 @@ apparents et accessibles », puis « non accessibles » (blocs base 10), puis «
 progression avec des modèles manipulables à l'écran :
 
 - **cadres de dix** (voir 10, faire 10, doubles);
-- **blocs base 10**, avec un bouton pour *casser une dizaine* (l'échange);
+- **blocs base 10**, avec un bouton pour _casser une dizaine_ (l'échange);
 - **droite numérique** avec une grenouille qui fait des bonds (+1, +10, +100);
 - tableau de numération, grille de 100, balance, horloge, règle, calendrier, diagrammes, roulettes.
 
-L'enfant peut manipuler le visuel avant de répondre; *Montre-moi* fait la démarche à sa place quand il bloque.
+L'enfant peut manipuler le visuel avant de répondre; _Montre-moi_ fait la démarche à sa place quand il bloque.
 
 ## 3. Des stratégies, pas seulement des tables
 
 > « Le développement du répertoire mémorisé demande davantage que la seule mémorisation des tables. » — PDA, note 1
 
 Les explications nomment la stratégie qui convient aux nombres de la question : doubles, presque-doubles, faire 10,
-passer par 10, compter à partir du plus grand, la soustraction vue comme une addition à trou. La page *Les stratégies de calcul*
+passer par 10, compter à partir du plus grand, la soustraction vue comme une addition à trou. La page _Les stratégies de calcul_
 les présente une à une.
 
 ## 4. Rétroaction immédiate et erreurs utiles
@@ -44,9 +44,9 @@ les présente une à une.
 Ce sont trois des stratégies d'apprentissage les mieux documentées en sciences cognitives :
 
 - **Récupération** : se rappeler une réponse (plutôt que la relire) la consolide.
-- **Révision espacée** : revenir sur une notion après quelques jours. La *Révision du jour* choisit en priorité les habiletés
+- **Révision espacée** : revenir sur une notion après quelques jours. La _Révision du jour_ choisit en priorité les habiletés
   les moins maîtrisées et celles pratiquées il y a le plus longtemps.
-- **Entrelacement** : mélanger les types de questions oblige à reconnaître *quelle* démarche utiliser (compétence C1).
+- **Entrelacement** : mélanger les types de questions oblige à reconnaître _quelle_ démarche utiliser (compétence C1).
 
 ## 6. Difficulté adaptative et maîtrise
 

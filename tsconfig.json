@@ -1,0 +1,21 @@
+{
+  // Code du site : scripts classiques (pas de modules) qui partagent l'espace global window.M.
+  // tsrs (port Rust de tsc 7) vérifie les types et compile js/**/*.ts → dist/js/**/*.js (même arborescence).
+  "compilerOptions": {
+    "target": "es2020",
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "strict": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "erasableSyntaxOnly": true,
+    "moduleDetection": "legacy",
+    "skipLibCheck": true,
+    "types": [],
+    "rootDir": ".",
+    "outDir": "dist",
+    "noEmitOnError": true,
+    "removeComments": false,
+    "newLine": "lf"
+  },
+  "include": ["types/**/*.d.ts", "js/**/*.ts"]
+}

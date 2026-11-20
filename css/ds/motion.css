@@ -2,193 +2,861 @@
    Règles : on anime transform et opacity (fluide), jamais la mise en page; les entrées ne jouent
    qu'au montage d'un élément (pas à chaque re-rendu interne); tout respecte prefers-reduced-motion. */
 :root {
-  --ease-out: cubic-bezier(.22, 1, .36, 1);        /* décélération douce */
-  --ease-in-out: cubic-bezier(.65, 0, .35, 1);
-  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);  /* léger rebond */
-  --dur-1: .14s; --dur-2: .28s; --dur-3: .5s; --dur-4: .8s;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* décélération douce */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* léger rebond */
+  --dur-1: 0.14s;
+  --dur-2: 0.28s;
+  --dur-3: 0.5s;
+  --dur-4: 0.8s;
   --stagger: 55ms;
 }
 
 /* ---------- Keyframes communs (remplacent les versions de components.css) ---------- */
-@keyframes pop { 0% { transform: scale(1) } 35% { transform: scale(1.18) } 65% { transform: scale(.96) } 100% { transform: scale(1) } }
-@keyframes shake { 0%, 100% { transform: translateX(0) } 15% { transform: translateX(-9px) rotate(-1deg) } 35% { transform: translateX(7px) rotate(1deg) } 55% { transform: translateX(-4px) } 75% { transform: translateX(2px) } }
-@keyframes bob { 0%, 100% { transform: translateY(0) rotate(0) } 50% { transform: translateY(-8px) rotate(-4deg) } }
-@keyframes rise-in { from { opacity: 0; transform: translateY(14px) scale(.985) } to { opacity: 1; transform: none } }
-@keyframes fade-in { from { opacity: 0 } to { opacity: 1 } }
-@keyframes slide-in { from { opacity: 0; transform: translateX(36px) } to { opacity: 1; transform: none } }
-@keyframes pop-in { 0% { opacity: 0; transform: scale(.4) } 60% { opacity: 1; transform: scale(1.08) } 100% { opacity: 1; transform: scale(1) } }
-@keyframes drop-in { 0% { opacity: 0; transform: translateY(-26px) } 65% { opacity: 1; transform: translateY(3px) } 100% { opacity: 1; transform: none } }
-@keyframes glow-good { 0% { box-shadow: 0 4px 0 var(--C), 0 0 0 0 rgba(6,167,125,.55) } 100% { box-shadow: 0 4px 0 var(--C), 0 0 0 16px rgba(6,167,125,0) } }
-@keyframes pulse-soft { 0%, 100% { transform: scale(1) } 50% { transform: scale(1.07) } }
-@keyframes shine { from { transform: translateX(-100%) } to { transform: translateX(250%) } }
-@keyframes ring-out { 0% { opacity: .9; transform: scale(.9) } 100% { opacity: 0; transform: scale(1.35) } }
-@keyframes draw-line { from { stroke-dashoffset: 1 } to { stroke-dashoffset: 0 } }
+@keyframes pop {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.18);
+  }
+  65% {
+    transform: scale(0.96);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  15% {
+    transform: translateX(-9px) rotate(-1deg);
+  }
+  35% {
+    transform: translateX(7px) rotate(1deg);
+  }
+  55% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(2px);
+  }
+}
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  50% {
+    transform: translateY(-8px) rotate(-4deg);
+  }
+}
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(36px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes drop-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-26px);
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes glow-good {
+  0% {
+    box-shadow:
+      0 4px 0 var(--C),
+      0 0 0 0 rgba(6, 167, 125, 0.55);
+  }
+  100% {
+    box-shadow:
+      0 4px 0 var(--C),
+      0 0 0 16px rgba(6, 167, 125, 0);
+  }
+}
+@keyframes pulse-soft {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.07);
+  }
+}
+@keyframes shine {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+@keyframes ring-out {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+@keyframes draw-line {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
 
 /* ---------- Pages : chaque changement de route fait entrer le contenu ---------- */
-#app > * { animation: rise-in var(--dur-3) var(--ease-out) both }
-#app > *:nth-child(2) { animation-delay: calc(var(--stagger) * 1) }
-#app > *:nth-child(3) { animation-delay: calc(var(--stagger) * 2) }
-#app > *:nth-child(4) { animation-delay: calc(var(--stagger) * 3) }
-#app > *:nth-child(n+5) { animation-delay: calc(var(--stagger) * 4) }
+#app > * {
+  animation: rise-in var(--dur-3) var(--ease-out) both;
+}
+#app > *:nth-child(2) {
+  animation-delay: calc(var(--stagger) * 1);
+}
+#app > *:nth-child(3) {
+  animation-delay: calc(var(--stagger) * 2);
+}
+#app > *:nth-child(4) {
+  animation-delay: calc(var(--stagger) * 3);
+}
+#app > *:nth-child(n + 5) {
+  animation-delay: calc(var(--stagger) * 4);
+}
 
 /* Cartes en cascade (accueil, tableau de bord, index Apprendre) */
-.subject-card, .skill-card, .learn-card, .learn-chip, .stat { animation: rise-in var(--dur-3) var(--ease-out) both }
-:is(.skills, .learn-index, .subjects, .learn-strip, .hero-stats) > :nth-child(1) { animation-delay: 60ms }
-:is(.skills, .learn-index, .subjects, .learn-strip, .hero-stats) > :nth-child(2) { animation-delay: 100ms }
-:is(.skills, .learn-index, .subjects, .learn-strip, .hero-stats) > :nth-child(3) { animation-delay: 140ms }
-:is(.skills, .learn-index, .subjects, .learn-strip, .hero-stats) > :nth-child(4) { animation-delay: 180ms }
-:is(.skills, .learn-index, .subjects, .learn-strip, .hero-stats) > :nth-child(5) { animation-delay: 220ms }
-:is(.skills, .learn-index, .subjects, .learn-strip, .hero-stats) > :nth-child(6) { animation-delay: 260ms }
-:is(.skills, .learn-index, .subjects, .learn-strip, .hero-stats) > :nth-child(n+7) { animation-delay: 300ms }
+.subject-card,
+.skill-card,
+.learn-card,
+.learn-chip,
+.stat {
+  animation: rise-in var(--dur-3) var(--ease-out) both;
+}
+:is(.skills, .learn-index, .subjects, .learn-strip, .hero-stats) > :nth-child(1) {
+  animation-delay: 60ms;
+}
+:is(.skills, .learn-index, .subjects, .learn-strip, .hero-stats) > :nth-child(2) {
+  animation-delay: 100ms;
+}
+:is(.skills, .learn-index, .subjects, .learn-strip, .hero-stats) > :nth-child(3) {
+  animation-delay: 140ms;
+}
+:is(.skills, .learn-index, .subjects, .learn-strip, .hero-stats) > :nth-child(4) {
+  animation-delay: 180ms;
+}
+:is(.skills, .learn-index, .subjects, .learn-strip, .hero-stats) > :nth-child(5) {
+  animation-delay: 220ms;
+}
+:is(.skills, .learn-index, .subjects, .learn-strip, .hero-stats) > :nth-child(6) {
+  animation-delay: 260ms;
+}
+:is(.skills, .learn-index, .subjects, .learn-strip, .hero-stats) > :nth-child(n + 7) {
+  animation-delay: 300ms;
+}
 
 /* Sections qui apparaissent en défilant (navigateurs récents; sinon visibles tout de suite) */
 @supports (animation-timeline: view()) {
-  .l-sec, .domain { animation: rise-in linear both; animation-timeline: view(); animation-range: entry 0% entry 40% }
+  .l-sec,
+  .domain {
+    animation: rise-in linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 40%;
+  }
 }
 
 /* ---------- Survol et appui ---------- */
-.btn, .choice-btn, .key, .chip-btn, .chip, .match-item, .sort-item, .build-tile, .tw, .cloze-gap {
-  transition: transform var(--dur-1) var(--ease-spring), box-shadow var(--dur-1) var(--ease-out), background-color var(--dur-2), border-color var(--dur-2), opacity var(--dur-2);
+.btn,
+.choice-btn,
+.key,
+.chip-btn,
+.chip,
+.match-item,
+.sort-item,
+.build-tile,
+.tw,
+.cloze-gap {
+  transition:
+    transform var(--dur-1) var(--ease-spring),
+    box-shadow var(--dur-1) var(--ease-out),
+    background-color var(--dur-2),
+    border-color var(--dur-2),
+    opacity var(--dur-2);
 }
-.btn:active:not(:disabled), .choice-btn:active:not(:disabled), .chip-btn:active, .match-item:active, .sort-item:active, .build-tile:active:not(:disabled) { transform: translateY(2px) scale(.97) }
-.key:active:not(:disabled) { transform: translateY(4px) scale(.98) }
-.subject-card, .skill-card, .learn-card { transition: transform var(--dur-2) var(--ease-spring), box-shadow var(--dur-2) var(--ease-out), border-color var(--dur-2) }
+.btn:active:not(:disabled),
+.choice-btn:active:not(:disabled),
+.chip-btn:active,
+.match-item:active,
+.sort-item:active,
+.build-tile:active:not(:disabled) {
+  transform: translateY(2px) scale(0.97);
+}
+.key:active:not(:disabled) {
+  transform: translateY(4px) scale(0.98);
+}
+.subject-card,
+.skill-card,
+.learn-card {
+  transition:
+    transform var(--dur-2) var(--ease-spring),
+    box-shadow var(--dur-2) var(--ease-out),
+    border-color var(--dur-2);
+}
 @media (hover: hover) {
-  .btn:hover:not(:disabled) { transform: translateY(-2px) }
-  .choice-btn:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 7px 0 var(--line) }
-  .key:hover:not(:disabled) { transform: translateY(-2px) }
-  .subject-card:hover { transform: translateY(-6px) rotate(-.4deg); box-shadow: 0 11px 0 var(--line), 0 18px 34px rgba(43,45,66,.10) }
-  .skill-card:hover, .learn-card:hover { transform: translateY(-4px); box-shadow: 0 8px 22px rgba(43,45,66,.10) }
-  .subject-card:hover .ic, .skill-card:hover .ic, .learn-card:hover .ic { animation: bob 1.1s var(--ease-in-out) infinite }
-  .learn-chip:hover { transform: translateY(-2px) }
+  .btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+  }
+  .choice-btn:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 7px 0 var(--line);
+  }
+  .key:hover:not(:disabled) {
+    transform: translateY(-2px);
+  }
+  .subject-card:hover {
+    transform: translateY(-6px) rotate(-0.4deg);
+    box-shadow:
+      0 11px 0 var(--line),
+      0 18px 34px rgba(43, 45, 66, 0.1);
+  }
+  .skill-card:hover,
+  .learn-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 22px rgba(43, 45, 66, 0.1);
+  }
+  .subject-card:hover .ic,
+  .skill-card:hover .ic,
+  .learn-card:hover .ic {
+    animation: bob 1.1s var(--ease-in-out) infinite;
+  }
+  .learn-chip:hover {
+    transform: translateY(-2px);
+  }
 }
-.learn-chip { transition: transform var(--dur-2) var(--ease-spring), border-color var(--dur-2) }
-.subject-card .ic, .skill-card .ic, .learn-card .ic { display: inline-block }
+.learn-chip {
+  transition:
+    transform var(--dur-2) var(--ease-spring),
+    border-color var(--dur-2);
+}
+.subject-card .ic,
+.skill-card .ic,
+.learn-card .ic {
+  display: inline-block;
+}
 
 /* ---------- Session et rétroaction ---------- */
-.q-card { animation: slide-in var(--dur-3) var(--ease-out) both }
-.q-viz > * { animation: fade-in var(--dur-3) var(--ease-out) both; animation-delay: 120ms }
-.choices-grid > .choice-btn, .choices-grid > .choice-wrap { animation: rise-in var(--dur-2) var(--ease-out) both }
-.choices-grid > .choice-btn:nth-child(2), .choices-grid > .choice-wrap:nth-child(2) { animation-delay: 50ms }
-.choices-grid > .choice-btn:nth-child(3), .choices-grid > .choice-wrap:nth-child(3) { animation-delay: 100ms }
-.choices-grid > .choice-btn:nth-child(4), .choices-grid > .choice-wrap:nth-child(4) { animation-delay: 150ms }
-.choices-grid > .choice-btn:nth-child(n+5), .choices-grid > .choice-wrap:nth-child(n+5) { animation-delay: 200ms }
-.choice-btn.right { animation: pop .45s var(--ease-out), glow-good .9s var(--ease-out) }
-.choice-btn.wrong, .match-item.wrong, .sort-bin.wrong, .tw.wrong, .ptok.wrong { animation: shake .45s var(--ease-out) }
-.fb-in { display: flex; flex-direction: column; align-items: center; animation: rise-in var(--dur-2) var(--ease-out) both }
-.q-feedback.good .fb-in { animation: pop-in .45s var(--ease-out) both }
-.q-feedback.bad .fb-in { animation: shake .45s var(--ease-out) both }
-.q-next { animation: pop-in .45s var(--ease-spring) both }
-.ans-box { transition: border-color var(--dur-2), color var(--dur-2), transform var(--dur-2) var(--ease-spring) }
-.ans-box.good { animation: pop .45s var(--ease-out) }
-.progress { position: relative }
-.progress i { position: relative; overflow: hidden; transition: width .7s var(--ease-spring); border-radius: 999px }
-.progress i::after { content: ""; position: absolute; inset: 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent); animation: shine 2.4s var(--ease-in-out) infinite }
-.dbar i { transition: width .9s var(--ease-out) }
-.end .trophy { animation: pop-in .7s var(--ease-spring) both, bob 2s 0.7s var(--ease-in-out) infinite }
-.hero .mascot { animation: bob 2.6s var(--ease-in-out) infinite }
-#starsTotal.pop { animation: pop .5s var(--ease-spring) }
+.q-card {
+  animation: slide-in var(--dur-3) var(--ease-out) both;
+}
+.q-viz > * {
+  animation: fade-in var(--dur-3) var(--ease-out) both;
+  animation-delay: 120ms;
+}
+.choices-grid > .choice-btn,
+.choices-grid > .choice-wrap {
+  animation: rise-in var(--dur-2) var(--ease-out) both;
+}
+.choices-grid > .choice-btn:nth-child(2),
+.choices-grid > .choice-wrap:nth-child(2) {
+  animation-delay: 50ms;
+}
+.choices-grid > .choice-btn:nth-child(3),
+.choices-grid > .choice-wrap:nth-child(3) {
+  animation-delay: 100ms;
+}
+.choices-grid > .choice-btn:nth-child(4),
+.choices-grid > .choice-wrap:nth-child(4) {
+  animation-delay: 150ms;
+}
+.choices-grid > .choice-btn:nth-child(n + 5),
+.choices-grid > .choice-wrap:nth-child(n + 5) {
+  animation-delay: 200ms;
+}
+.choice-btn.right {
+  animation:
+    pop 0.45s var(--ease-out),
+    glow-good 0.9s var(--ease-out);
+}
+.choice-btn.wrong,
+.match-item.wrong,
+.sort-bin.wrong,
+.tw.wrong,
+.ptok.wrong {
+  animation: shake 0.45s var(--ease-out);
+}
+.fb-in {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: rise-in var(--dur-2) var(--ease-out) both;
+}
+.q-feedback.good .fb-in {
+  animation: pop-in 0.45s var(--ease-out) both;
+}
+.q-feedback.bad .fb-in {
+  animation: shake 0.45s var(--ease-out) both;
+}
+.q-next {
+  animation: pop-in 0.45s var(--ease-spring) both;
+}
+.ans-box {
+  transition:
+    border-color var(--dur-2),
+    color var(--dur-2),
+    transform var(--dur-2) var(--ease-spring);
+}
+.ans-box.good {
+  animation: pop 0.45s var(--ease-out);
+}
+.progress {
+  position: relative;
+}
+.progress i {
+  position: relative;
+  overflow: hidden;
+  transition: width 0.7s var(--ease-spring);
+  border-radius: 999px;
+}
+.progress i::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  animation: shine 2.4s var(--ease-in-out) infinite;
+}
+.dbar i {
+  transition: width 0.9s var(--ease-out);
+}
+.end .trophy {
+  animation:
+    pop-in 0.7s var(--ease-spring) both,
+    bob 2s 0.7s var(--ease-in-out) infinite;
+}
+.hero .mascot {
+  animation: bob 2.6s var(--ease-in-out) infinite;
+}
+#starsTotal.pop {
+  animation: pop 0.5s var(--ease-spring);
+}
 
 /* Cartes-éclair : retournement plus doux */
-.flash-face { transition: transform .6s var(--ease-spring) }
+.flash-face {
+  transition: transform 0.6s var(--ease-spring);
+}
 
 /* ---------- Visuels mathématiques ---------- */
-.cell { transition: transform var(--dur-1) var(--ease-spring), background-color var(--dur-2) }
-.frames.enter .cell:not(.void) { animation: pop-in .4s var(--ease-spring) both; animation-delay: calc(var(--i, 0) * 28ms + 150ms) }
-.cell.flash { animation: pop .4s var(--ease-out) }
-.bgroup.reveal { animation: pop-in .5s var(--ease-spring) }
-.arc.new { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw-line .5s var(--ease-out) forwards }
-.alabel { animation: fade-in .4s .25s var(--ease-out) both }
-.frog { will-change: transform }
-.nl-ripple { fill: none; stroke: var(--C); stroke-width: 3; transform-box: fill-box; transform-origin: center; animation: ring-out .6s var(--ease-out) forwards; pointer-events: none }
+.cell {
+  transition:
+    transform var(--dur-1) var(--ease-spring),
+    background-color var(--dur-2);
+}
+.frames.enter .cell:not(.void) {
+  animation: pop-in 0.4s var(--ease-spring) both;
+  animation-delay: calc(var(--i, 0) * 28ms + 150ms);
+}
+.cell.flash {
+  animation: pop 0.4s var(--ease-out);
+}
+.bgroup.reveal {
+  animation: pop-in 0.5s var(--ease-spring);
+}
+.arc.new {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw-line 0.5s var(--ease-out) forwards;
+}
+.alabel {
+  animation: fade-in 0.4s 0.25s var(--ease-out) both;
+}
+.frog {
+  will-change: transform;
+}
+.nl-ripple {
+  fill: none;
+  stroke: var(--C);
+  stroke-width: 3;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ring-out 0.6s var(--ease-out) forwards;
+  pointer-events: none;
+}
 
 /* Modèle en barres : les segments poussent de gauche à droite */
-.barmodel .bm-seg > rect, .barmodel .bm-diff > rect { transform-box: fill-box; transform-origin: left center; animation: bm-grow .6s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 90ms) }
-.barmodel .bm-txt, .barmodel .bm-lbl { animation: fade-in .4s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 90ms + 250ms) }
-.barmodel .bm-brace { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw-line .7s .35s var(--ease-out) forwards }
-.barmodel .bm-unknown > rect { animation: bm-grow .6s var(--ease-out) both, bm-glow 1.8s 1s var(--ease-in-out) infinite; animation-delay: calc(var(--i, 0) * 90ms), 1s }
-.barmodel.no-enter * { animation: none !important; stroke-dashoffset: 0 !important }
-.barmodel.no-enter .bm-new > rect { transform-box: fill-box; transform-origin: center; animation: pop .5s var(--ease-out) !important }
-@keyframes bm-grow { from { transform: scaleX(0); opacity: .3 } to { transform: none; opacity: 1 } }
-@keyframes bm-glow { 0%, 100% { filter: none } 50% { filter: drop-shadow(0 0 6px #e9b949) } }
+.barmodel .bm-seg > rect,
+.barmodel .bm-diff > rect {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: bm-grow 0.6s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+.barmodel .bm-txt,
+.barmodel .bm-lbl {
+  animation: fade-in 0.4s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 90ms + 250ms);
+}
+.barmodel .bm-brace {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw-line 0.7s 0.35s var(--ease-out) forwards;
+}
+.barmodel .bm-unknown > rect {
+  animation:
+    bm-grow 0.6s var(--ease-out) both,
+    bm-glow 1.8s 1s var(--ease-in-out) infinite;
+  animation-delay: calc(var(--i, 0) * 90ms), 1s;
+}
+.barmodel.no-enter * {
+  animation: none !important;
+  stroke-dashoffset: 0 !important;
+}
+.barmodel.no-enter .bm-new > rect {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pop 0.5s var(--ease-out) !important;
+}
+@keyframes bm-grow {
+  from {
+    transform: scaleX(0);
+    opacity: 0.3;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes bm-glow {
+  0%,
+  100% {
+    filter: none;
+  }
+  50% {
+    filter: drop-shadow(0 0 6px #e9b949);
+  }
+}
 
 /* Diagrammes (statistique) : bandes qui montent au premier affichage, pictogrammes en cascade */
-.st-chart.grow .st-bar { transform-box: fill-box; transform-origin: center bottom; animation: bar-up .7s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 90ms + 150ms) }
-.st-chart.grow.horiz .st-bar { transform-origin: left center; animation-name: bm-grow }
-@keyframes bar-up { from { transform: scaleY(0) } to { transform: none } }
-.st-pp { display: inline-block; animation: pop-in .35s var(--ease-spring) both; animation-delay: calc(min(var(--i, 0), 30) * 25ms + 100ms) }
+.st-chart.grow .st-bar {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: bar-up 0.7s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 90ms + 150ms);
+}
+.st-chart.grow.horiz .st-bar {
+  transform-origin: left center;
+  animation-name: bm-grow;
+}
+@keyframes bar-up {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: none;
+  }
+}
+.st-pp {
+  display: inline-block;
+  animation: pop-in 0.35s var(--ease-spring) both;
+  animation-delay: calc(min(var(--i, 0), 30) * 25ms + 100ms);
+}
 
 /* ---------- Ligne du temps ---------- */
-.timeline .tl-axis { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw-line .9s var(--ease-out) forwards }
-.timeline .tl-tick { animation: fade-in .4s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 45ms + 200ms) }
-.timeline .tl-ev { transform-box: fill-box; transform-origin: center bottom; animation: drop-in .55s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 80ms + 450ms) }
-.timeline .tl-card { transition: transform var(--dur-2) var(--ease-spring) ; transform-box: fill-box; transform-origin: center }
-.timeline .tl-ev:hover .tl-card { transform: translateY(-4px) scale(1.05) }
-.timeline .tl-ev.hidden .tl-card { animation: pulse-soft 2s var(--ease-in-out) infinite }
-.timeline .tl-tick:hover line { stroke: var(--B) }
+.timeline .tl-axis {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw-line 0.9s var(--ease-out) forwards;
+}
+.timeline .tl-tick {
+  animation: fade-in 0.4s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 45ms + 200ms);
+}
+.timeline .tl-ev {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: drop-in 0.55s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 80ms + 450ms);
+}
+.timeline .tl-card {
+  transition: transform var(--dur-2) var(--ease-spring);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.timeline .tl-ev:hover .tl-card {
+  transform: translateY(-4px) scale(1.05);
+}
+.timeline .tl-ev.hidden .tl-card {
+  animation: pulse-soft 2s var(--ease-in-out) infinite;
+}
+.timeline .tl-tick:hover line {
+  stroke: var(--B);
+}
 
 /* ---------- Plan / carte ---------- */
-.plan-svg { overflow: visible }
-.plan-place { transform-box: fill-box; transform-origin: center; animation: pop-in .5s var(--ease-spring) both; animation-delay: calc(var(--i, 0) * 70ms + 150ms) }
-.plan-place .pl-lift { transition: transform var(--dur-2) var(--ease-spring) }
-.plan-place .pl-shadow { transition: opacity var(--dur-2), transform var(--dur-2) var(--ease-out); transform-box: fill-box; transform-origin: center }
-@media (hover: hover) {
-  .plan-place:hover .pl-lift { transform: translateY(-4px) }
-  .plan-place:hover .pl-shadow { opacity: .32; transform: scale(1.04) }
+.plan-svg {
+  overflow: visible;
 }
-.plan-place:active .pl-lift { transform: translateY(1px) }
-.plan-place .pl-ring { fill: none; stroke-width: 5; opacity: 0; transform-box: fill-box; transform-origin: center; pointer-events: none }
-.plan-place.flash-on .pl-ring { stroke: var(--B); opacity: 1; animation: pl-pulse 1.3s var(--ease-out) infinite }
-.plan-place.flash-on .pl-lift { animation: pl-hop .6s var(--ease-spring) }
-.plan-place.hot-sel .pl-ring { stroke: var(--B); opacity: 1 }
-.plan-place.hot-right .pl-ring { stroke: var(--C); opacity: 1; animation: pl-pulse 1.3s var(--ease-out) 2 }
-.plan-place.hot-right .pl-lift { animation: pl-hop .6s var(--ease-spring) }
-.plan-place.hot-wrong .pl-lift { animation: shake .45s var(--ease-out) }
-.hotspot .plan-place.hot-right, .hotspot .plan-place.hot-sel { outline: none; filter: none }
-@keyframes pl-pulse { 0% { opacity: 1; transform: scale(1) } 70% { opacity: 0; transform: scale(1.22) } 100% { opacity: 0 } }
-@keyframes pl-hop { 0%, 100% { transform: none } 40% { transform: translateY(-10px) scale(1.06) } }
-.plan-cloud { animation: cloud-drift linear infinite; pointer-events: none }
-@keyframes cloud-drift { from { transform: translateX(var(--from, -300px)) } to { transform: translateX(var(--to, 900px)) } }
-.plan-north .needle { transform-box: view-box; transform-origin: 0 0; animation: needle-swing 1.6s .4s var(--ease-spring) both }
-@keyframes needle-swing { 0% { transform: rotate(-95deg) } 45% { transform: rotate(22deg) } 70% { transform: rotate(-8deg) } 100% { transform: rotate(0) } }
-.plan-tree { transform-box: fill-box; transform-origin: center bottom; animation: pop-in .5s var(--ease-spring) both; animation-delay: calc(var(--i, 0) * 18ms + 100ms) }
-.plan-tree .sway { transform-box: fill-box; transform-origin: center bottom; animation: sway 4s var(--ease-in-out) infinite; animation-delay: calc(var(--i, 0) * -370ms) }
-@keyframes sway { 0%, 100% { transform: rotate(-2deg) } 50% { transform: rotate(2deg) } }
-.plan-water { animation: shimmer 3s var(--ease-in-out) infinite }
-@keyframes shimmer { 0%, 100% { opacity: .55 } 50% { opacity: .9 } }
-.plan-leg-it { transition: transform var(--dur-2) var(--ease-spring), background-color var(--dur-2), border-color var(--dur-2) }
-.plan-leg-it.on { background: var(--Bb); border-color: var(--B); transform: translateY(-2px) }
+.plan-place {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pop-in 0.5s var(--ease-spring) both;
+  animation-delay: calc(var(--i, 0) * 70ms + 150ms);
+}
+.plan-place .pl-lift {
+  transition: transform var(--dur-2) var(--ease-spring);
+}
+.plan-place .pl-shadow {
+  transition:
+    opacity var(--dur-2),
+    transform var(--dur-2) var(--ease-out);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@media (hover: hover) {
+  .plan-place:hover .pl-lift {
+    transform: translateY(-4px);
+  }
+  .plan-place:hover .pl-shadow {
+    opacity: 0.32;
+    transform: scale(1.04);
+  }
+}
+.plan-place:active .pl-lift {
+  transform: translateY(1px);
+}
+.plan-place .pl-ring {
+  fill: none;
+  stroke-width: 5;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  pointer-events: none;
+}
+.plan-place.flash-on .pl-ring {
+  stroke: var(--B);
+  opacity: 1;
+  animation: pl-pulse 1.3s var(--ease-out) infinite;
+}
+.plan-place.flash-on .pl-lift {
+  animation: pl-hop 0.6s var(--ease-spring);
+}
+.plan-place.hot-sel .pl-ring {
+  stroke: var(--B);
+  opacity: 1;
+}
+.plan-place.hot-right .pl-ring {
+  stroke: var(--C);
+  opacity: 1;
+  animation: pl-pulse 1.3s var(--ease-out) 2;
+}
+.plan-place.hot-right .pl-lift {
+  animation: pl-hop 0.6s var(--ease-spring);
+}
+.plan-place.hot-wrong .pl-lift {
+  animation: shake 0.45s var(--ease-out);
+}
+.hotspot .plan-place.hot-right,
+.hotspot .plan-place.hot-sel {
+  outline: none;
+  filter: none;
+}
+@keyframes pl-pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  70% {
+    opacity: 0;
+    transform: scale(1.22);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes pl-hop {
+  0%,
+  100% {
+    transform: none;
+  }
+  40% {
+    transform: translateY(-10px) scale(1.06);
+  }
+}
+.plan-cloud {
+  animation: cloud-drift linear infinite;
+  pointer-events: none;
+}
+@keyframes cloud-drift {
+  from {
+    transform: translateX(var(--from, -300px));
+  }
+  to {
+    transform: translateX(var(--to, 900px));
+  }
+}
+.plan-north .needle {
+  transform-box: view-box;
+  transform-origin: 0 0;
+  animation: needle-swing 1.6s 0.4s var(--ease-spring) both;
+}
+@keyframes needle-swing {
+  0% {
+    transform: rotate(-95deg);
+  }
+  45% {
+    transform: rotate(22deg);
+  }
+  70% {
+    transform: rotate(-8deg);
+  }
+  100% {
+    transform: rotate(0);
+  }
+}
+.plan-tree {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: pop-in 0.5s var(--ease-spring) both;
+  animation-delay: calc(var(--i, 0) * 18ms + 100ms);
+}
+.plan-tree .sway {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: sway 4s var(--ease-in-out) infinite;
+  animation-delay: calc(var(--i, 0) * -370ms);
+}
+@keyframes sway {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+.plan-water {
+  animation: shimmer 3s var(--ease-in-out) infinite;
+}
+@keyframes shimmer {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+.plan-leg-it {
+  transition:
+    transform var(--dur-2) var(--ease-spring),
+    background-color var(--dur-2),
+    border-color var(--dur-2);
+}
+.plan-leg-it.on {
+  background: var(--Bb);
+  border-color: var(--B);
+  transform: translateY(-2px);
+}
 
 /* ---------- Confettis et étoile (animés en JS, Web Animations) ---------- */
-.confetti { animation: none; top: 0; left: 0; will-change: transform }
-.flystar { transition: none; will-change: transform; left: 0; top: 0; filter: drop-shadow(0 4px 6px rgba(244,180,0,.5)) }
-.star-trail { position: fixed; z-index: 59; pointer-events: none; font-size: 1.2rem; left: 0; top: 0 }
+.confetti {
+  animation: none;
+  top: 0;
+  left: 0;
+  will-change: transform;
+}
+.flystar {
+  transition: none;
+  will-change: transform;
+  left: 0;
+  top: 0;
+  filter: drop-shadow(0 4px 6px rgba(244, 180, 0, 0.5));
+}
+.star-trail {
+  position: fixed;
+  z-index: 59;
+  pointer-events: none;
+  font-size: 1.2rem;
+  left: 0;
+  top: 0;
+}
 
 /* ---------- Mouvement réduit : tout s'affiche immédiatement, aucune boucle ---------- */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important }
-  .plan-cloud, .plan-car { display: none }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .plan-cloud,
+  .plan-car {
+    display: none;
+  }
 }
 
 /* ---------- Scènes illustrées (art-lib.js, sciences/ciel.js) ---------- */
-.art-spin { animation: art-spin 40s linear infinite }
-@keyframes art-spin { to { transform: rotate(360deg) } }
-.sc-spin, .sc-orbit, .sc-upright { transform-box: fill-box; transform-origin: center }
-.sc-spin.smooth, .sc-orbit.smooth, .sc-upright.smooth { transition: transform .8s var(--ease-out) }
-.sc-twinkle { animation: twinkle 2.6s var(--ease-in-out) infinite; animation-delay: var(--d, 0s) }
-@keyframes twinkle { 0%, 100% { opacity: 1 } 50% { opacity: .25 } }
-.sc-ping { transform-box: fill-box; transform-origin: center; animation: ring-out 1.8s var(--ease-out) infinite }
-.sc-sway { animation: sway 5s var(--ease-in-out) infinite }
-.sc-fall { animation: sc-fall var(--dur, 5s) linear infinite; animation-delay: var(--dl, 0s) }
-@keyframes sc-fall { from { transform: translate(var(--x), -14px) rotate(0) } 50% { transform: translate(calc(var(--x) + var(--dx)), 62px) rotate(160deg) } to { transform: translate(var(--x), 144px) rotate(320deg) } }
-.sc-drip { animation: sc-drip 1.8s ease-in infinite }
-@keyframes sc-drip { 0% { transform: translateY(0); opacity: 0 } 20% { opacity: 1 } 100% { transform: translateY(9px); opacity: 0 } }
-.sc-sky-lbl { font-size: 13px; font-weight: 900; fill: #fff; opacity: .85 }
-.sc-sky-lbl.dark { fill: #2b2d42; opacity: .8 }
-.sc-house { cursor: pointer }
-.sc-house > circle:first-child { transition: transform var(--dur-2) var(--ease-spring); transform-box: fill-box; transform-origin: center }
-@media (hover: hover) { .sc-house:hover > circle:first-child { transform: scale(1.12) } }
-.sc-tile .sc-big .art { filter: drop-shadow(0 4px 6px rgba(43,45,66,.18)); transition: transform var(--dur-2) var(--ease-spring) }
-.sc-tile:hover .sc-big .art, .sc-tile.on .sc-big .art { transform: scale(1.1) rotate(-4deg) }
-.plan-leg-it .art { margin-right: 2px }
-.sc-beam { animation: beam-flow 1.2s linear infinite } @keyframes beam-flow { to { stroke-dashoffset: -19 } }
+.art-spin {
+  animation: art-spin 40s linear infinite;
+}
+@keyframes art-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.sc-spin,
+.sc-orbit,
+.sc-upright {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.sc-spin.smooth,
+.sc-orbit.smooth,
+.sc-upright.smooth {
+  transition: transform 0.8s var(--ease-out);
+}
+.sc-twinkle {
+  animation: twinkle 2.6s var(--ease-in-out) infinite;
+  animation-delay: var(--d, 0s);
+}
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+.sc-ping {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ring-out 1.8s var(--ease-out) infinite;
+}
+.sc-sway {
+  animation: sway 5s var(--ease-in-out) infinite;
+}
+.sc-fall {
+  animation: sc-fall var(--dur, 5s) linear infinite;
+  animation-delay: var(--dl, 0s);
+}
+@keyframes sc-fall {
+  from {
+    transform: translate(var(--x), -14px) rotate(0);
+  }
+  50% {
+    transform: translate(calc(var(--x) + var(--dx)), 62px) rotate(160deg);
+  }
+  to {
+    transform: translate(var(--x), 144px) rotate(320deg);
+  }
+}
+.sc-drip {
+  animation: sc-drip 1.8s ease-in infinite;
+}
+@keyframes sc-drip {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(9px);
+    opacity: 0;
+  }
+}
+.sc-sky-lbl {
+  font-size: 13px;
+  font-weight: 900;
+  fill: #fff;
+  opacity: 0.85;
+}
+.sc-sky-lbl.dark {
+  fill: #2b2d42;
+  opacity: 0.8;
+}
+.sc-house {
+  cursor: pointer;
+}
+.sc-house > circle:first-child {
+  transition: transform var(--dur-2) var(--ease-spring);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@media (hover: hover) {
+  .sc-house:hover > circle:first-child {
+    transform: scale(1.12);
+  }
+}
+.sc-tile .sc-big .art {
+  filter: drop-shadow(0 4px 6px rgba(43, 45, 66, 0.18));
+  transition: transform var(--dur-2) var(--ease-spring);
+}
+.sc-tile:hover .sc-big .art,
+.sc-tile.on .sc-big .art {
+  transform: scale(1.1) rotate(-4deg);
+}
+.plan-leg-it .art {
+  margin-right: 2px;
+}
+.sc-beam {
+  animation: beam-flow 1.2s linear infinite;
+}
+@keyframes beam-flow {
+  to {
+    stroke-dashoffset: -19;
+  }
+}

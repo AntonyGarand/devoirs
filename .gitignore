@@ -1,4 +1,6 @@
+dist/
 node_modules/
+tools/node_modules/
 .DS_Store
 Thumbs.db
 tools/tts/_habiletes.json

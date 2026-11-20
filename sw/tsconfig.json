@@ -1,0 +1,16 @@
+{
+  // Service worker : contexte différent (WebWorker), compilé séparément vers dist/sw.js.
+  "compilerOptions": {
+    "target": "es2020",
+    "lib": ["es2022", "webworker"],
+    "strict": true,
+    "erasableSyntaxOnly": true,
+    "moduleDetection": "legacy",
+    "skipLibCheck": true,
+    "types": [],
+    "rootDir": ".",
+    "outDir": "../dist",
+    "newLine": "lf"
+  },
+  "include": ["sw.ts"]
+}
