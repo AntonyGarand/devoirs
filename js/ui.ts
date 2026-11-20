@@ -18,7 +18,8 @@
 (function () {
   'use strict';
   const M = window.M;
-  const ui = (M.ui = {});
+  // Rempli ici et par ui-extra.ts (voir UiApi, types/components.d.ts).
+  const ui = (M.ui = {} as UiApi);
 
   ui.section = ({ icon = '', title, intro = '', body = '', id = '' }) =>
     `<section class="l-sec"${id ? ` id="${id}"` : ''}><h2>${icon} ${title}</h2>${intro ? `<p>${intro}</p>` : ''}${body}</section>`;
@@ -48,16 +49,16 @@
 
   ui.tabs = function (el, tabs, startId) {
     el.innerHTML = `<div class="tabs" role="tablist">${tabs.map((t) => `<button class="tab" role="tab" data-id="${t.id}">${t.label}</button>`).join('')}</div><div class="tab-panel"></div>`;
-    const panel = M.$('.tab-panel', el);
-    const show = (id) => {
+    const panel = M.$('.tab-panel', el)!; // vient d'être rendu
+    const show = (id: string | undefined) => {
       M.$$('.tab', el).forEach((b) => b.classList.toggle('on', b.dataset.id === id));
       const t = tabs.find((x) => x.id === id) || tabs[0];
       panel.innerHTML = '';
       panel.onclick = null;
       t.render(panel);
     };
-    M.$('.tabs', el).onclick = (e) => {
-      const b = e.target.closest('.tab');
+    M.$('.tabs', el)!.onclick = (e) => {
+      const b = M.closest(e, '.tab');
       if (b) {
         M.sfx.tap();
         show(b.dataset.id);
@@ -70,16 +71,16 @@
   ui.stepper = function (el, { label = '', value = 0, min = 0, max = 10, step = 1, onChange = () => {} }) {
     let v = value;
     el.innerHTML = `<span class="stepper">${label ? `<b>${label}</b>` : ''}<button class="btn st-dec" aria-label="Moins">−</button><span class="st-val">${v}</span><button class="btn st-inc" aria-label="Plus">+</button></span>`;
-    const set = (n, silent) => {
+    const set = (n: number, silent?: boolean) => {
       v = Math.max(min, Math.min(max, n));
-      M.$('.st-val', el).textContent = v;
+      M.$('.st-val', el)!.textContent = String(v);
       if (!silent) onChange(v);
     };
-    M.$('.st-dec', el).onclick = () => {
+    M.$('.st-dec', el)!.onclick = () => {
       M.sfx.tap();
       set(v - step);
     };
-    M.$('.st-inc', el).onclick = () => {
+    M.$('.st-inc', el)!.onclick = () => {
       M.sfx.tap();
       set(v + step);
     };
@@ -94,18 +95,19 @@
       el.innerHTML = `<div class="flash"><button class="flash-card ${flipped ? 'flipped' : ''}" aria-label="Retourner la carte">
           <span class="flash-face front">${c.front}</span><span class="flash-face back">${c.back}</span></button>
         <div class="row-center"><button class="btn fc-prev">←</button><span class="chip">${i + 1} / ${cards.length}</span>${c.say ? ui.speak(c.say, { lang: c.lang }) : ''}<button class="btn fc-next">→</button></div></div>`;
-      M.$('.flash-card', el).onclick = () => {
+      const card = M.$('.flash-card', el)!; // vient d'être rendu
+      card.onclick = () => {
         flipped = !flipped;
         M.sfx.tap();
-        M.$('.flash-card', el).classList.toggle('flipped', flipped);
+        card.classList.toggle('flipped', flipped);
         if (flipped && c.say) M.say(c.say, { lang: c.lang, raw: true });
       };
-      M.$('.fc-prev', el).onclick = () => {
+      M.$('.fc-prev', el)!.onclick = () => {
         i = (i - 1 + cards.length) % cards.length;
         flipped = false;
         draw();
       };
-      M.$('.fc-next', el).onclick = () => {
+      M.$('.fc-next', el)!.onclick = () => {
         i = (i + 1) % cards.length;
         flipped = false;
         draw();
@@ -128,26 +130,26 @@
         .join('')}
       <div class="muted reading-tip">Touche un mot pour l'entendre.</div></div>`;
     el.onclick = (e) => {
-      const w = e.target.closest('.rw');
+      const w = M.closest(e, '.rw');
       if (!w) return;
       M.$$('.rw.on', el).forEach((x) => x.classList.remove('on'));
       w.classList.add('on');
-      M.say(w.textContent.replace(/[.,!?;:«»"()]/g, ''), { lang, raw: true });
+      M.say(String(w.textContent).replace(/[.,!?;:«»"()]/g, ''), { lang, raw: true });
     };
   };
 
   ui.miniQuiz = function (el, questions, { title = 'Vérifie ta compréhension' } = {}) {
     let i = 0,
       ok = 0,
-      cur = null;
+      cur: QuestionCard | null = null;
     const all = questions.slice();
-    let seen = new Set(),
-      prev = null; // jamais deux fois la même question; « Recommencer » évite la ronde précédente
+    let seen = new Set<string>(),
+      prev: Set<string> | null = null; // jamais deux fois la même question; « Recommencer » évite la ronde précédente
     const show = () => {
       if (cur) cur.destroy();
       if (i >= questions.length) {
         el.innerHTML = `<div class="callout green">🎉 ${ok} sur ${questions.length} du premier coup ! <button class="btn mq-again">Recommencer</button></div>`;
-        M.$('.mq-again', el).onclick = () => {
+        M.$('.mq-again', el)!.onclick = () => {
           i = 0;
           ok = 0;
           prev = seen;
@@ -158,12 +160,13 @@
         return;
       }
       el.innerHTML = `<div class="mq-head"><b>${title}</b> <span class="chip">${i + 1} / ${questions.length}</span></div><div class="mq-q"></div>`;
-      const q = typeof questions[i] === 'function' ? M.genUnique(questions[i], seen, { avoid: prev }) : questions[i];
+      const item = questions[i];
+      const q = typeof item === 'function' ? M.genUnique(item, seen, { avoid: prev }) : item;
       if (!q) {
         questions = questions.filter((_, k) => k !== i);
         return show();
       } // plus de question nouvelle : on la saute
-      cur = M.renderQuestion(M.$('.mq-q', el), q, {
+      cur = M.renderQuestion(M.$('.mq-q', el)!, q, {
         record: false,
         nextLabel: i === questions.length - 1 ? 'Terminer ✔' : 'Suivant ➜',
         onResult: ({ first }) => {
@@ -181,7 +184,7 @@
 
   // Boutons 🔊 déclaratifs : <button data-say="texte" data-lang="en-CA">
   document.addEventListener('click', (e) => {
-    const b = e.target.closest && e.target.closest('[data-say]');
+    const b = M.closest(e, '[data-say]');
     if (b) M.say(b.dataset.say, { lang: b.dataset.lang || 'fr-CA', raw: (b.dataset.lang || '').startsWith('en') });
   });
 })();

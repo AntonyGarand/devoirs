@@ -9,8 +9,18 @@
 (function () {
   'use strict';
   const M = window.M;
-  const V = (M.viz = {});
+  // Rempli ici et par viz-extra.ts (voir VizApi, types/components.d.ts).
+  const V = (M.viz = {} as VizApi);
 
+  interface Cell {
+    kind: CounterKind | undefined;
+    orig: CounterKind;
+    crossed: boolean;
+    label: number | null;
+    lcls?: string;
+    /** Case vide (E) : ce qui la remplit. */
+    fill?: CounterKind;
+  }
   /* ------------------------------------------------------------------
      Jetons dans des cadres de dix
      opts: { a, b, op:'add'|'sub', unknown:'r'|'a'|'b', emoji? }
@@ -18,11 +28,12 @@
      Retourne { showMe() }
      ------------------------------------------------------------------ */
   V.counters = function (el, opts) {
-    let cells, mode;
+    let cells: Cell[] = [],
+      mode: CountersMode = 'count'; // fixés par build()
     const r = opts.cells ? 0 : opts.op === 'add' ? opts.a + opts.b : opts.a - opts.b;
     function build() {
-      const c = [];
-      const add = (kind, n, extra = {}) => {
+      const c: Cell[] = [];
+      const add = (kind: CounterKind, n: number, extra: Partial<Cell> = {}) => {
         for (let i = 0; i < n; i++) c.push({ kind, orig: kind, crossed: false, label: null, ...extra });
       };
       if (opts.cells) {
@@ -79,7 +90,7 @@
       return `Barrés : ${x} · Il reste : ${cells.length - x}`;
     }
     let firstRender = true;
-    function render(flash) {
+    function render(flash?: number) {
       const frames = Math.max(1, Math.ceil(cells.length / 10));
       let h = `<div class="viz-hint">${hint()}</div><div class="frames${firstRender ? ' enter' : ''}">`;
       firstRender = false;
@@ -103,17 +114,17 @@
     }
     let tok = 0;
     el.onclick = (e) => {
-      const b = e.target.closest('.cell');
+      const b = M.closest(e, '.cell');
       if (!b || b.classList.contains('void') || mode === 'none') return;
       tok++;
-      const i = +b.dataset.i,
+      const i = Number(b.dataset.i),
         o = cells[i];
       if (mode === 'count') {
         if (o.label) {
           const L = o.label;
           o.label = null;
           cells.forEach((x) => {
-            if (x.label > L) x.label--;
+            if (x.label != null && x.label > L) x.label--; // (null > L est toujours faux)
           });
         } else {
           o.label = cells.filter((x) => x.label).length + 1;
@@ -133,7 +144,7 @@
         const t = ++tok;
         build();
         render();
-        const step = async (o, i, lab, cls = '') => {
+        const step = async (o: Cell, i: number, lab: number, cls = '') => {
           await M.sleep(260);
           if (t !== tok || !el.isConnected) throw 0;
           o.label = lab;
@@ -154,13 +165,13 @@
               }
           } else {
             let n = 0;
-            for (let i = cells.length - 1; i >= cells.length - opts.b; i--) {
+            for (let i = cells.length - 1; i >= cells.length - Number(opts.b); i--) {
               cells[i].crossed = true;
               await step(cells[i], i, ++n, 'r');
             }
             if (opts.unknown !== 'b') {
               let m = 0;
-              for (let i = 0; i < cells.length - opts.b; i++) await step(cells[i], i, ++m, 'g');
+              for (let i = 0; i < cells.length - Number(opts.b); i++) await step(cells[i], i, ++m, 'g');
             }
           }
         } catch (e) {}
@@ -171,7 +182,7 @@
   /* ------------------------------------------------------------------
      Blocs base 10 (statique)
      ------------------------------------------------------------------ */
-  V.base10Html = function (value, color = 'A', opts = {}) {
+  V.base10Html = function (value, color = 'A', opts: { small?: boolean } = {}) {
     const c = Math.floor(value / 100),
       d = Math.floor((value % 100) / 10),
       u = value % 10;
@@ -184,22 +195,47 @@
     </div>`;
   };
 
+  type BKey = 'a' | 'b' | 'r';
+  interface BItem {
+    /** Dizaine ou unité. */
+    t: 10 | 1;
+    color: string;
+    crossed: boolean;
+    hl: boolean;
+    broken?: boolean;
+  }
+  interface BGroup {
+    key: BKey;
+    color: string;
+    items: BItem[];
+    hidden: boolean;
+    op?: undefined;
+  }
+  interface BOp {
+    op: '+' | '−' | '=';
+    key?: undefined;
+    items?: undefined;
+    hidden?: undefined;
+  }
+  const isGroup = (g: BGroup | BOp): g is BGroup => !g.op;
   /* ------------------------------------------------------------------
      Blocs base 10 interactifs pour + et −
      opts: { a, b, op:'add'|'sub', unknown:'r'|'a'|'b' }
      ------------------------------------------------------------------ */
   V.blocks = function (el, opts) {
     const r = opts.op === 'add' ? opts.a + opts.b : opts.a - opts.b;
-    const vals = { a: opts.a, b: opts.b, r };
-    const mk = (v, color) => {
-      const it = [];
+    const vals: Record<BKey, number> = { a: opts.a, b: opts.b, r };
+    const mk = (v: number, color: string) => {
+      const it: BItem[] = [];
       for (let i = 0; i < Math.floor(v / 10); i++) it.push({ t: 10, color, crossed: false, hl: false });
       for (let i = 0; i < v % 10; i++) it.push({ t: 1, color, crossed: false, hl: false });
       return it;
     };
-    let B;
+    let B: { mode: 'sub' | 'show'; groups: (BGroup | BOp)[]; hint: string } = { mode: 'show', groups: [], hint: '' }; // fixé par build()
+    /** Mode sub : le seul groupe (a). */
+    const subItems = () => (B.groups[0] as BGroup).items;
     function build() {
-      const G = (k, color) => ({ key: k, color, items: mk(vals[k], color), hidden: opts.unknown === k });
+      const G = (k: BKey, color: string): BGroup => ({ key: k, color, items: mk(vals[k], color), hidden: opts.unknown === k });
       if (opts.op === 'sub' && opts.unknown === 'r') {
         B = { mode: 'sub', groups: [G('a', 'A')], hint: `Barre ${opts.b}. Pas assez de cubes ? Casse une dizaine en 10 cubes !` };
       } else {
@@ -211,13 +247,13 @@
         };
       }
     }
-    const desc = (g) => {
+    const desc = (g: BGroup) => {
       const live = g.items.filter((o) => !o.crossed),
         d = live.filter((o) => o.t === 10).length,
         u = live.filter((o) => o.t === 1).length;
       return `${d} dizaine${d > 1 ? 's' : ''} et ${u} unité${u > 1 ? 's' : ''} = <b>${d * 10 + u}</b>`;
     };
-    function render(reveal) {
+    function render(reveal?: BKey) {
       let h = `<div class="viz-hint">${B.hint}</div><div class="bgroups">`;
       B.groups.forEach((g, gi) => {
         if (g.op) {
@@ -249,13 +285,14 @@
       if (B.mode === 'sub') h += '<div class="row"><button class="btn break-ten">🔨 Casser une dizaine</button></div>';
       let st = '';
       if (B.mode === 'sub') {
-        const items = B.groups[0].items,
+        const items = subItems(),
           x = items.filter((o) => o.crossed).reduce((s, o) => s + o.t, 0),
           tot = items.reduce((s, o) => s + o.t, 0);
         st = `Barrés : ${x} · Il reste : ${tot - x}`;
       } else {
         const n = B.groups
-          .filter((g) => g.items && !g.hidden)
+          .filter(isGroup)
+          .filter((g) => !g.hidden)
           .flatMap((g) => g.items)
           .filter((o) => o.hl)
           .reduce((s, o) => s + o.t, 0);
@@ -265,7 +302,7 @@
       el.innerHTML = h;
     }
     function breakTen() {
-      const items = B.groups[0].items;
+      const items = subItems();
       let k = -1;
       items.forEach((o, i) => {
         if (o.t === 10 && !o.crossed) k = i;
@@ -279,14 +316,14 @@
     }
     let tok = 0;
     el.onclick = (e) => {
-      if (e.target.closest('.break-ten')) {
+      if (M.closest(e, '.break-ten')) {
         tok++;
         return breakTen();
       }
-      const b = e.target.closest('.rod,.cube');
+      const b = M.closest(e, '.rod,.cube');
       if (!b) return;
       tok++;
-      const it = B.groups[+b.dataset.g].items[+b.dataset.i];
+      const it = (B.groups[Number(b.dataset.g)] as BGroup).items[Number(b.dataset.i)]; // barre ou cube : toujours dans un groupe
       if (B.mode === 'sub') it.crossed = !it.crossed;
       else it.hl = !it.hl;
       M.sfx.tap();
@@ -298,8 +335,8 @@
       async showMe() {
         const t = ++tok;
         if (B.mode === 'show') {
-          const g = B.groups.find((g) => g.hidden);
-          B.groups.forEach((g) => g.items && g.items.forEach((o) => (o.hl = false)));
+          const g = B.groups.filter(isGroup).find((x) => x.hidden);
+          B.groups.forEach((x) => x.items && x.items.forEach((o) => (o.hl = false)));
           if (g) {
             g.hidden = false;
             M.sfx.hop();
@@ -309,7 +346,7 @@
         }
         build();
         render();
-        const items = () => B.groups[0].items,
+        const items = subItems,
           ok = () => t === tok && el.isConnected;
         await M.sleep(400);
         if (!ok()) return;
@@ -370,21 +407,26 @@
       Y = 170;
     const span = o.hi - o.lo;
     const uw = (X1 - X0) / span;
-    const x = (v) => X0 + ((v - o.lo) * (X1 - X0)) / span;
+    const x = (v: number) => X0 + ((v - o.lo) * (X1 - X0)) / span;
     const labelEvery = o.labelEvery || (span <= 20 ? 1 : span <= 50 ? 5 : span <= 200 ? 10 : 100);
     const tickEvery = o.tickEvery || (span <= 100 ? 1 : span <= 200 ? 2 : 10);
     const hitEvery = span <= 200 ? 1 : 10;
     const hasFrog = o.start != null;
-    let L = { pos: o.start, hops: [] };
+    const start = o.start as number; // lu seulement si hasFrog
+    interface Hop {
+      from: number;
+      to: number;
+    }
+    let L: { pos: number; hops: Hop[] } = { pos: start, hops: [] };
     let queue = Promise.resolve();
     let tok = 0;
-    const geom = (h) => {
+    const geom = (h: Hop) => {
       const x1 = x(h.from),
         x2 = x(h.to),
         dx = Math.abs(x2 - x1);
       return { x1, x2, mx: (x1 + x2) / 2, p: Math.min(120, 26 + dx * 0.32) };
     };
-    const arc = (h, isNew) => {
+    const arc = (h: Hop, isNew?: boolean) => {
       const { x1, x2, mx, p } = geom(h),
         d = h.to - h.from,
         cls = d > 0 ? 'f' : 'b';
@@ -394,7 +436,7 @@
     };
     const statusTxt = () => {
       if (!hasFrog) return '';
-      const d = L.pos - o.start;
+      const d = L.pos - start;
       let s = `🐸 est sur <b>${L.pos}</b>`;
       if (L.hops.length)
         s += ` · ${L.hops.length} bond${L.hops.length > 1 ? 's' : ''} · en tout : <b>${d >= 0 ? '+' : '−'}${Math.abs(d)}</b>`;
@@ -403,7 +445,7 @@
     function render() {
       let s = (o.hint ? `<div class="viz-hint">${o.hint}</div>` : '') + '<svg class="nline" viewBox="0 0 1000 225">';
       s += `<line class="axis" x1="${X0 - 18}" y1="${Y}" x2="${X1 + 18}" y2="${Y}"/>`;
-      if (hasFrog) s += `<circle class="start" cx="${x(o.start)}" cy="${Y}" r="9"/>`;
+      if (hasFrog) s += `<circle class="start" cx="${x(start)}" cy="${Y}" r="9"/>`;
       for (let v = o.lo; v <= o.hi; v++) {
         if ((v - o.lo) % tickEvery !== 0 && v % labelEvery !== 0) continue;
         const xx = x(v),
@@ -413,7 +455,7 @@
         s += `<line class="tick" x1="${xx}" y1="${Y - len}" x2="${xx}" y2="${Y + len}"/>`;
         const hidden = o.hideLabels && o.hideLabels.includes(v);
         if (major && !hidden) s += `<text class="tl" x="${xx}" y="${Y + 40}">${v}</text>`;
-        else if (hasFrog && v === o.start && !hidden) s += `<text class="tl small" x="${xx}" y="${Y + 38}">${v}</text>`;
+        else if (hasFrog && v === start && !hidden) s += `<text class="tl small" x="${xx}" y="${Y + 38}">${v}</text>`;
       }
       if (o.marks)
         Object.entries(o.marks).forEach(([v, html]) => {
@@ -434,26 +476,26 @@
       s += `<div class="viz-status">${statusTxt()}</div>`;
       el.innerHTML = s;
     }
-    function hop(to) {
+    function hop(to: number): Promise<void> {
       if (!el.isConnected || to === L.pos || to < o.lo || to > o.hi) return Promise.resolve();
       const h = { from: L.pos, to };
       L.hops.push(h);
       L.pos = to;
-      M.$('.arcs', el).insertAdjacentHTML('beforeend', arc(h, true));
+      M.$('.arcs', el)!.insertAdjacentHTML('beforeend', arc(h, true)); // rendu par render()
       const { x1, x2, mx, p } = geom(h),
-        frog = M.$('.frog', el),
+        frog = M.$<SVGTextElement>('.frog', el)!, // hasFrog : rendu par render()
         cy = Y - 2 * p;
       const dur = Math.min(720, 340 + Math.abs(x2 - x1) * 0.6);
       M.sfx.hop();
-      return new Promise((res) => {
+      return new Promise<void>((res) => {
         const t0 = performance.now();
-        const step = (now) => {
+        const step = (now: number) => {
           const raw = Math.min(1, (now - t0) / dur);
           const t = raw < 0.5 ? 2 * raw * raw : 1 - Math.pow(-2 * raw + 2, 2) / 2,
             m = 1 - t; // ease-in-out
           if (!frog.isConnected) return res();
-          frog.setAttribute('x', m * m * x1 + 2 * m * t * mx + t * t * x2);
-          frog.setAttribute('y', m * m * Y + 2 * m * t * cy + t * t * Y - 6);
+          frog.setAttribute('x', String(m * m * x1 + 2 * m * t * mx + t * t * x2));
+          frog.setAttribute('y', String(m * m * Y + 2 * m * t * cy + t * t * Y - 6));
           if (raw < 1) requestAnimationFrame(step);
           else {
             const st = M.$('.viz-status', el);
@@ -461,7 +503,7 @@
             const svg = frog.ownerSVGElement;
             if (svg) {
               svg.insertAdjacentHTML('beforeend', `<ellipse class="nl-ripple" cx="${x2}" cy="${Y}" rx="22" ry="7"/>`);
-              const rp = svg.lastElementChild;
+              const rp = svg.lastElementChild!; // vient d'être ajouté
               setTimeout(() => rp.remove(), 650);
             }
             res();
@@ -470,37 +512,37 @@
         requestAnimationFrame(step);
       });
     }
-    const queueHop = (to) => (queue = queue.then(() => hop(to)));
+    const queueHop = (to: number) => (queue = queue.then(() => hop(to)));
     el.onclick = (e) => {
-      const r = e.target.closest('.hit');
+      const r = M.closest(e, '.hit');
       if (r) {
         tok++;
-        queueHop(+r.dataset.v);
+        queueHop(Number(r.dataset.v));
         return;
       }
-      const j = e.target.closest('[data-j]');
+      const j = M.closest(e, '[data-j]');
       if (j) {
         tok++;
-        queue = queue.then(() => hop(L.pos + +j.dataset.j));
+        queue = queue.then(() => hop(L.pos + Number(j.dataset.j)));
       }
     };
     render();
     return {
       hop: queueHop,
       reset() {
-        L = { pos: o.start, hops: [] };
+        L = { pos: start, hops: [] };
         queue = Promise.resolve();
         render();
       },
       async showMe(end = o.end, stepSize = o.step) {
         if (!hasFrog || end == null) return;
         const t = ++tok;
-        L = { pos: o.start, hops: [] };
+        L = { pos: start, hops: [] };
         queue = Promise.resolve();
         render();
-        const d = end - o.start,
+        const d = end - start,
           sg = Math.sign(d),
-          steps = [];
+          steps: number[] = [];
         const big = stepSize || (span <= 20 ? 1 : 10);
         for (let i = 0; i < Math.floor(Math.abs(d) / big); i++) steps.push(big * sg);
         for (let i = 0; i < Math.abs(d) % big; i++) steps.push(sg);

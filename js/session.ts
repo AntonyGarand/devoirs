@@ -12,10 +12,11 @@
   M.heard = new Set();
 
   /** Message de réessai standard. */
-  function retryMsg(q, val) {
+  function retryMsg(q: Question, val: unknown) {
     let msg = 'Pas tout à fait… Essaie encore 💪';
-    if (val != null && typeof q.answer === 'number' && typeof val === 'number')
-      msg = (val > q.answer ? "C'est un peu trop grand." : "C'est un peu trop petit.") + ' Essaie encore 💪';
+    const ans = 'answer' in q ? q.answer : undefined;
+    if (val != null && typeof ans === 'number' && typeof val === 'number')
+      msg = (val > ans ? "C'est un peu trop grand." : "C'est un peu trop petit.") + ' Essaie encore 💪';
     if (q.hint) msg += `<div class="hint-text">💡 ${q.hint}</div>`;
     return msg;
   }
@@ -26,32 +27,42 @@
    * Retourne { destroy() }
    */
   M.renderQuestion = function (host, q, opts = {}) {
-    const fmtName = q.format || q.input;
-    const fmt = M.formats[fmtName];
-    if (!fmt) {
+    const fmtName = M.formatOf(q);
+    const fmtDef = M.formats[fmtName];
+    if (!fmtDef) {
       host.innerHTML = `<div class="callout warn">Format inconnu : ${M.esc(fmtName)}</div>`;
       return { destroy() {} };
     }
+    const fmt = fmtDef;
     const sk = opts.skill;
-    const dom = sk ? M.domainById[sk.domain] || {} : {};
+    const dom: Partial<Domain> = sk ? M.domainById[sk.domain] || {} : {};
     const wide = q.layout === 'wide' || fmt.layout === 'wide';
-    const passage = q.passage ? (typeof q.passage === 'string' ? { html: q.passage } : q.passage) : null;
-    const audio = q.audio ? (typeof q.audio === 'string' ? { text: q.audio } : q.audio) : null;
+    const passage: Passage | null = q.passage ? (typeof q.passage === 'string' ? { html: q.passage } : q.passage) : null;
+    const audio: AudioSpec | null = q.audio ? (typeof q.audio === 'string' ? { text: q.audio } : q.audio) : null;
     const ungraded = M.isUngraded(q);
-    const subj = sk ? M.subjectById[M.subjectOf(sk)] : null;
+    const sid = sk ? M.subjectOf(sk) : null;
+    const subj = sid ? M.subjectById[sid] : null;
     const isSteps = fmtName === 'steps';
     // Typographie française (M.typo) à l'AFFICHAGE seulement : consigne, libellés de choix, rétroaction, indice, explication.
     // La voix lit toujours le texte d'origine (q.say, q.prompt, c.say…) : les clés des clips enregistrés ne changent pas.
     const enQ = /^en/i.test(q.lang || q.sayLang || '');
-    const ty = (h, lang) => (h && M.typo && !enQ && !/^en/i.test(lang || '') ? M.typo(h) : h);
-    const tyItems = (arr) => arr.map((c) => (c && typeof c.label === 'string' ? { ...c, label: ty(c.label, c.lang) } : c));
-    const qv =
-      /^(choice|multi|order|tf)$/.test(fmtName) && !enQ && (Array.isArray(q.choices) || Array.isArray(q.labels))
-        ? {
+    const ty = (h: string, lang?: string) => (h && typeof M.typo === 'function' && !enQ && !/^en/i.test(lang || '') ? M.typo(h) : h);
+    const tyItems = (arr: readonly unknown[]) =>
+      arr.map((c) =>
+        c && typeof c === 'object' && 'label' in c && typeof c.label === 'string'
+          ? { ...c, label: ty(c.label, 'lang' in c && typeof c.lang === 'string' ? c.lang : undefined) }
+          : c,
+      );
+    const qChoices = 'choices' in q && Array.isArray(q.choices) ? q.choices : null;
+    const qLabels = 'labels' in q && Array.isArray(q.labels) ? q.labels : null;
+    const qv: Question =
+      /^(choice|multi|order|tf)$/.test(fmtName) && !enQ && (qChoices || qLabels)
+        ? // même question, libellés typographiés
+          ({
             ...q,
-            ...(Array.isArray(q.choices) ? { choices: tyItems(q.choices) } : {}),
-            ...(Array.isArray(q.labels) ? { labels: tyItems(q.labels) } : {}),
-          }
+            ...(qChoices ? { choices: tyItems(qChoices) } : {}),
+            ...(qLabels ? { labels: tyItems(qLabels) } : {}),
+          } as Question)
         : q;
     // Texte : HTML ou jetons touchables ({w, s}; '¶' = paragraphe)
     const passageBody = passage
@@ -89,46 +100,55 @@
           </div>
         </div>
       </div>`;
-    const el = (s) => M.$(s, host);
-    const vizEl = el('.q-viz'),
-      inputEl = el('.q-input');
-    const S = { tries: 0, done: false, keyFn: null, vizInner: null, inst: null };
+    const el = (s: string) => M.$(s, host);
+    // Toujours rendus ci-dessus
+    const vizEl = el('.q-viz')!,
+      inputEl = el('.q-input')!,
+      promptEl = el('.q-prompt')!;
+    const S: { tries: number; done: boolean; keyFn: KeyHandler | null; vizInner: HTMLElement | null; inst: FormatInstance | null } = {
+      tries: 0,
+      done: false,
+      keyFn: null,
+      vizInner: null,
+      inst: null,
+    };
     const maxTries = q.tries || (fmt.maxTries ? fmt.maxTries(q) : 2);
 
     // Consigne (avec case en ligne {?} si le format la gère)
     const promptHtml = q.prompt || '';
     const hasInline = promptHtml.includes('{?}');
     const promptView = ty(promptHtml);
-    function setInline(html) {
-      el('.q-prompt').innerHTML = hasInline ? promptView.replace('{?}', html) : promptView;
+    function setInline(html: string) {
+      promptEl.innerHTML = hasInline ? promptView.replace('{?}', html) : promptView;
     }
     setInline('<span class="ans-box">?</span>');
 
     // Lecture
     const sayPrompt = () => (Array.isArray(q.say) ? M.say(q.say) : M.sayHtml(q.say || promptHtml, { lang: q.sayLang }));
-    el('.q-speak').onclick = sayPrompt;
-    const passageText = () =>
-      passage.say ||
-      (passage.tokens
-        ? passage.tokens
+    el('.q-speak')!.onclick = sayPrompt;
+    const passageText = (p: Passage) =>
+      p.say ||
+      (p.tokens
+        ? p.tokens
             .filter((t) => t.w !== '¶')
             .map((t) => t.w)
             .join(' ')
-        : M.text(passage.html));
-    if (passage) el('.q-read').onclick = () => M.say(passageText(), { lang: passage.lang, raw: (passage.lang || '').startsWith('en') });
-    const audioSegs = (rate) =>
-      (audio.seq || [audio.text]).map((t) => ({ text: t, lang: audio.lang, raw: true, rate: rate || audio.rate }));
+        : M.text(String(p.html)));
+    if (passage)
+      el('.q-read')!.onclick = () => M.say(passageText(passage), { lang: passage.lang, raw: (passage.lang || '').startsWith('en') });
+    const audioSegs = (a: AudioSpec, rate?: number): SaySegment[] =>
+      (a.seq || [a.text]).map((t) => ({ text: String(t), lang: a.lang, raw: true, rate: rate || a.rate }));
     let autoplayed = false;
     if (audio) {
-      el('.q-listen').onclick = () => M.say(audioSegs(), { pause: audio.pause || 900 });
-      el('.q-slow').onclick = () => M.say(audioSegs(0.6), { pause: audio.pause || 900 });
+      el('.q-listen')!.onclick = () => M.say(audioSegs(audio), { pause: audio.pause || 900 });
+      el('.q-slow')!.onclick = () => M.say(audioSegs(audio, 0.6), { pause: audio.pause || 900 });
       const key = audio.key || (audio.seq || [audio.text]).join('|');
       const once = audio.autoplay === 'once';
       if (audio.autoplay !== false && !(once && M.heard.has(key))) {
         autoplayed = true;
         M.heard.add(key);
         setTimeout(() => {
-          if (host.isConnected) M.say(audioSegs(), { pause: audio.pause || 900 });
+          if (host.isConnected) M.say(audioSegs(audio), { pause: audio.pause || 900 });
         }, 350);
       }
     }
@@ -138,12 +158,12 @@
       }, 300);
 
     // Texte à jetons : toucher un mot le lit, sauf pendant une étape de marquage
-    let passageCtl = null;
+    let passageCtl: PassageCtl | null = null;
     if (passage && passage.tokens) {
-      const pEl = el('.q-passage-text');
-      const toks = [];
-      M.$$('.ptok', pEl).forEach((t) => (toks[+t.dataset.i] = t));
-      let tapFn = null;
+      const pEl = el('.q-passage-text')!;
+      const toks: HTMLElement[] = [];
+      M.$$('.ptok', pEl).forEach((t) => (toks[Number(t.dataset.i)] = t));
+      let tapFn: ((i: number) => void) | null = null;
       passageCtl = {
         el: pEl,
         tokens: toks,
@@ -156,21 +176,23 @@
         },
       };
       pEl.onclick = (e) => {
-        const t = e.target.closest('.ptok');
+        const t = M.closest(e, '.ptok');
         if (!t) return;
-        if (tapFn) return tapFn(+t.dataset.i);
-        M.say(t.textContent.replace(/[.,!?;:«»"()]/g, ''), { lang: passage.lang, raw: true });
+        if (tapFn) return tapFn(Number(t.dataset.i));
+        M.say(String(t.textContent).replace(/[.,!?;:«»"()]/g, ''), { lang: passage.lang, raw: true });
       };
     }
-    if (passage && passage.listenOnly)
-      el('.q-see').onclick = (e) => {
-        el('.q-passage-text').hidden = false;
-        e.target.remove();
+    if (passage && passage.listenOnly) {
+      const see = el('.q-see')!; // rendu avec listenOnly
+      see.onclick = () => {
+        el('.q-passage-text')!.hidden = false;
+        see.remove();
       };
-    if (passage && el('.q-fold')) {
-      const fold = el('.q-fold');
+    }
+    const fold = el('.q-fold');
+    if (passage && fold) {
       fold.onclick = () => {
-        const t = el('.q-passage-text');
+        const t = el('.q-passage-text')!;
         t.hidden = !t.hidden;
         fold.textContent = t.hidden ? '📖 Relire' : '🔼 Replier';
       };
@@ -200,18 +222,18 @@
       }
     }
     mountViz();
-    const tools = el('.q-tools');
+    const tools = el('.q-tools')!;
     tools.innerHTML =
       (q.showMe ? '<button class="btn yellow q-show">👀 Montre-moi</button>' : '') +
       (q.viz ? '<button class="btn q-reset">↺ Effacer</button>' : '') +
       (q.hint ? '<button class="btn q-hint">💡 Indice</button>' : '');
-    if (q.showMe) M.$('.q-show', tools).onclick = runShowMe;
-    if (q.viz) M.$('.q-reset', tools).onclick = mountViz;
-    if (q.hint) M.$('.q-hint', tools).onclick = () => feedback('hint', '💡 ' + q.hint);
+    if (q.showMe) M.$('.q-show', tools)!.onclick = runShowMe;
+    if (q.viz) M.$('.q-reset', tools)!.onclick = mountViz;
+    if (q.hint) M.$('.q-hint', tools)!.onclick = () => feedback('hint', '💡 ' + q.hint);
     if (!tools.innerHTML) tools.remove();
-    else if (!q.viz) el('.q-right').insertBefore(tools, el('.q-feedback')); // indice / montre-moi visibles même sans visuel
+    else if (!q.viz) el('.q-right')!.insertBefore(tools, el('.q-feedback')); // indice / montre-moi visibles même sans visuel
 
-    function feedback(cls, html) {
+    function feedback(cls: string, html: string) {
       const f = el('.q-feedback');
       if (!f) return;
       f.className = 'q-feedback ' + cls;
@@ -220,15 +242,19 @@
     feedback('', fmt.instruction ? fmt.instruction(q) : 'Réponds 👇');
 
     function answerLabel() {
-      return fmt.answerLabel ? fmt.answerLabel(q) : String(q.answer);
+      return fmt.answerLabel ? fmt.answerLabel(q) : String('answer' in q ? q.answer : undefined);
     }
 
-    function complete(first, ok = true) {
+    function complete(first: boolean, ok = true) {
       if (S.done) return;
       S.done = true;
       if (S.inst && S.inst.lock) S.inst.lock();
-      else M.$$('button, input, select', inputEl).forEach((b) => (b.disabled = true));
-      if (passage && passage.listenOnly && el('.q-see')) el('.q-see').hidden = false;
+      else
+        M.$$<HTMLButtonElement | HTMLInputElement | HTMLSelectElement>('button, input, select', inputEl).forEach(
+          (b) => (b.disabled = true),
+        );
+      const see = el('.q-see');
+      if (passage && passage.listenOnly && see) see.hidden = false;
       if (ungraded) {
         feedback('good', fmtName === 'reflect' ? "Merci d'en avoir parlé 💬" : 'Bien observé ! 👀');
         M.sfx.pop();
@@ -239,15 +265,15 @@
         M.sfx.good();
         M.confetti(first ? 50 : 20);
         M.say(msg, cheer ? { lang: cheer.lang, raw: true } : {});
-        if (first && opts.record !== false) M.flyStar(el('.q-prompt'));
+        if (first && opts.record !== false) M.flyStar(promptEl);
       } else {
         feedback('bad', `La bonne réponse : <b>${answerLabel()}</b>`);
         if (S.inst && S.inst.reveal) S.inst.reveal();
         runShowMe();
       }
-      if (q.explain) el('.q-explain').innerHTML = `<div class="callout">🦫 ${ty(q.explain)}</div>`;
+      if (q.explain) el('.q-explain')!.innerHTML = `<div class="callout">🦫 ${ty(q.explain)}</div>`;
       if (opts.onNext) {
-        const n = el('.q-next');
+        const n = el('.q-next')!;
         n.hidden = false;
         n.onclick = opts.onNext;
       }
@@ -261,7 +287,7 @@
       if (opts.onResult) opts.onResult({ first, ok, ungraded });
     }
 
-    const ctx = {
+    const ctx: FormatCtx = {
       q,
       host: inputEl,
       hasInline,
@@ -284,7 +310,7 @@
         }
         S.tries++;
         M.sfx.bad();
-        const p = el('.q-prompt');
+        const p = promptEl;
         p.classList.remove('shake');
         void p.offsetWidth;
         p.classList.add('shake');
@@ -305,7 +331,7 @@
       inputEl.innerHTML = '<div class="callout warn">Oups, cette question a un problème. Passe à la suivante.</div>';
       feedback('', '');
       if (opts.onNext) {
-        const n = el('.q-next');
+        const n = el('.q-next')!;
         n.hidden = false;
         n.onclick = opts.onNext;
       }
@@ -320,9 +346,9 @@
       }
     }
 
-    function keyHandler(e) {
+    function keyHandler(e: KeyboardEvent) {
       if (!host.isConnected) return;
-      if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName) && !(S.keyFn && S.keyFn.inputs)) {
+      if (e.target instanceof Element && /INPUT|TEXTAREA/.test(e.target.tagName) && !(S.keyFn && S.keyFn.inputs)) {
         if (e.key === 'Enter' && S.done && opts.onNext) {
           e.preventDefault();
           opts.onNext();
@@ -364,11 +390,11 @@
      ===================================================================== */
   M.runSession = function (root, opts) {
     const items = opts.items.slice();
-    const S = { i: 0, results: [], current: null };
-    const seen = new Set(); // jamais deux fois la même question dans une série
+    const S: { i: number; results: { id: string; first: boolean }[]; current: QuestionCard | null } = { i: 0, results: [], current: null };
+    const seen = new Set<string>(); // jamais deux fois la même question dans une série
     const avoid = opts.avoid || null; // série précédente (« Encore ! ») : évitée si possible
     /** Question nouvelle : niveau de l'enfant d'abord, puis les niveaux voisins; null si l'habileté est épuisée. */
-    const make = (sk) => {
+    const make = (sk: Skill) => {
       const lvl = Math.min(2, M.progress.mastery(sk.id));
       for (const l of [lvl, lvl - 1, lvl + 1, lvl - 2, lvl + 2].filter((x) => x >= 0 && x <= 2)) {
         const q = M.genUnique(() => sk.gen({ lvl: l }), seen, { avoid });
@@ -386,14 +412,14 @@
         </div>
         <div class="s-card"></div>
       </div>`;
-    const el = (s) => M.$(s, root);
+    const el = (s: string) => M.$(s, root);
     M.onCleanup(() => S.current && S.current.destroy());
 
-    function show() {
+    function show(): void {
       if (S.current) S.current.destroy();
       const id = items[S.i],
         sk = M.skillById[id];
-      let q;
+      let q: Question | null;
       try {
         q = make(sk);
         if (!q) {
@@ -406,13 +432,14 @@
         console.error('gen', id, e);
         q = { prompt: 'Oups, une erreur.', format: 'info', _broken: true };
       }
-      el('.progress i').style.width = (S.i / items.length) * 100 + '%';
-      el('.s-count').textContent = `${S.i + 1} / ${items.length}`;
-      S.current = M.renderQuestion(el('.s-card'), q, {
+      el('.progress i')!.style.width = (S.i / items.length) * 100 + '%';
+      el('.s-count')!.textContent = `${S.i + 1} / ${items.length}`;
+      const shown = q;
+      S.current = M.renderQuestion(el('.s-card')!, shown, {
         skill: sk,
         nextLabel: S.i === items.length - 1 ? 'Voir mes résultats 🏆' : 'Suivant ➜',
         onResult: ({ first, ungraded }) => {
-          if (q._broken) return; // question de secours : jamais comptée
+          if (shown._broken) return; // question de secours : jamais comptée
           if (ungraded) {
             M.progress.participate(sk.id);
             return;
@@ -438,7 +465,7 @@
         root.innerHTML = `<div class="card end"><div class="trophy">💬</div><h2>Merci !</h2><div class="row-center"><a class="btn big" href="${opts.back || '#/'}">Retour</a></div></div>`;
         return;
       }
-      const bySkill = {};
+      const bySkill: Record<string, { ok: number; n: number }> = {};
       S.results.forEach((r) => {
         (bySkill[r.id] = bySkill[r.id] || { ok: 0, n: 0 }).n++;
         if (r.first) bySkill[r.id].ok++;
@@ -460,8 +487,9 @@
         </div>
       </div>`;
       M.confetti();
-      M.say(M.$('h2', root).textContent + ' ' + M.$('.lead', root).textContent);
-      M.$('.again', root).onclick = () => M.runSession(root, { ...opts, avoid: seen, items: opts.regen ? opts.regen() : M.shuffle(items) });
+      M.say(M.$('h2', root)!.textContent + ' ' + M.$('.lead', root)!.textContent);
+      M.$('.again', root)!.onclick = () =>
+        M.runSession(root, { ...opts, avoid: seen, items: opts.regen ? opts.regen() : M.shuffle(items) });
     }
     show();
   };

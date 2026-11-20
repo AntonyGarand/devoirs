@@ -4,15 +4,17 @@
    ===================================================================== */
 (function () {
   'use strict';
-  const M = (window.M = {});
+  // Rempli plus bas, puis par les autres fichiers du cadre (services.ts, formats.ts…) : voir types/global.d.ts.
+  const M = (window.M = {} as MApi);
 
   /* ---------- Utilitaires ---------- */
-  M.$ = (s, r = document) => r.querySelector(s);
-  M.$$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  M.$ = <E extends Element>(s: string, r: ParentNode = document) => r.querySelector<E>(s);
+  M.$$ = <E extends Element>(s: string, r: ParentNode = document) => Array.from(r.querySelectorAll<E>(s));
+  M.closest = <E extends Element>(e: Event, sel: string) => (e.target instanceof Element ? e.target.closest<E>(sel) : null);
   M.rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
   M.pick = (a) => a[Math.floor(Math.random() * a.length)];
-  M.shuffle = (a) => {
-    a = a.slice();
+  M.shuffle = (src) => {
+    const a = src.slice();
     for (let i = a.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [a[i], a[j]] = [a[j], a[i]];
@@ -31,11 +33,12 @@
     s.textContent = str;
     document.head.appendChild(s);
   };
-  M.esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+  M.esc = (s) => String(s).replace(/[&<>"]/g, (c) => ESC[c]);
   M.text = (html) => {
     const d = document.createElement('div');
     d.innerHTML = html;
-    return d.textContent;
+    return d.textContent ?? '';
   };
   /** Accord simple : 0 et 1 au singulier (règle française). */
   M.plural = (n, sing, plur) => (Math.abs(n) >= 2 ? plur || sing + 's' : sing);
@@ -74,7 +77,7 @@
     'dix-neuf',
   ];
   const T = ['', 'dix', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante', 'quatre-vingt', 'quatre-vingt'];
-  function below100(n) {
+  function below100(n: number): string {
     if (n < 20) return U[n];
     const t = Math.floor(n / 10),
       u = n % 10;
@@ -96,28 +99,28 @@
   };
 
   /* ---------- Son ---------- */
-  let actx;
-  const audioCtx = () => (actx = actx || new (window.AudioContext || window.webkitAudioContext)());
+  let actx: AudioContext | undefined;
+  const audioCtx = (): AudioContext => (actx = actx || new (window.AudioContext || window.webkitAudioContext)());
   /** Réveille le contexte audio partagé : 'suspended' (autoplay) ou 'interrupted' (iOS après un appel, Siri…). */
   const wake = () => {
     try {
       if (actx && actx.state !== 'running' && actx.state !== 'closed' && actx.resume) actx.resume().catch(() => {});
     } catch (e) {}
   };
-  function tone(freqs, dur = 0.12, type = 'triangle', vol = 0.18) {
+  function tone(freqs: number[], dur = 0.12, type: OscillatorType = 'triangle', vol = 0.18) {
     try {
-      audioCtx();
+      const ac = audioCtx();
       wake();
-      const t = actx.currentTime;
+      const t = ac.currentTime;
       freqs.forEach((f, i) => {
-        const o = actx.createOscillator(),
-          g = actx.createGain();
+        const o = ac.createOscillator(),
+          g = ac.createGain();
         o.type = type;
         o.frequency.value = f;
         g.gain.setValueAtTime(0.0001, t + i * dur);
         g.gain.exponentialRampToValueAtTime(vol, t + i * dur + 0.02);
         g.gain.exponentialRampToValueAtTime(0.0001, t + i * dur + dur);
-        o.connect(g).connect(actx.destination);
+        o.connect(g).connect(ac.destination);
         o.start(t + i * dur);
         o.stop(t + i * dur + dur + 0.05);
       });
@@ -126,19 +129,19 @@
   M.sfx = {
     on: true,
     tap() {
-      this.on && tone([700], 0.06, 'sine', 0.08);
+      if (this.on) tone([700], 0.06, 'sine', 0.08);
     },
     hop() {
-      this.on && tone([500, 750], 0.06, 'sine', 0.1);
+      if (this.on) tone([500, 750], 0.06, 'sine', 0.1);
     },
     good() {
-      this.on && tone([523, 659, 784, 1047], 0.11);
+      if (this.on) tone([523, 659, 784, 1047], 0.11);
     },
     bad() {
-      this.on && tone([300, 220], 0.16, 'sawtooth', 0.07);
+      if (this.on) tone([300, 220], 0.16, 'sawtooth', 0.07);
     },
     pop() {
-      this.on && tone([880], 0.05, 'square', 0.05);
+      if (this.on) tone([880], 0.05, 'square', 0.05);
     },
     tone,
     ctx: audioCtx,
@@ -211,12 +214,12 @@
       y1 = t.top - 8;
     const cx = (x0 + x1) / 2 + 60,
       cy = Math.min(y0, y1) - 140; // point de contrôle : un bel arc vers le haut
-    const pt = (k) => {
+    const pt = (k: number): [number, number] => {
       const m = 1 - k;
       return [m * m * x0 + 2 * m * k * cx + k * k * x1, m * m * y0 + 2 * m * k * cy + k * k * y1];
     };
     const N = 12,
-      kf = [];
+      kf: Keyframe[] = [];
     for (let i = 0; i <= N; i++) {
       const k = i / N,
         [x, y] = pt(k),
@@ -272,12 +275,13 @@
   /* ---------- Stockage & progression ---------- */
   const KEY = 'devoirs2e:v1';
   M.STORE_PREFIX = 'devoirs2e:';
-  const fresh = () => ({ skills: {}, stars: 0, days: {} });
-  const isObj = (o) => !!o && typeof o === 'object' && !Array.isArray(o);
+  const fresh = (): ProgressData => ({ skills: {}, stars: 0, days: {} });
+  const isObj = (o: unknown): o is Record<string, unknown> => !!o && typeof o === 'object' && !Array.isArray(o);
   /** Progression lue (stockage ou fichier importé) : null si ce n'en est pas une; sinon une copie nettoyée. */
   M.normalizeProgress = (raw) => {
     if (!isObj(raw)) return null;
-    const p = Object.assign(fresh(), raw);
+    // Forme à vérifier champ par champ (fichier importé, stockage d'une ancienne version…).
+    const p: ProgressData = Object.assign(fresh(), raw);
     if (!isObj(p.skills)) p.skills = {};
     if (!isObj(p.days)) p.days = {};
     if (typeof p.stars !== 'number' || !isFinite(p.stars) || p.stars < 0) p.stars = 0;
@@ -289,24 +293,25 @@
       }
       if (!Array.isArray(s.hist)) s.hist = [];
       s.hist = s.hist.filter((x) => x === 0 || x === 1).slice(-20);
-      ['n', 'ok', 'last'].forEach((k) => {
+      (['n', 'ok', 'last'] as const).forEach((k) => {
         if (typeof s[k] !== 'number' || !isFinite(s[k])) s[k] = 0;
       });
     });
-    ['items', 'participation'].forEach((k) => {
+    (['items', 'participation'] as const).forEach((k) => {
       if (p[k] !== undefined && !isObj(p[k])) delete p[k];
     });
-    if (p.items)
-      Object.keys(p.items).forEach((k) => {
-        const it = p.items[k];
-        if (!isObj(it) || !Array.isArray(it.h)) delete p.items[k];
+    const items = p.items;
+    if (items)
+      Object.keys(items).forEach((k) => {
+        const it: unknown = items[k];
+        if (!isObj(it) || !Array.isArray(it.h)) delete items[k];
       });
     return p;
   };
   const loadP = () => {
-    let raw = null;
+    let raw: unknown = null;
     try {
-      raw = JSON.parse(localStorage.getItem(KEY));
+      raw = JSON.parse(String(localStorage.getItem(KEY)));
     } catch (e) {}
     return M.normalizeProgress(raw) || fresh();
   };
@@ -366,7 +371,8 @@
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   };
 
-  M.progress = {
+  // item() et participate() : ajoutés par services.ts.
+  const progress: Omit<ProgressApi, 'item' | 'participate'> = {
     data: () => P,
     skill(id) {
       return P.skills[id] || (P.skills[id] = { hist: [], n: 0, ok: 0, last: 0 });
@@ -389,7 +395,7 @@
       const s = P.skills[id];
       if (!s || !s.hist.length) return 0;
       const h = s.hist.slice(-10),
-        acc = h.reduce((a, b) => a + b, 0) / h.length;
+        acc = h.reduce<number>((a, b) => a + b, 0) / h.length;
       if (h.length >= 10 && acc >= 0.9) return 3;
       if (h.length >= 6 && acc >= 0.75) return 2;
       if (h.length >= 3 && acc >= 0.5) return 1;
@@ -399,7 +405,7 @@
       const s = P.skills[id];
       if (!s || !s.hist.length) return null;
       const h = s.hist.slice(-10);
-      return h.reduce((a, b) => a + b, 0) / h.length;
+      return h.reduce<number>((a, b) => a + b, 0) / h.length;
     },
     daysSince(id) {
       const s = P.skills[id];
@@ -423,6 +429,7 @@
       M.updateStars();
     },
   };
+  M.progress = progress as ProgressApi;
   M.updateStars = () => {
     const el = M.$('#starsTotal');
     if (el) el.textContent = '⭐ ' + P.stars;
@@ -435,9 +442,9 @@
   /** def = { id, title, icon, color, soft, desc, order? } */
   M.registerSubject = (def) => {
     if (M.subjectById[def.id]) return;
-    def.order = def.order ?? M.SUBJECTS.length;
-    M.SUBJECTS.push(def);
-    M.subjectById[def.id] = def;
+    const subj = Object.assign(def, { order: def.order ?? M.SUBJECTS.length });
+    M.SUBJECTS.push(subj);
+    M.subjectById[def.id] = subj;
   };
   M.DOMAINS = [];
   M.domainById = {};
@@ -462,9 +469,9 @@
   M.registerSkill = (def) => {
     if (M.skillById[def.id]) console.warn('Habileté en double :', def.id);
     if (!M.domainById[def.domain]) console.warn('Domaine inconnu :', def.domain, def.id);
-    def.order = def.order ?? M.skills.length;
-    M.skills.push(def);
-    M.skillById[def.id] = def;
+    const sk = Object.assign(def, { order: def.order ?? M.skills.length });
+    M.skills.push(sk);
+    M.skillById[def.id] = sk;
   };
   /**
    * Empreinte d'une question : deux questions de même empreinte sont « la même question » pour l'enfant
@@ -473,7 +480,7 @@
    */
   M.qSig = (q) => {
     if (!q) return '';
-    const txt = (h) =>
+    const txt = (h: string) =>
       h
         .replace(/\s(id|href|clip-path|mask|filter)="[^"]*"/g, '')
         .replace(/url\(#[^)]*\)/g, '')
@@ -481,7 +488,7 @@
         .trim();
     // Sérialisation canonique : fonctions (viz…) ignorées, listes d'objets triées (l'ordre mélangé ne compte pas),
     // listes simples gardées dans l'ordre (ex. une réponse « 3, 1, 2 »).
-    const canon = (v, depth = 0) => {
+    const canon = (v: unknown, depth = 0): unknown => {
       if (depth > 8 || v == null || typeof v === 'function') return null;
       if (typeof v === 'string') return txt(v);
       if (typeof v !== 'object') return v;
@@ -489,11 +496,12 @@
         const a = v.map((x) => canon(x, depth + 1));
         return v.some((x) => x && typeof x === 'object') ? a.map((x) => JSON.stringify(x)).sort() : a;
       }
-      const o = {};
-      Object.keys(v)
+      const rec = v as Record<string, unknown>; // objet quelconque (question)
+      const o: Record<string, unknown> = {};
+      Object.keys(rec)
         .sort()
         .forEach((k) => {
-          if (k !== 'hint' && typeof v[k] !== 'function') o[k] = canon(v[k], depth + 1);
+          if (k !== 'hint' && typeof rec[k] !== 'function') o[k] = canon(rec[k], depth + 1);
         });
       return o;
     };
@@ -504,8 +512,12 @@
    * null si `tries` essais ne donnent que des questions déjà vues (habileté à peu de questions : à l'appelant de décider).
    * avoid (Set, facultatif) : à éviter si possible (ex. la série précédente), sans garantie.
    */
-  M.genUnique = (make, seen, { avoid = null, tries = 40 } = {}) => {
-    let fallback = null;
+  M.genUnique = <Q>(
+    make: () => Q,
+    seen: Set<string>,
+    { avoid = null, tries = 40 }: { avoid?: Set<string> | null; tries?: number } = {},
+  ) => {
+    let fallback: [Q, string] | null = null;
     for (let k = 0; k < tries; k++) {
       const q = make(),
         s = M.qSig(q);
@@ -525,18 +537,18 @@
   };
   /** def = { id, domain, title, icon, intro, render(el) } */
   M.registerLearn = (def) => {
-    def.order = def.order ?? M.learns.length;
-    M.learns.push(def);
-    M.learnById[def.id] = def;
+    const l = Object.assign(def, { order: def.order ?? M.learns.length });
+    M.learns.push(l);
+    M.learnById[def.id] = l;
   };
 
   /* ---------- Nettoyage entre les pages ---------- */
-  const cleanups = [];
+  const cleanups: (() => void)[] = [];
   M.onCleanup = (fn) => cleanups.push(fn);
   M.cleanup = () => {
     while (cleanups.length) {
       try {
-        cleanups.pop()();
+        cleanups.pop()?.();
       } catch (e) {}
     }
     M.hush();
@@ -550,7 +562,7 @@
     );
     if (!all.length) return [];
     const practiced = all.filter((s) => P.skills[s.id] && P.skills[s.id].n > 0);
-    let pool;
+    let pool: Skill[];
     if (practiced.length < 3) {
       pool = M.shuffle(all.filter((s) => s.starter)).slice(0, 5);
       if (pool.length < 3) pool = M.shuffle(all).slice(0, 5);
@@ -563,7 +575,7 @@
       scored.sort((a, b) => b.score - a.score);
       pool = scored.slice(0, 5).map((o) => o.s);
     }
-    const items = [];
+    const items: string[] = [];
     for (let i = 0; i < count; i++) items.push(pool[i % pool.length].id);
     return M.shuffle(items);
   };

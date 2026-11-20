@@ -7,7 +7,7 @@
 (function () {
   'use strict';
   const M = window.M;
-  const app = M.$('#app');
+  const app = M.$('#app')!; // coquille index.html
   const SESSION_LEN = 8;
 
   function route() {
@@ -31,19 +31,24 @@
     if (page === 'apprendre' && arg && M.learnById[arg]) return learn(arg);
     if (page === 'apprendre') return learnIndex();
     if (page === 'parents') return parents();
-    if (page === 'style') return lazy(['js/styleguide.js'], () => M.styleguide(app));
+    if (page === 'style') return lazy(['js/styleguide.js'], () => loadedFn(M.styleguide, 'M.styleguide')(app));
     if (page === 'test')
       return lazy(['js/styleguide.js', 'js/selftest.js'], () => {
         app.innerHTML = '<p class="card">🧪 Test en cours…</p>';
-        return M.selfTest(app);
+        return loadedFn(M.selfTest, 'M.selfTest')(app);
       });
     home();
   }
+  /** Fonction définie par un script chargé à la demande (sinon une erreur, affichée par lazy). */
+  const loadedFn = <F>(fn: F | undefined, name: string): F => {
+    if (!fn) throw new TypeError(name + ' is not a function');
+    return fn;
+  };
   /* Scripts chargés à la demande (guide de style, auto-test) : balises <script>, donc fonctionne aussi en file:// */
-  const loaded = {};
+  const loaded: Record<string, Promise<void>> = {};
   M.loadScript = (src) =>
     loaded[src] ||
-    (loaded[src] = new Promise((res, rej) => {
+    (loaded[src] = new Promise<void>((res, rej) => {
       const sc = document.createElement('script');
       sc.src = src;
       sc.onload = () => res();
@@ -53,7 +58,7 @@
       };
       document.body.appendChild(sc);
     }));
-  function lazy(srcs, run) {
+  function lazy(srcs: string[], run: () => unknown) {
     const h = location.hash;
     app.innerHTML = '<p class="card">⏳ Chargement…</p>';
     srcs
@@ -61,7 +66,7 @@
       .then(() => {
         if (location.hash === h) run();
       })
-      .catch((e) => {
+      .catch((e: Error) => {
         if (location.hash === h)
           app.innerHTML = M.ui.callout('Oups, cette page n’a pas pu être chargée. ' + M.esc(e.message), { tone: 'warn' });
       });
@@ -82,8 +87,8 @@
     };
   paintMusic();
 
-  const skillsOf = (subjectId) => M.skills.filter((s) => M.subjectOf(s) === subjectId);
-  const pctOf = (skills) =>
+  const skillsOf = (subjectId: string) => M.skills.filter((s) => M.subjectOf(s) === subjectId);
+  const pctOf = (skills: Skill[]) =>
     skills.length ? Math.round((skills.reduce((a, s) => a + M.progress.mastery(s.id), 0) / (skills.length * 3)) * 100) : 0;
 
   /* ---------- Accueil : les matières ---------- */
@@ -120,7 +125,7 @@
   }
 
   /* ---------- Tableau de bord d'une matière ---------- */
-  function subject(id) {
+  function subject(id: string) {
     const subj = M.subjectById[id];
     const sk = skillsOf(id);
     let h = `<div class="learn-top"><a class="btn ghost" href="#/">← Accueil</a><h1>${subj.icon} ${subj.title}</h1></div>`;
@@ -154,7 +159,7 @@
     });
     app.innerHTML = h;
   }
-  function skillCard(s, d) {
+  function skillCard(s: Skill, d: Domain) {
     const m = M.progress.mastery(s.id),
       acc = M.progress.acc(s.id);
     const st = M.skillStatus(s);
@@ -170,7 +175,7 @@
   }
 
   /* ---------- Pratique et révision ---------- */
-  function practice(id) {
+  function practice(id: string) {
     const subj = M.subjectOf(M.skillById[id]);
     const st = M.skillStatus(M.skillById[id]);
     if (st !== true) {
@@ -181,7 +186,7 @@
     }
     M.runSession(app, { items: Array(SESSION_LEN).fill(id), back: subj ? '#/matiere/' + subj : '#/' });
   }
-  function review(subjectId) {
+  function review(subjectId: string | null) {
     const items = M.reviewItems(10, subjectId);
     if (!items.length) {
       app.innerHTML = M.ui.callout("Rien à réviser pour l'instant !", { tone: 'info' });
@@ -210,9 +215,9 @@
       });
     app.innerHTML = h;
   }
-  function learn(id) {
+  function learn(id: string) {
     const l = M.learnById[id];
-    const d = M.domainById[l.domain] || {};
+    const d: Partial<Domain> = M.domainById[l.domain] || {};
     const related = M.skills.filter((s) => s.learn === id);
     app.innerHTML = `
       <div class="learn-top">
@@ -223,12 +228,12 @@
       <p class="learn-intro">${l.intro || ''}</p>
       <div id="learnBody"></div>
       ${related.length ? `<section class="l-sec" style="border-top:6px solid ${d.color}"><h2>🎯 Je pratique</h2><div class="l-practice">${related.map((s) => `<a class="btn primary" href="#/pratique/${s.id}">${s.icon || ''} ${M.esc(s.title)} ${M.starsHtml(M.progress.mastery(s.id))}</a>`).join('')}</div></section>` : ''}`;
-    M.$('#readIntro').onclick = () => M.say(M.text(l.intro || l.title));
+    M.$('#readIntro')!.onclick = () => M.say(M.text(l.intro || l.title));
     try {
-      l.render(M.$('#learnBody'));
+      l.render(M.$('#learnBody')!);
     } catch (e) {
       console.error('learn', id, e);
-      M.$('#learnBody').innerHTML = M.ui.callout('Oups, cette leçon a un problème.', { tone: 'warn' });
+      M.$('#learnBody')!.innerHTML = M.ui.callout('Oups, cette leçon a un problème.', { tone: 'warn' });
     }
   }
 
@@ -319,27 +324,32 @@
       Attention : l'application de l'écran d'accueil a <b>son propre stockage</b>, séparé de Safari : pour y transférer la progression, faites « Exporter » dans Safari puis « Importer » dans l'application.</div>
       <div id="parentTools"></div>
     </div>`;
-    M.$('#toggleSound').onclick = (e) => {
+    // Boutons rendus ci-dessus (le clic vise le bouton lui-même : texte seulement)
+    const soundBtn = M.$('#toggleSound')!;
+    soundBtn.onclick = () => {
       M.settings.set('sound', !M.sfx.on);
-      e.target.textContent = M.sfx.on ? '🔊 Sons activés' : '🔇 Sons désactivés';
+      soundBtn.textContent = M.sfx.on ? '🔊 Sons activés' : '🔇 Sons désactivés';
     };
-    if (M.$('#toggleVoice'))
-      M.$('#toggleVoice').onclick = (e) => {
+    const voiceBtn = M.$('#toggleVoice');
+    if (voiceBtn)
+      voiceBtn.onclick = () => {
         M.settings.set('voice', M.settings.get('voice') === 'browser' ? 'clips' : 'browser');
-        e.target.textContent = M.settings.get('voice') === 'browser' ? '🎙️ Voix : celle de l’appareil' : '🎙️ Voix : enregistrée';
+        voiceBtn.textContent = M.settings.get('voice') === 'browser' ? '🎙️ Voix : celle de l’appareil' : '🎙️ Voix : enregistrée';
         M.say('Bonjour ! Je suis la voix française.');
       };
-    M.$('#musicVol').oninput = (e) => {
-      const v = +e.target.value;
+    const vol = M.$<HTMLInputElement>('#musicVol')!;
+    vol.oninput = () => {
+      const v = +vol.value;
       M.music.volume(v);
       if (v > 0 && !M.music.on()) {
         M.music.set(true);
         paintMusic();
       }
     };
-    M.$('#toggleRead').onclick = (e) => {
+    const readBtn = M.$('#toggleRead')!;
+    readBtn.onclick = () => {
       M.settings.set('autoRead', !M.settings.get('autoRead'));
-      e.target.textContent = M.settings.get('autoRead') ? '🗣️ Lecture automatique : oui' : '🗣️ Lecture automatique : non';
+      readBtn.textContent = M.settings.get('autoRead') ? '🗣️ Lecture automatique : oui' : '🗣️ Lecture automatique : non';
     };
     M.voices.ready().then(() => {
       const box = M.$('#voiceDiag');
@@ -355,18 +365,18 @@
         })
         .join('');
     });
-    const toolsEl = M.$('#parentTools');
+    const toolsEl = M.$('#parentTools')!;
     M.parentTools.forEach((t) => {
       const sec = document.createElement('section');
       sec.innerHTML = `<h2>${t.icon || '🧰'} ${M.esc(t.title)}</h2><div></div>`;
       toolsEl.appendChild(sec);
       try {
-        t.render(sec.lastElementChild);
+        t.render(sec.lastElementChild as HTMLElement); // le <div> ci-dessus
       } catch (e) {
         console.error('outil parent', t.id, e);
       }
     });
-    M.$('#exportProg').onclick = () => {
+    M.$('#exportProg')!.onclick = () => {
       const json = JSON.stringify(M.backup.export(), null, 1);
       const d = new Date(),
         stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -378,15 +388,16 @@
       a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     };
-    M.$('#importProg').onchange = (e) => {
-      const f = e.target.files && e.target.files[0];
-      e.target.value = '';
+    const importInp = M.$<HTMLInputElement>('#importProg')!;
+    importInp.onchange = () => {
+      const f = importInp.files && importInp.files[0];
+      importInp.value = '';
       if (!f) return;
       const rd = new FileReader();
       rd.onload = () => {
-        let obj = null;
+        let obj: unknown = null;
         try {
-          obj = JSON.parse(rd.result);
+          obj = JSON.parse(String(rd.result)); // readAsText : une chaîne
         } catch (err) {
           obj = null;
         }
@@ -395,7 +406,8 @@
           alert('Importation impossible : ' + (r.error || 'fichier illisible.'));
           return;
         }
-        const when = r.summary.exported ? ' (exporté le ' + new Date(r.summary.exported).toLocaleDateString('fr-CA') + ')' : '';
+        // exported : valeur du fichier (date ISO normalement), passée telle quelle à Date
+        const when = r.summary.exported ? ' (exporté le ' + new Date(r.summary.exported as string).toLocaleDateString('fr-CA') + ')' : '';
         if (
           !confirm(
             'Remplacer la progression de cet appareil par celle du fichier' +
@@ -417,7 +429,7 @@
       rd.readAsText(f);
     };
     (function persistInfo() {
-      const box = M.$('#persistInfo');
+      const box = M.$('#persistInfo')!;
       const st = navigator.storage;
       if (!st || !st.persisted) {
         box.textContent = 'Stockage : ce navigateur ne permet pas de le protéger; pensez à exporter la progression.';
@@ -435,7 +447,7 @@
           box.textContent = 'Stockage : état inconnu.';
         });
     })();
-    M.$('#resetProg').onclick = () => {
+    M.$('#resetProg')!.onclick = () => {
       if (confirm('Effacer toutes les étoiles et la progression ?')) {
         M.progress.reset();
         parents();
@@ -445,7 +457,7 @@
 
   /* ---------- Hors ligne et mises à jour (service worker, http(s) seulement — jamais en file://) ---------- */
   const inSession = () => /^#\/(pratique|revision)\b/.test(location.hash) && !M.$('.card.end', app);
-  let reloadPending = false;
+  let reloadPending: boolean | 'done' = false;
   if (/^https?:$/.test(location.protocol) && 'serviceWorker' in navigator) {
     const hadController = !!navigator.serviceWorker.controller; // 1re visite : pas de rechargement
     navigator.serviceWorker.addEventListener('controllerchange', () => {

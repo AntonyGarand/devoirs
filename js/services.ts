@@ -19,11 +19,11 @@
   const M = window.M;
 
   /* ================= Voix ================= */
-  const norm = (l) =>
+  const norm = (l: string | null | undefined) =>
     String(l || '')
       .replace('_', '-')
       .toLowerCase();
-  const VO = { list: [], chosen: {} };
+  const VO: { list: SpeechSynthesisVoice[]; chosen: Record<string, string> } = { list: [], chosen: {} };
   function loadVoices() {
     try {
       VO.list = speechSynthesis.getVoices() || [];
@@ -31,21 +31,22 @@
       VO.list = [];
     }
   }
-  let readyResolve;
-  const readyP = new Promise((r) => (readyResolve = r));
+  let readyResolve: () => void = () => {}; // remplacé tout de suite (l'exécuteur de la Promise est synchrone)
+  const readyP = new Promise<void>((r) => (readyResolve = r));
   try {
     if ('speechSynthesis' in window) {
       loadVoices();
       if (VO.list.length) readyResolve();
-      speechSynthesis.addEventListener
-        ? speechSynthesis.addEventListener('voiceschanged', () => {
-            loadVoices();
-            readyResolve();
-          })
-        : (speechSynthesis.onvoiceschanged = () => {
-            loadVoices();
-            readyResolve();
-          });
+      if (speechSynthesis.addEventListener)
+        speechSynthesis.addEventListener('voiceschanged', () => {
+          loadVoices();
+          readyResolve();
+        });
+      else
+        speechSynthesis.onvoiceschanged = () => {
+          loadVoices();
+          readyResolve();
+        };
     } else readyResolve();
   } catch (e) {
     readyResolve();
@@ -99,7 +100,7 @@
     all: () => VO.list.slice(),
   };
 
-  const FR_MATH = (t) =>
+  const FR_MATH = (t: string) =>
     t
       .replace(/\s−\s|\s-\s/g, ' moins ')
       .replace(/\+/g, ' plus ')
@@ -128,10 +129,10 @@
       if (C) C.stop();
       if (M.MU && M.MU.stop) M.MU.stop(); // un son d'instrument ne doit pas jouer par-dessus la voix
       const tok = ++sayTok;
-      const segs = Array.isArray(text) ? text : [{ text }];
+      const segs: readonly SaySegment[] = Array.isArray(text) ? text : [{ text }];
       let anySpoken = false;
-      const speakOne = (seg) =>
-        new Promise((res) => {
+      const speakOne = (seg: SaySegment) =>
+        new Promise<ClipPlayResult>((res) => {
           const lang = seg.lang || opts.lang || 'fr-CA';
           const f = M.voices.find(lang);
           let t = String(seg.text);
@@ -145,14 +146,15 @@
           }
           speakTts(t, lang, f, rate, seg).then(res);
         });
-      const speakTts = (t, lang, f, rate, seg) =>
-        new Promise((res) => {
+      const speakTts = (t: string, lang: string, f: VoiceMatch, rate: number, seg: SaySegment) =>
+        new Promise<boolean>((res) => {
           if (!('speechSynthesis' in window) || (f.state === 'none' && VO.list.length)) return res(false);
           const u = new SpeechSynthesisUtterance(t);
           u.lang = lang;
           if (f.voice) u.voice = f.voice;
           u.rate = rate;
-          if (seg.pitch || opts.pitch) u.pitch = seg.pitch || opts.pitch;
+          const pitch = seg.pitch || opts.pitch;
+          if (pitch) u.pitch = pitch;
           u.onend = () => res(true);
           u.onerror = () => res(false);
           anySpoken = true;
@@ -186,17 +188,22 @@
   M.sayHtml = function (html, opts = {}) {
     const d = document.createElement('div');
     d.innerHTML = String(html).replace('{?}', '▢');
-    const segs = [];
-    const walk = (node, lang) => {
+    const segs: { text: string; lang: string }[] = [];
+    const isEl = (n: Node): n is Element => n.nodeType === 1;
+    const walk = (node: Node, lang: string) => {
       node.childNodes.forEach((n) => {
         if (n.nodeType === 3) {
-          if (n.textContent.trim()) segs.push({ text: n.textContent, lang });
-        } else if (n.nodeType === 1) walk(n, n.getAttribute('lang') ? (n.getAttribute('lang').startsWith('en') ? 'en-CA' : 'fr-CA') : lang);
+          const t = n.textContent || ''; // nœud texte : jamais null
+          if (t.trim()) segs.push({ text: t, lang });
+        } else if (isEl(n)) {
+          const l = n.getAttribute('lang');
+          walk(n, l ? (l.startsWith('en') ? 'en-CA' : 'fr-CA') : lang);
+        }
       });
     };
     walk(d, opts.lang || 'fr-CA');
     // fusionner les segments consécutifs de même langue
-    const merged = [];
+    const merged: { text: string; lang: string; pauseAfter?: number }[] = [];
     segs.forEach((s) => {
       const last = merged[merged.length - 1];
       if (last && last.lang === s.lang) last.text += ' ' + s.text;
@@ -215,22 +222,24 @@
   };
 
   /* ================= Stockage ================= */
-  const safeGet = (k) => {
+  /** JSON du stockage (non vérifié). */
+  const safeGet = (k: string): unknown => {
     try {
-      return JSON.parse(localStorage.getItem(k));
+      return JSON.parse(String(localStorage.getItem(k)));
     } catch (e) {
       return null;
     }
   };
-  const safeSet = (k, v) => (M.store ? M.store(k, v) : false);
-  const isObj = (o) => !!o && typeof o === 'object' && !Array.isArray(o);
+  const safeSet = (k: string, v: unknown) => (M.store ? M.store(k, v) : false);
+  const isObj = (o: unknown): o is Record<string, unknown> => !!o && typeof o === 'object' && !Array.isArray(o);
 
   /* ---- Réglages ---- */
   const SKEY = 'devoirs2e:settings:v1';
-  const DEF_SETTINGS = { sound: true, autoRead: false, rate: 0.9 };
-  const loadSettings = () => {
+  const DEF_SETTINGS: SettingsMap = { sound: true, autoRead: false, rate: 0.9 };
+  const loadSettings = (): SettingsMap => {
     const r = safeGet(SKEY);
-    return Object.assign({}, DEF_SETTINGS, isObj(r) ? r : {});
+    // Réglages enregistrés par cette application : forme supposée (aucune valeur n'est critique).
+    return Object.assign({}, DEF_SETTINGS, isObj(r) ? (r as Partial<SettingsMap>) : {});
   };
   let settings = loadSettings();
   M.settings = {
@@ -245,16 +254,17 @@
 
   /* ---- Données de l'utilisateur (ex. : liste de mots de la semaine) ---- */
   const UKEY = 'devoirs2e:user:v1';
-  const loadU = () => {
+  type UserStore = Record<string, Record<string, unknown>>;
+  const loadU = (): UserStore => {
     const r = safeGet(UKEY);
     if (!isObj(r)) return {};
     Object.keys(r).forEach((ns) => {
       if (!isObj(r[ns])) delete r[ns];
     });
-    return r;
+    return r as UserStore; // chaque espace vient d'être vérifié
   };
   let U = loadU();
-  const fixtures = {};
+  const fixtures: Record<string, unknown> = {};
   M.userData = {
     get(ns, key, def) {
       const v = U[ns] && U[ns][key];
@@ -274,9 +284,9 @@
     },
     exportAll: () => JSON.stringify(U),
     importAll(json) {
-      const r = typeof json === 'string' ? JSON.parse(json) : json;
+      const r: unknown = typeof json === 'string' ? JSON.parse(json) : json;
       if (!isObj(r)) throw new Error('données invalides');
-      U = r;
+      U = r as UserStore; // espaces non vérifiés un à un (comme à l'origine) : get() tolère une valeur non objet
       safeSet(UKEY, U);
     },
     /** Valeur d'essai utilisée par tools/check-skills.js (aucun effet dans le navigateur). */
@@ -300,7 +310,7 @@
   const BACKUP_APP = 'devoirs-2e-annee';
   M.backup = {
     keys() {
-      const out = [];
+      const out: string[] = [];
       try {
         for (let i = 0; i < localStorage.length; i++) {
           const k = localStorage.key(i);
@@ -311,7 +321,7 @@
     },
     /** → objet JSON prêt à télécharger. */
     export() {
-      const data = {};
+      const data: Record<string, unknown> = {};
       this.keys().forEach((k) => {
         const v = safeGet(k);
         if (isObj(v)) data[k] = v;
@@ -326,18 +336,19 @@
     check(obj) {
       if (!isObj(obj) || obj.app !== BACKUP_APP || !isObj(obj.data))
         return { ok: false, error: 'Ce fichier n’est pas une sauvegarde de « Mes devoirs ».' };
-      const data = {};
-      for (const k of Object.keys(obj.data)) {
+      const src = obj.data;
+      const data: Record<string, unknown> = {};
+      let p: ProgressData | null = null;
+      for (const k of Object.keys(src)) {
         if (k.indexOf(M.STORE_PREFIX) !== 0) continue;
-        let v = obj.data[k];
+        let v = src[k];
         if (k === 'devoirs2e:v1') {
-          v = M.normalizeProgress(v);
-          if (!v) return { ok: false, error: 'La progression du fichier est illisible.' };
+          v = p = M.normalizeProgress(v);
+          if (!p) return { ok: false, error: 'La progression du fichier est illisible.' };
         } else if (!isObj(v)) continue; // donnée secondaire illisible : ignorée
         data[k] = v;
       }
-      if (!data['devoirs2e:v1']) return { ok: false, error: 'Le fichier ne contient pas de progression.' };
-      const p = data['devoirs2e:v1'];
+      if (!p) return { ok: false, error: 'Le fichier ne contient pas de progression.' };
       return { ok: true, data, summary: { stars: p.stars, skills: Object.keys(p.skills).length, exported: obj.exported || '' } };
     },
     /** Remplace les données de cet appareil (après confirmation par l'appelant). */
@@ -361,7 +372,7 @@
   };
 
   /* ---- Données partagées entre matières ---- */
-  M.data = {};
+  M.data = {} as DataRegistry; // rempli par M.registerData (chaque matière, au chargement)
   M.registerData = (id, value) => {
     if (M.data[id] !== undefined) console.warn('Données en double :', id);
     M.data[id] = value;
@@ -369,8 +380,9 @@
   };
 
   /* ================= Dessins (SVG) avec repli emoji ================= */
-  const ART = {};
-  M.art = {
+  const ART: Record<string, { fn: (opts: ArtOpts) => string; emoji: string }> = {};
+  // svg() : ajouté par art-lib.ts.
+  const art: Omit<ArtApi, 'svg'> = {
     /** fn(opts) → chaîne SVG ; emoji = repli texte. */
     register(name, fn, emoji = '') {
       ART[name] = { fn, emoji };
@@ -385,9 +397,10 @@
     emoji: (name) => (ART[name] ? ART[name].emoji : ''),
     list: () => Object.keys(ART),
   };
+  M.art = art as ArtApi;
 
   /* ================= Texte en français ================= */
-  const NAMES = [
+  const NAMES: [string, Genre][] = [
     ['Léa', 'f'],
     ['Félix', 'm'],
     ['Florence', 'f'],
@@ -416,7 +429,7 @@
   M.people = {
     NAMES,
     /** → { n, f, il, Il, e, son, sa, ami } (e = accord féminin « e »). */
-    pick({ not = [], genre } = {}) {
+    pick({ not = [], genre }: { not?: string[]; genre?: Genre } = {}) {
       const pool = NAMES.filter(([n, g]) => !not.includes(n) && (!genre || g === genre));
       const [n, g] = M.pick(pool.length ? pool : NAMES);
       const f = g === 'f';
@@ -448,7 +461,7 @@
     'yéti',
     'week-end',
   ]);
-  const ELIDABLE = {
+  const ELIDABLE: Record<string, string> = {
     de: "d'",
     que: "qu'",
     ne: "n'",
@@ -464,7 +477,7 @@
     puisque: "puisqu'",
   };
   /** Le mot (ou nom propre) commence-t-il par une voyelle ou un h muet ? (balise HTML en tête ignorée) */
-  const elides = (mot) => {
+  const elides = (mot: string) => {
     const w = String(mot || '')
       .replace(/^\s*(<[^>]*>\s*)*/, '')
       .split(/[\s'’]/)[0]
@@ -473,9 +486,9 @@
     if (w.charAt(0) === 'h') return !H_ASPIRE.has(w) && !H_ASPIRE.has(w.split('-')[0]);
     return /^[aeiouàâäéèêëîïôöûüœæ]/.test(w);
   };
-  const keepCase = (src, out) => (/^[A-ZÀ-Ý]/.test(src) ? out.charAt(0).toUpperCase() + out.slice(1) : out);
+  const keepCase = (src: string, out: string) => (/^[A-ZÀ-Ý]/.test(src) ? out.charAt(0).toUpperCase() + out.slice(1) : out);
   /** el('de', 'Amira') → « d'Amira »; el('ne', 'mange') → « ne mange »; el('Je', 'aime') → « J'aime »; el('si', 'il') → « s'il ». */
-  const el = (petit, mot) => {
+  const el = (petit: string, mot: string) => {
     const p = String(petit),
       lp = p.toLocaleLowerCase('fr-CA'),
       m = String(mot).trim();
@@ -484,7 +497,7 @@
     return p + ' ' + m;
   };
   /** Préposition de / à + groupe du nom : contraction avec le / les, élision devant voyelle ou h muet. */
-  const prep = (p, gn) => {
+  const prep = (p: string, gn: string) => {
     const g = String(gn).trim(),
       m = /^(le|les)\s+(.+)$/.exec(g);
     if (m) {
@@ -517,9 +530,9 @@
     nb: (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' '),
     /** Remplit {cle} ; lève une erreur si une variable manque (détecté par check-skills). */
     fill(tpl, vars) {
-      return tpl.replace(/\{(\w+)\}/g, (m, k) => {
+      return tpl.replace(/\{(\w+)\}/g, (m: string, k: string) => {
         if (vars[k] === undefined) throw new Error('Variable manquante dans le gabarit : ' + k);
-        return vars[k];
+        return String(vars[k]);
       });
     },
     cap: (s) => s.charAt(0).toUpperCase() + s.slice(1),
@@ -545,7 +558,7 @@
   const RE_GUIL_O = new RegExp('«' + SP + '*', 'g'),
     RE_GUIL_F = new RegExp(SP + '*»', 'g'),
     RE_PUNCT = new RegExp('(' + SP + '*)([?!;:])', 'g');
-  const typoText = (t, prev0) => {
+  const typoText = (t: string, prev0: string) => {
     let prev = prev0;
     // zones protégées (indices impairs) : entités HTML, URL
     return String(t)
@@ -559,7 +572,7 @@
         const s = p
           .replace(RE_GUIL_O, '«' + NBSP)
           .replace(RE_GUIL_F, NBSP + '»')
-          .replace(RE_PUNCT, (m, sp, c, off, str) => {
+          .replace(RE_PUNCT, (m: string, sp: string, c: string, off: number, str: string) => {
             const thin = c === ':' ? NBSP : NNBSP;
             const before = off > 0 ? str.charAt(off - 1) : prev;
             if (sp.length) return thin + c;
@@ -577,7 +590,7 @@
   M.typo = (s) => {
     const str = String(s ?? '');
     if (!/[?!:;«»]/.test(str)) return str;
-    let skip = null,
+    let skip: string | null = null,
       depth = 0,
       prev = '';
     return str
@@ -588,7 +601,7 @@
           if (!m) return tk;
           const close = !!m[1],
             name = m[2].toLowerCase(),
-            selfClose = /\/>$/.test(tk);
+            selfClose = tk.endsWith('/>');
           if (skip) {
             if (name === skip && !selfClose) depth += close ? -1 : 1;
             if (depth <= 0) skip = null;
@@ -621,9 +634,10 @@
       M.save();
     },
     stats() {
-      const it = (P().items || {})[skillId + '|' + key];
+      const items: Record<string, ItemProgress> = P().items || {};
+      const it = items[skillId + '|' + key];
       if (!it || !it.h.length) return { n: 0, acc: null, last: 0 };
-      return { n: it.h.length, acc: it.h.reduce((a, b) => a + b, 0) / it.h.length, last: it.last };
+      return { n: it.h.length, acc: it.h.reduce<number>((a, b) => a + b, 0) / it.h.length, last: it.last };
     },
   });
   /** Choisit un élément en favorisant ceux qui sont ratés, jamais vus ou anciens. */
@@ -632,7 +646,7 @@
       const s = M.progress.item(skillId, keyFn(x)).stats();
       if (!s.n) return 3;
       const age = Math.min(7, (Date.now() - s.last) / 864e5);
-      return 0.5 + (1 - s.acc) * 4 + age * 0.3;
+      return 0.5 + (1 - (s.acc ?? 0)) * 4 + age * 0.3; // s.n > 0 : acc est un nombre
     });
     let r = Math.random() * w.reduce((a, b) => a + b, 0);
     for (let i = 0; i < items.length; i++) {
@@ -657,7 +671,7 @@
       if (!m) continue;
       const lang = m[1] === 'en' ? 'en-CA' : 'fr-CA';
       // sayTexts() : textes que l'habileté fera lire (ex. mots saisis par le parent, jamais enregistrés)
-      let texts = null;
+      let texts: string[] | null | undefined = null;
       try {
         texts = typeof sk.sayTexts === 'function' ? sk.sayTexts() : null;
       } catch (e) {
@@ -680,7 +694,7 @@
   M.lint = {
     /** Refuse les questions notées qui touchent la vie privée de l'enfant. */
     noPrivate(text) {
-      const t = M.text ? String(text).toLowerCase() : String(text).toLowerCase();
+      const t = String(text).toLowerCase();
       const bad = ['ta famille', 'tu ressens', 'ta religion', 'chez toi, est-ce que', 'tes parents sont'];
       const hit = bad.find((b) => t.includes(b));
       return hit ? `vie privée : « ${hit} »` : undefined;

@@ -37,7 +37,7 @@
       TOP = spec.total ? 56 : 14,
       MIN = 54,
       AREA = spec.compact || opts.compact ? 300 : 440;
-    const known = (s) => (s.v == null ? null : s.v);
+    const known = (s: BarSeg) => (s.v == null ? null : s.v);
     const sums = rows.map((r) => r.segs.reduce((a, s) => a + (known(s) ?? 0), 0));
     const unknownGuess = (() => {
       const vals = rows.flatMap((r) => r.segs.map(known)).filter((v) => v != null);
@@ -49,10 +49,10 @@
       ...rows.map((r) => r.segs.reduce((a, s) => a + (known(s) ?? unknownGuess), 0)),
     );
     const unit = spec.scale === 'schema' ? AREA / Math.max(1, ...rows.map((r) => r.segs.length)) : AREA / Math.max(1, tot);
-    const segW = (s) => (spec.scale === 'schema' ? unit : Math.max(MIN, (known(s) ?? unknownGuess) * unit));
+    const segW = (s: BarSeg) => (spec.scale === 'schema' ? unit : Math.max(MIN, (known(s) ?? unknownGuess) * unit));
     let maxX = 0;
     let body = '';
-    const rowW = [];
+    const rowW: number[] = [];
     let k = 0;
     rows.forEach((r, ri) => {
       const y = TOP + ri * (H + GAP);
@@ -101,14 +101,15 @@
     return `<svg class="barmodel${opts.static ? ' no-enter' : ''}" viewBox="0 0 ${Wd} ${Ht}" role="img" aria-label="${M.esc(aria)}" style="max-width:${Math.round(Wd * (opts.scale || 1.1))}px">${body}</svg>`;
   };
   V.barModel = function (el, spec) {
-    const draw = (s, again) => (el.innerHTML = `<div class="bm-wrap">${V.barModelHtml(s, { static: again })}</div>`);
+    const draw = (s: BarModelSpec, again?: boolean) =>
+      (el.innerHTML = `<div class="bm-wrap">${V.barModelHtml(s, { static: again })}</div>`);
     draw(spec);
     return {
       async showMe() {
         if (spec.answer == null) return;
-        const fill = (o) =>
+        const fill = (o: BarBrace | undefined) =>
           o && (o.v == null || o.unknown) ? { ...o, v: spec.answer, text: String(spec.answer), unknown: false, isNew: true } : o;
-        const s2 = {
+        const s2: BarModelSpec = {
           ...spec,
           rows: spec.rows.map((r) => ({
             ...r,
@@ -134,7 +135,7 @@
       X1 = 950,
       Y = 150,
       span = to - from || 1;
-    const x = (v) => X0 + ((v - from) * (X1 - X0)) / span;
+    const x = (v: number) => X0 + ((v - from) * (X1 - X0)) / span;
     const uid = 'tl' + ++tlUid;
     let s = `<svg class="timeline" viewBox="0 0 1000 220" role="img" aria-label="${M.esc(title || 'Ligne du temps')}"><defs>
       <linearGradient id="${uid}-band" x1="0" x2="1"><stop offset="0" stop-color="#fff1d6"/><stop offset=".5" stop-color="#fdf7ea"/><stop offset="1" stop-color="#e3f4fb"/></linearGradient>
@@ -145,7 +146,7 @@
     let i = 0;
     for (let v = from; v <= to; v += step)
       s += `<g data-hot="t${v}" class="tl-tick" style="--i:${i++}"><rect x="${x(v) - 22}" y="${Y - 16}" width="44" height="66" fill="transparent"/><line x1="${x(v)}" y1="${Y - 12}" x2="${x(v)}" y2="${Y + 12}" stroke="#2b2d42" stroke-width="3" stroke-linecap="round"/><text x="${x(v)}" y="${Y + 40}" text-anchor="middle" class="tl-lbl">${M.esc(tickLabel(v))}</text></g>`;
-    const lanes = {};
+    const lanes: Record<number, number> = {};
     events.forEach((e, j) => {
       const lane = (lanes[e.at] = (lanes[e.at] || 0) + 1) - 1;
       const ex = x(e.at),
@@ -174,7 +175,7 @@
      ------------------------------------------------------------------ */
   let planUid = 0;
   const reducedMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  const seeded = (str) => {
+  const seeded = (str: string) => {
     let h = 2166136261;
     for (const ch of String(str)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
     return () => {
@@ -183,7 +184,7 @@
       return ((h ^ (h >>> 14)) >>> 0) / 4294967296;
     };
   };
-  const segDist = (px, py, r) => {
+  const segDist = (px: number, py: number, r: PlanRoad) => {
     const dx = r.x2 - r.x1,
       dy = r.y2 - r.y1,
       L = dx * dx + dy * dy || 1;
@@ -192,7 +193,7 @@
   };
   const CAR_COLORS = ['#ef476f', '#118ab2', '#ffd166', '#06a77d', '#9b5de5', '#f78c40'];
   /** Petite auto vue de dessus, centrée sur l'origine, qui regarde vers +x. */
-  const carShape = (len, color) => {
+  const carShape = (len: number, color: string) => {
     const w = len * 0.52,
       l = len / 2;
     return (
@@ -204,7 +205,7 @@
     );
   };
   /** Nuage (ou son ombre) : quelques cercles fondus. */
-  const puff = (x, y, sc, fill, op) =>
+  const puff = (x: number, y: number, sc: number, fill: string, op: number) =>
     `<g opacity="${op}"><circle cx="${x}" cy="${y}" r="${sc * 0.55}" fill="${fill}"/><circle cx="${x + sc * 0.6}" cy="${y - sc * 0.25}" r="${sc * 0.7}" fill="${fill}"/><circle cx="${x + sc * 1.3}" cy="${y}" r="${sc * 0.5}" fill="${fill}"/><ellipse cx="${x + sc * 0.65}" cy="${y + sc * 0.2}" rx="${sc * 1.1}" ry="${sc * 0.4}" fill="${fill}"/></g>`;
 
   V.plan = function ({
@@ -230,8 +231,8 @@
       GH = rows * cell;
     const W = OX + GW + (north ? 76 : 12),
       H = OY + GH + (grid ? 34 : 14);
-    const X = (v) => OX + v * cell,
-      Y = (v) => OY + v * cell;
+    const X = (v: number) => OX + v * cell,
+      Y = (v: number) => OY + v * cell;
     const indoor = ground === 'floor' || ground === 'tiles';
     if (decor == null) decor = !indoor && !grid;
     const motion = alive && !reducedMotion();
@@ -254,7 +255,7 @@
       s += `<rect x="${wx}" y="${wy}" width="${ww}" height="${wh}" rx="${cell * 0.4}" fill="#7cc8e8" stroke="#4aa8d0" stroke-width="3"/><path class="plan-water" d="M${wx + 12} ${wy + 16} q8 -6 16 0 t16 0 M${wx + ww * 0.45} ${wy + wh * 0.6} q8 -6 16 0 t16 0" stroke="#e6f6fd" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
     });
     // Rues : trottoirs, puis asphalte, puis lignes (les intersections se fondent proprement)
-    const rl = (r) => `x1="${X(r.x1)}" y1="${Y(r.y1)}" x2="${X(r.x2)}" y2="${Y(r.y2)}"`;
+    const rl = (r: PlanRoad) => `x1="${X(r.x1)}" y1="${Y(r.y1)}" x2="${X(r.x2)}" y2="${Y(r.y2)}"`;
     roads.forEach((r) => {
       s += `<line ${rl(r)} stroke="#e9e3d2" stroke-width="${cell * 0.58}" stroke-linecap="square"/>`;
     });
@@ -266,8 +267,9 @@
     });
     // Arbres et fleurs dans l'herbe libre
     if (decor) {
-      const inside = (px, py, b, m) => px > b.x - m && px < b.x + (b.w || 1) + m && py > b.y - m && py < b.y + (b.h || 1) + m;
-      const free = (px, py) =>
+      const inside = (px: number, py: number, b: PlanRect, m: number) =>
+        px > b.x - m && px < b.x + (b.w || 1) + m && py > b.y - m && py < b.y + (b.h || 1) + m;
+      const free = (px: number, py: number) =>
         !places.some((p) => inside(px, py, p, 0.16)) &&
         !water.some((w) => inside(px, py, w, 0.12)) &&
         !roads.some((r) => segDist(px, py, r) < 0.48);
@@ -335,17 +337,15 @@
         `<g class="pl-lift"><rect x="${x}" y="${y + d}" width="${bw}" height="${bh}" rx="${rx}" fill="${fill}" stroke="#2b2d42" stroke-width="2.5"/><rect x="${x}" y="${y + d}" width="${bw}" height="${bh}" rx="${rx}" fill="rgba(43,45,66,.2)"/>` +
         `<rect x="${x}" y="${y}" width="${bw}" height="${bh}" rx="${rx}" fill="${fill}" stroke="#2b2d42" stroke-width="2.5"/><rect x="${x + 6}" y="${y + 4}" width="${Math.max(0, bw - 12)}" height="${Math.min(9, bh * 0.14)}" rx="4.5" fill="#fff" opacity=".6"/>` +
         (p.art && M.art.has(p.art)
-          ? (() => {
+          ? ((art: string) => {
               if (p.fill === 'stretch')
-                return M.art
-                  .svg(p.art, { x: x + 6, y: y + 6, w: bw - 12, h: bh - 12 })
-                  .replace('<svg ', '<svg preserveAspectRatio="none" ');
+                return M.art.svg(art, { x: x + 6, y: y + 6, w: bw - 12, h: bh - 12 }).replace('<svg ', '<svg preserveAspectRatio="none" ');
               const z = Math.min(bw, bh) * 0.84,
                 n = p.fill === 'repeat' ? Math.max(1, Math.floor((bw - 8) / (z * 0.95))) : 1;
               return M.range(0, n - 1)
-                .map((k) => M.art.svg(p.art, { x: x + (bw - n * z) / 2 + k * z, y: y + (bh - z) / 2, w: z, h: z }))
+                .map((k) => M.art.svg(art, { x: x + (bw - n * z) / 2 + k * z, y: y + (bh - z) / 2, w: z, h: z }))
                 .join('');
-            })()
+            })(p.art)
           : `<text x="${x + bw / 2}" y="${y + bh / 2 + cell * 0.17}" text-anchor="middle" font-size="${cell * 0.5}">${p.emoji || ''}</text>`) +
         `</g><title>${M.esc(p.label || '')}</title></g>`;
     });
@@ -387,9 +387,9 @@
   };
   // Légende ↔ lieu : l'élément touché s'allume, le lieu saute et pulse
   document.addEventListener('click', (e) => {
-    const b = e.target.closest && e.target.closest('.plan-leg-it');
+    const b = M.closest(e, '.plan-leg-it');
     if (!b) return;
-    const plan = b.closest('.plan');
+    const plan = b.closest('.plan')!; // la légende est toujours dans son .plan (V.plan)
     M.$$('.plan-leg-it', plan).forEach((c) => c.classList.toggle('on', c === b));
     M.$$('.plan-place', plan).forEach((g) => {
       g.classList.remove('flash-on');

@@ -39,6 +39,29 @@ tools/check-dupes.js          habiletés / niveaux qui ont peu de questions dist
 Pas de modules ES ni de compilation : chaque fichier est un IIFE qui utilise `window.M`, et le site fonctionne en `file://`
 comme sur GitHub Pages. Ordre de chargement : cadre → `subject.js` → `skills/` → `learn/` → `app.js` (`styleguide.js` et `selftest.js` sont chargés à la demande par `#/style` et `#/test`). Après un changement de fichiers : `node tools/gen-sw.js` (liste hors ligne de `sw.js`).
 
+### Types (TypeScript)
+
+Les types du cadre sont dans `types/*.d.ts` (globaux, comme les scripts) : `global.d.ts` (l'interface `MApi` de
+`window.M`), `question.d.ts` (`Question`, union discriminée sur `format` — ou son alias `input` —, `QuestionOf<'choice'>`,
+`Choice`, `FormatSpec`, `FormatCtx`), `registry.d.ts` (`SubjectDef`, `DomainDef`, `SkillDef`, `LearnDef`, progression),
+`services.d.ts` (voix, réglages, données, dessins, texte) et `components.d.ts` (`M.ui`, `M.viz`). `MApi` n'a pas de
+signature d'index : un membre inconnu est une erreur.
+
+Une matière déclare ses propres types **au niveau supérieur** de ses fichiers (hors de l'IIFE) : comme ce sont des
+scripts, les interfaces de même nom fusionnent avec celles du cadre.
+
+```ts
+interface MApi { MU: MusiqueApi }                // nouveau membre de M (ex. js/musique/subject.ts)
+interface MusiqueApi { stop?(): void; … }
+interface QuestionExtras { _sc?: ScMeta }        // champ privé ajouté aux questions (check, lint…)
+interface DataRegistry { 'fr.mots': Mot[] }      // M.registerData / M.data
+```
+
+`types/subjects-todo.d.ts` contient les membres propres aux matières encore typés `any` : chaque matière y retire ses
+lignes quand elle les déclare. `M.registerSkill<QuestionOf<'choice'>>({ … })` précise le type de `gen()` et de `check(q)`.
+Dans le DOM : `M.$` retourne `null` si l'élément manque (`M.$('.x', el)!` seulement pour un élément qu'on vient de
+rendre), `M.closest(e, '.btn')` remplace `e.target.closest('.btn')`, et `Number(b.dataset.i)` remplace `+b.dataset.i`.
+
 ## 2. Modèle de contenu
 
 | Niveau         | Enregistrement                                                                                                                                           | Exemple                      |

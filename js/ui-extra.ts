@@ -13,57 +13,70 @@
   const M = window.M;
   const ui = M.ui;
 
-  ui.slider = function (
-    el,
-    { label = '', stops, min = 0, max = 10, step = 1, value, onChange = () => {}, speak = false, format = (v) => v },
-  ) {
+  // Une seule implémentation pour les deux formes (paliers ou continu) : valeurs de type quelconque, comparées par ===.
+  interface SliderAny {
+    label?: string;
+    stops?: SliderStop<unknown>[];
+    min?: number;
+    max?: number;
+    step?: number;
+    value?: unknown;
+    onChange?: (v: never) => void;
+    speak?: boolean;
+    format?: (v: number) => string | number;
+  }
+  function slider(el: HTMLElement, opts: SliderAny): ValueCtl<unknown> {
+    const { label = '', stops, min = 0, max = 10, step = 1, value, onChange: change = () => {}, speak = false, format = (x) => x } = opts;
+    // change reçoit une valeur de stops (paliers) ou un nombre (continu) : voir les surcharges de UiApi['slider'].
+    const onChange = change as (v: unknown) => void;
     const discrete = Array.isArray(stops);
-    let v = value ?? (discrete ? stops[0].value : min);
+    let v: unknown = value ?? (discrete ? stops[0].value : min);
     const idx = () =>
       discrete
         ? Math.max(
             0,
             stops.findIndex((s) => s.value === v),
           )
-        : v;
+        : (v as number); // continu : v est un nombre
     el.innerHTML = `<div class="slider">${label ? `<b class="sl-label">${label}</b>` : ''}
       <input type="range" class="sl-range" min="${discrete ? 0 : min}" max="${discrete ? stops.length - 1 : max}" step="${discrete ? 1 : step}" value="${idx()}">
       ${discrete ? `<div class="sl-stops">${stops.map((s, i) => `<button class="sl-stop" data-i="${i}" title="${M.esc(s.label || '')}"><span>${s.icon || ''}</span><small>${s.label || ''}</small></button>`).join('')}</div>` : '<div class="sl-val"></div>'}</div>`;
-    const r = M.$('.sl-range', el);
-    const text = () => (discrete ? stops[idx()].label || '' : String(format(v)));
-    const sync = (silent) => {
-      r.value = idx();
+    const r = M.$<HTMLInputElement>('.sl-range', el)!; // vient d'être rendu
+    const text = () => (discrete ? stops[idx()].label || '' : String(format(v as number)));
+    const sync = (silent?: boolean) => {
+      r.value = String(idx());
       r.setAttribute('aria-valuetext', text());
-      if (discrete) M.$$('.sl-stop', el).forEach((b) => b.classList.toggle('on', +b.dataset.i === idx()));
-      else M.$('.sl-val', el).textContent = text();
+      if (discrete) M.$$('.sl-stop', el).forEach((b) => b.classList.toggle('on', Number(b.dataset.i) === idx()));
+      else M.$('.sl-val', el)!.textContent = text();
       if (!silent) {
         onChange(v);
         if (speak) M.say(text());
       }
     };
-    const set = (nv, silent) => {
-      v = discrete ? nv : Math.max(min, Math.min(max, nv));
+    const set = (nv: unknown, silent?: boolean) => {
+      v = discrete ? nv : Math.max(min, Math.min(max, nv as number));
       sync(silent);
     };
-    r.oninput = () => set(discrete ? stops[+r.value].value : +r.value);
+    r.oninput = () => set(discrete ? stops[Number(r.value)].value : Number(r.value));
     if (discrete)
-      M.$('.sl-stops', el).onclick = (e) => {
-        const b = e.target.closest('.sl-stop');
+      M.$('.sl-stops', el)!.onclick = (e) => {
+        const b = M.closest(e, '.sl-stop');
         if (b) {
           M.sfx.tap();
-          set(stops[+b.dataset.i].value);
+          set(stops[Number(b.dataset.i)].value);
         }
       };
     sync(true);
     return { get: () => v, set };
-  };
+  }
+  ui.slider = slider as UiApi['slider']; // surcharges : paliers (valeur de type V) ou continu (nombre)
 
   /** Cycle en cercle (saisons, vie d'une plante…). Les étapes cachées affichent « ? ». */
   ui.cycle = function ({ stages, hide = [], size = 320 }) {
     const n = stages.length,
       c = size / 2,
       R = size / 2 - 52;
-    const pos = (i) => {
+    const pos = (i: number) => {
       const a = -Math.PI / 2 + (i * 2 * Math.PI) / n;
       return [c + R * Math.cos(a), c + R * Math.sin(a)];
     };
@@ -75,7 +88,7 @@
         [x2, y2] = pos((i + 1) % n);
       const mx = (x1 + x2) / 2 + (c - (x1 + x2) / 2) * -0.25,
         my = (y1 + y2) / 2 + (c - (y1 + y2) / 2) * -0.25;
-      const sh = (a, b, t) => a + (b - a) * t;
+      const sh = (a: number, b: number, t: number) => a + (b - a) * t;
       s += `<path d="M${sh(x1, mx, 0.45)} ${sh(y1, my, 0.45)} Q${mx} ${my} ${sh(x2, mx, 0.45)} ${sh(y2, my, 0.45)}" fill="none" stroke="#7a7f99" stroke-width="3" marker-end="url(#cyc-arr)"/>`;
     }
     stages.forEach((st, i) => {
@@ -98,7 +111,7 @@
   };
 
   /** Phrase annotée : chaque mot avec sa classe (nom, det, adj, verbe, pron…). */
-  const TAGS = { nom: 'nom', det: 'déterminant', adj: 'adjectif', verbe: 'verbe', pron: 'pronom', autre: '' };
+  const TAGS: Record<string, string> = { nom: 'nom', det: 'déterminant', adj: 'adjectif', verbe: 'verbe', pron: 'pronom', autre: '' };
   ui.tagged = function (tokens, { arrows = [] } = {}) {
     return (
       `<div class="tagged">${tokens.map((t, i) => `<span class="tg tg-${t.tag || 'autre'}" data-i="${i}"><b>${M.esc(t.w)}</b><small>${t.tag ? TAGS[t.tag] || t.tag : '&nbsp;'}</small></span>`).join('')}</div>` +
@@ -125,9 +138,9 @@
   ui.feelings = function (el, { onPick = () => {} } = {}) {
     el.innerHTML = `<div class="feelings">${ui.FEELINGS.map((f, i) => `<button class="feel" data-i="${i}"><span>${f.emoji}</span><small>${f.label}</small></button>`).join('')}</div>`;
     el.onclick = (e) => {
-      const b = e.target.closest('.feel');
+      const b = M.closest(e, '.feel');
       if (!b) return;
-      const f = ui.FEELINGS[+b.dataset.i];
+      const f = ui.FEELINGS[Number(b.dataset.i)];
       M.$$('.feel', el).forEach((x) => x.classList.toggle('on', x === b));
       M.say(f.label);
       onPick(f);

@@ -15,28 +15,33 @@
   const M = window.M;
   M.formats = {};
   M.registerFormat = (name, def) => {
-    def.name = name;
-    M.formats[name] = def;
+    // FormatSpec<QuestionOf<K>> → FormatDef<Question> : chaque format ne reçoit que ses questions (aiguillage par nom).
+    M.formats[name] = Object.assign(def, { name }) as FormatDef;
   };
 
-  const same = (a, b) => String(a) === String(b);
-  const sameSet = (a, b) => a.length === b.length && a.every((x) => b.some((y) => same(x, y)));
-  const labelOf = (q, v) => {
-    const c = (q.choices || []).find((c) => same(c.value, v));
+  /** Champ exigé : sinon une erreur (la carte affiche « Oups »), comme un accès à undefined. */
+  const need = <T>(v: T | null | undefined, what: string): T => {
+    if (v == null) throw new Error(what + ' manquant');
+    return v;
+  };
+  const same = (a: unknown, b: unknown) => String(a) === String(b);
+  const sameSet = (a: readonly unknown[], b: readonly unknown[]) => a.length === b.length && a.every((x) => b.some((y) => same(x, y)));
+  const labelOf = (q: { choices?: Choice[] }, v: unknown) => {
+    const c = (q.choices || []).find((x) => same(x.value, v));
     return c ? c.label : String(v);
   };
-  const hintHtml = (q) => (q.hint ? `<div class="hint-text">💡 ${q.hint}</div>` : '');
-  const checkChoices = (q) => {
+  const hintHtml = (q: { hint?: string }) => (q.hint ? `<div class="hint-text">💡 ${q.hint}</div>` : '');
+  const checkChoices = (q: { choices: Choice[]; audioOnly?: boolean }): string | undefined => {
     if (!Array.isArray(q.choices) || q.choices.length < 2) return 'choices : au moins 2';
     const vals = q.choices.map((c) => String(c.value));
     if (new Set(vals).size !== vals.length) return 'choices en double';
     if (q.audioOnly && q.choices.some((c) => !c.say)) return 'audioOnly : chaque choix doit avoir say';
   };
-  const sayChoice = (q, c) => M.say(c.say, { lang: c.lang || q.lang || 'fr-CA', raw: true });
+  const sayChoice = (q: { lang?: string }, c: Choice) => M.say(c.say, { lang: c.lang || q.lang || 'fr-CA', raw: true });
   /** Contenu d'un bouton de choix : libellé (ou numéro si audioOnly) + 🔊 facultatif. */
-  const choiceInner = (q, c, i) => (q.audioOnly ? `<span class="ao">🔊 ${i + 1}</span>` : c.label);
+  const choiceInner = (q: { audioOnly?: boolean }, c: Choice, i: number) => (q.audioOnly ? `<span class="ao">🔊 ${i + 1}</span>` : c.label);
   /** Bouton de choix; si le choix se lit (say), un vrai bouton 🔊 frère (pas imbriqué) qui ne répond pas à la question. */
-  const choiceBtn = (q, c, i, attrs = '') => {
+  const choiceBtn = (q: { audioOnly?: boolean }, c: Choice, i: number, attrs = '') => {
     const b = `<button class="choice-btn" data-i="${i}" ${attrs}>${choiceInner(q, c, i)}</button>`;
     if (!c.say || q.audioOnly) return b;
     return `<div class="choice-wrap">${b}<button type="button" class="say-btn" aria-label="Écouter : ${M.esc(M.text ? M.text(String(c.label)) : c.label)}" data-say-i="${i}">🔊</button></div>`;
@@ -44,7 +49,7 @@
 
   /** Découpe un texte en jetons {w, s} (mot avec ponctuation attachée, numéro de phrase). '¶' = paragraphe. */
   M.tokenize = function (text) {
-    const out = [];
+    const out: Token[] = [];
     let s = 0;
     String(text)
       .split(/\n\s*\n/)
@@ -80,9 +85,9 @@
         const v = revealed ? String(q.answer) : input;
         const box = `<span class="ans-box${v ? ' filled' : ''}${revealed || ctx.done ? ' good' : ''}">${v || '?'}</span>`;
         if (ctx.hasInline) ctx.setInline(box);
-        M.$('.solo-box', host).innerHTML = (ctx.hasInline ? '' : box) + (q.unit ? `<span class="unit">${q.unit}</span>` : '');
+        M.$('.solo-box', host)!.innerHTML = (ctx.hasInline ? '' : box) + (q.unit ? `<span class="unit">${q.unit}</span>` : '');
       };
-      const press = (k) => {
+      const press = (k: string) => {
         if (ctx.done) return;
         if (k === 'ok') {
           if (input === '') return ctx.feedback('bad', "Écris un nombre d'abord 🙂");
@@ -104,8 +109,8 @@
         draw();
       };
       host.onclick = (e) => {
-        const b = e.target.closest('.key');
-        if (b) press(b.dataset.k);
+        const b = M.closest(e, '.key');
+        if (b) press(String(b.dataset.k));
       };
       ctx.onKey((e) => {
         if (/^[0-9]$/.test(e.key)) press(e.key);
@@ -125,15 +130,23 @@
     },
   });
 
+  /** Ce que renderChoice lit de la question (choice, et tf transformé en choix). */
+  interface ChoiceLike {
+    choices?: Choice[];
+    answer: Value;
+    cols?: number;
+    audioOnly?: boolean;
+    lang?: string;
+  }
   /* ------------------------------------------------------------------ choice
      choices [{label, value, say?, lang?, why?}], answer, cols?, audioOnly? */
-  function renderChoice(host, q, ctx, choices) {
+  function renderChoice(host: HTMLElement, q: ChoiceLike, ctx: FormatCtx<unknown>, choices: Choice[]): FormatInstance {
     const cols = q.cols || (choices.length <= 2 ? 2 : choices.length === 3 ? 3 : 2);
     let heard = false;
     host.innerHTML = `<div class="choices-grid ${q.audioOnly ? 'audio-only' : ''}" style="grid-template-columns:repeat(${cols},1fr)">${choices.map((c, i) => choiceBtn(q, c, i)).join('')}</div>`;
-    const pick = (b) => {
+    const pick = (b: HTMLButtonElement | null | undefined) => {
       if (!b || ctx.done || b.disabled) return;
-      const c = choices[+b.dataset.i];
+      const c = choices[Number(b.dataset.i)];
       if (q.audioOnly && !heard) {
         heard = true;
         sayChoice(q, c);
@@ -147,43 +160,43 @@
       ctx.attempt(ok, c.value);
     };
     host.onclick = (e) => {
-      const s = e.target.closest('.say-btn');
+      const s = M.closest(e, '.say-btn');
       if (s) {
         e.stopPropagation();
-        sayChoice(q, choices[+s.dataset.sayI]);
+        sayChoice(q, choices[Number(s.dataset.sayI)]);
         return;
       }
-      const b = e.target.closest('.choice-btn');
+      const b = M.closest<HTMLButtonElement>(e, '.choice-btn');
       if (b && q.audioOnly && !b.classList.contains('heard')) {
         heard = true;
         b.classList.add('heard');
-        sayChoice(q, choices[+b.dataset.i]);
+        sayChoice(q, choices[Number(b.dataset.i)]);
         return;
       }
       pick(b);
     };
     ctx.onKey((e) => {
       if (!/^[1-9]$/.test(e.key)) return;
-      const b = M.$$('.choice-btn', host)[+e.key - 1];
+      const b = M.$$<HTMLButtonElement>('.choice-btn', host)[+e.key - 1];
       if (!b) return;
-      if (e.shiftKey && choices[+b.dataset.i].say) sayChoice(q, choices[+b.dataset.i]);
+      if (e.shiftKey && choices[Number(b.dataset.i)].say) sayChoice(q, choices[Number(b.dataset.i)]);
       else pick(b);
     });
     return {
       reveal() {
         M.$$('.choice-btn', host).forEach((b) => {
-          if (same(choices[+b.dataset.i].value, q.answer)) {
+          if (same(choices[Number(b.dataset.i)].value, q.answer)) {
             b.classList.add('right');
-            if (q.audioOnly) b.innerHTML = choices[+b.dataset.i].label;
+            if (q.audioOnly) b.innerHTML = choices[Number(b.dataset.i)].label;
           }
         });
       },
       lock() {
-        M.$$('.choice-btn', host).forEach((b) => (b.disabled = true));
+        M.$$<HTMLButtonElement>('.choice-btn', host).forEach((b) => (b.disabled = true));
       },
     };
   }
-  const whyMsg = (q, val) => {
+  const whyMsg = (q: { choices?: Choice[]; hint?: string }, val: unknown) => {
     const c = (q.choices || []).find((x) => same(x.value, val));
     return (c && c.why ? `<div>${c.why}</div>` : '') + 'Essaie encore 💪' + hintHtml(q);
   };
@@ -233,35 +246,37 @@
     },
     instruction: (q) => `Touche toutes les bonnes réponses (${q.answer.length}), puis Vérifier 👇`,
     answerLabel: (q) => q.answer.map((v) => labelOf(q, v)).join(', '),
-    retryMessage(q, sel) {
+    retryMessage(q, val) {
+      const sel = val as Value[]; // valeurs passées à ctx.attempt par ce format
       const missing = q.answer.filter((a) => !sel.some((s) => same(s, a))).length;
       const extra = sel.filter((s) => !q.answer.some((a) => same(s, a))).length;
       return (extra ? 'Il y en a qui ne vont pas. ' : '') + (missing ? 'Il en manque. ' : '') + 'Essaie encore 💪' + hintHtml(q);
     },
     render(host, q, ctx) {
-      const sel = new Set();
+      const sel = new Set<number>();
       const cols = q.cols || (q.choices.length <= 4 ? 2 : 3);
       host.innerHTML = `<div class="choices-grid multi" style="grid-template-columns:repeat(${cols},1fr)">${q.choices.map((c, i) => choiceBtn(q, c, i, 'aria-pressed="false"')).join('')}</div>
         <button class="btn primary big fmt-check">✓ Vérifier</button>`;
       host.onclick = (e) => {
         if (ctx.done) return;
-        const s = e.target.closest('.say-btn');
+        const s = M.closest(e, '.say-btn');
         if (s) {
           e.stopPropagation();
-          sayChoice(q, q.choices[+s.dataset.sayI]);
+          sayChoice(q, q.choices[Number(s.dataset.sayI)]);
           return;
         }
-        const b = e.target.closest('.choice-btn');
+        const b = M.closest(e, '.choice-btn');
         if (b) {
-          const i = +b.dataset.i;
-          sel.has(i) ? sel.delete(i) : sel.add(i);
+          const i = Number(b.dataset.i);
+          if (sel.has(i)) sel.delete(i);
+          else sel.add(i);
           b.classList.toggle('sel', sel.has(i));
-          b.setAttribute('aria-pressed', sel.has(i));
+          b.setAttribute('aria-pressed', String(sel.has(i)));
           M.sfx.tap();
           if (q.audioOnly) sayChoice(q, q.choices[i]);
           return;
         }
-        if (e.target.closest('.fmt-check')) {
+        if (M.closest(e, '.fmt-check')) {
           if (!sel.size) return ctx.feedback('bad', 'Touche au moins une réponse 🙂');
           const vals = [...sel].map((i) => q.choices[i].value);
           ctx.attempt(sameSet(vals, q.answer), vals);
@@ -270,7 +285,7 @@
       return {
         reveal() {
           M.$$('.choice-btn', host).forEach((b) => {
-            const v = q.choices[+b.dataset.i].value;
+            const v = q.choices[Number(b.dataset.i)].value;
             b.classList.toggle(
               'right',
               q.answer.some((a) => same(a, v)),
@@ -294,15 +309,15 @@
     answerLabel: (q) => q.answer.map((v) => labelOf(q, v)).join(' → '),
     render(host, q, ctx) {
       const n = q.choices.length;
-      const idxOf = (v) => q.choices.findIndex((c) => same(c.value, v));
+      const idxOf = (v: Value) => q.choices.findIndex((c) => same(c.value, v));
       const fixed = new Set(q.fixed || []);
-      let slots;
+      let slots: (number | null)[] = []; // fixé par reset()
       const reset = () => {
         slots = Array(n).fill(null);
         fixed.forEach((k) => (slots[k] = idxOf(q.answer[k])));
       };
       reset();
-      const draw = (reveal) => {
+      const draw = (reveal?: boolean) => {
         const seq = reveal ? q.answer.map(idxOf) : slots;
         host.innerHTML = `<div class="order-slots">${seq.map((ci, k) => `<span class="slot ${reveal ? 'good' : ''} ${fixed.has(k) ? 'fixed' : ''}">${ci != null ? q.choices[ci].label : ''}</span>`).join('')}</div>
           <div class="choices-grid order" style="grid-template-columns:repeat(${q.cols || Math.min(4, n)},minmax(0,1fr))">${q.choices.map((c, i) => choiceBtn(q, c, i, slots.includes(i) || reveal ? 'disabled' : '')).join('')}</div>
@@ -311,26 +326,26 @@
       draw();
       host.onclick = (e) => {
         if (ctx.done) return;
-        const s = e.target.closest('.say-btn');
+        const s = M.closest(e, '.say-btn');
         if (s) {
           e.stopPropagation();
-          sayChoice(q, q.choices[+s.dataset.sayI]);
+          sayChoice(q, q.choices[Number(s.dataset.sayI)]);
           return;
         }
-        if (e.target.closest('.small-undo')) {
+        if (M.closest(e, '.small-undo')) {
           reset();
           draw();
           return;
         }
-        const b = e.target.closest('.choice-btn');
+        const b = M.closest<HTMLButtonElement>(e, '.choice-btn');
         if (!b || b.disabled) return;
         const k = slots.indexOf(null);
         if (k < 0) return;
-        slots[k] = +b.dataset.i;
+        slots[k] = Number(b.dataset.i);
         M.sfx.tap();
         draw();
         if (!slots.includes(null)) {
-          const got = slots.map((i) => String(q.choices[i].value));
+          const got = (slots as number[]).map((i) => String(q.choices[i].value)); // plus aucune case vide
           const r = ctx.attempt(got.join('|') === q.answer.map(String).join('|'));
           if (r === 'retry')
             setTimeout(() => {
@@ -350,16 +365,16 @@
   /* ------------------------------------------------------------------ text
      answer (str | [str]), caseSensitive? (true | 'first'), accents? (défaut exigés),
      keyboard? 'accents'|'full'|'none', prefix?, suffix?, diagnose? (défaut true), placeholder?, lang? */
-  const baseNorm = (s) => String(s).replace(/[’`]/g, "'").replace(/\s+/g, ' ').trim();
-  const stripAcc = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
-  const normFor = (s, q) => {
+  const baseNorm = (s: unknown) => String(s).replace(/[’`]/g, "'").replace(/\s+/g, ' ').trim();
+  const stripAcc = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const normFor = (s: string, q: { caseSensitive?: boolean | 'first'; accents?: boolean }) => {
     let t = baseNorm(s);
     if (q.caseSensitive !== true && q.caseSensitive !== 'first') t = t.toLocaleLowerCase('fr-CA');
     if (q.accents === false) t = stripAcc(t);
     return t;
   };
-  const answers = (q) => (Array.isArray(q.answer) ? q.answer : [q.answer]);
-  const textOk = (q, v) =>
+  const answers = (q: { answer: string | string[] }) => (Array.isArray(q.answer) ? q.answer : [q.answer]);
+  const textOk = (q: QuestionOf<'text'>, v: string) =>
     answers(q).some((a) => {
       if (q.caseSensitive === 'first') {
         const A = baseNorm(a),
@@ -372,17 +387,17 @@
       return normFor(a, q) === normFor(v, q);
     });
   /** Distance d'édition + alignement. */
-  function align(g, t) {
+  function align(g: string, t: string) {
     const a = [...g],
       b = [...t],
       n = a.length,
       m = b.length;
-    const D = Array.from({ length: n + 1 }, (_, i) => Array.from({ length: m + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)));
+    const D = Array.from({ length: n + 1 }, (_r, i) => Array.from({ length: m + 1 }, (_c, j) => (i === 0 ? j : j === 0 ? i : 0)));
     for (let i = 1; i <= n; i++)
       for (let j = 1; j <= m; j++)
         D[i][j] = Math.min(D[i - 1][j] + 1, D[i][j - 1] + 1, D[i - 1][j - 1] + (a[i - 1].toLowerCase() === b[j - 1].toLowerCase() ? 0 : 1));
     // remonter : pour chaque lettre de la cible, ok / manquante / remplacée
-    const marks = [];
+    const marks: ('ok' | 'no' | 'miss')[] = [];
     let i = n,
       j = m;
     while (j > 0) {
@@ -442,12 +457,12 @@
           <div class="kb-row">${kb === 'full' ? '<button class="kb-key wide" data-c=" ">espace</button><button class="kb-key" data-c="⇧" aria-label="Majuscule">⇧</button>' : ''}<button class="kb-key" data-c="⌫" aria-label="Effacer">⌫</button></div></div>`
         }
         <button class="btn primary big fmt-check">✓ Vérifier</button>`;
-      const inp = M.$('.text-input', host);
+      const inp = M.$<HTMLInputElement>('.text-input', host)!; // vient d'être rendu
       let shift = false;
       setTimeout(() => {
         if (inp.isConnected && window.matchMedia && window.matchMedia('(pointer:fine)').matches) inp.focus();
       }, 50);
-      const insert = (c) => {
+      const insert = (c: string) => {
         if (c === '⇧') {
           shift = !shift;
           M.$$('.kb-key[data-c="⇧"]', host).forEach((b) => b.classList.toggle('on', shift));
@@ -480,12 +495,12 @@
         if (r === 'retry') inp.select();
       };
       host.onclick = (e) => {
-        const k = e.target.closest('.kb-key');
+        const k = M.closest(e, '.kb-key');
         if (k && !ctx.done) {
-          insert(k.dataset.c);
+          insert(String(k.dataset.c));
           return;
         }
-        if (e.target.closest('.fmt-check')) check();
+        if (M.closest(e, '.fmt-check')) check();
       };
       inp.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !ctx.done) {
@@ -510,8 +525,8 @@
   /* ------------------------------------------------------------------ build
      Construire un mot ou une phrase avec des tuiles (intruses permises).
      tiles [str | {label, value, say?}], answer [values], accept? [[values]], join? '' | ' ', fixedEnd?, capitalizeFirst? */
-  const tileOf = (t) => (typeof t === 'string' ? { label: t, value: t } : t);
-  const seqLabel = (q, seq) => {
+  const tileOf = (t: string | Tile): Tile => (typeof t === 'string' ? { label: t, value: t } : t);
+  const seqLabel = (q: QuestionOf<'build'>, seq: Value[]) => {
     const s = seq
       .map((v) => {
         const t = q.tiles.map(tileOf).find((x) => same(x.value, v));
@@ -541,9 +556,9 @@
     render(host, q, ctx) {
       const tiles = q.tiles.map(tileOf);
       const order = M.shuffle(M.range(0, tiles.length - 1));
-      let slots = Array(q.answer.length).fill(null);
-      const good = new Set();
-      const draw = (reveal) => {
+      let slots: (number | null)[] = Array<null>(q.answer.length).fill(null);
+      const good = new Set<number>();
+      const draw = (reveal?: boolean) => {
         const sq = reveal
           ? q.answer.map((v) => {
               const used = new Set();
@@ -561,21 +576,21 @@
       draw();
       host.onclick = (e) => {
         if (ctx.done) return;
-        const s = e.target.closest('.say-btn');
+        const s = M.closest(e, '.say-btn');
         if (s) {
           e.stopPropagation();
-          const t = tiles[+s.dataset.sayT];
+          const t = tiles[Number(s.dataset.sayT)];
           M.say(t.say, { lang: t.lang || q.lang, raw: true });
           return;
         }
-        if (e.target.closest('.small-undo')) {
+        if (M.closest(e, '.small-undo')) {
           slots = slots.map((v, k) => (good.has(k) ? v : null));
           draw();
           return;
         }
-        const slot = e.target.closest('.build-slot');
+        const slot = M.closest(e, '.build-slot');
         if (slot) {
-          const k = +slot.dataset.k;
+          const k = Number(slot.dataset.k);
           if (!good.has(k)) {
             slots[k] = null;
             M.sfx.tap();
@@ -583,19 +598,20 @@
           }
           return;
         }
-        const t = e.target.closest('.build-tile');
+        const t = M.closest<HTMLButtonElement>(e, '.build-tile');
         if (t && !t.disabled) {
           const k = slots.indexOf(null);
           if (k < 0) return;
-          slots[k] = +t.dataset.i;
+          slots[k] = Number(t.dataset.i);
           M.sfx.tap();
-          if (tiles[+t.dataset.i].say) M.say(tiles[+t.dataset.i].say, { lang: tiles[+t.dataset.i].lang || q.lang, raw: true });
+          if (tiles[Number(t.dataset.i)].say)
+            M.say(tiles[Number(t.dataset.i)].say, { lang: tiles[Number(t.dataset.i)].lang || q.lang, raw: true });
           draw();
           return;
         }
-        if (e.target.closest('.fmt-check')) {
+        if (M.closest(e, '.fmt-check')) {
           if (slots.includes(null)) return ctx.feedback('bad', "Remplis toutes les cases d'abord 🙂");
-          const got = slots.map((i) => String(tiles[i].value));
+          const got = (slots as number[]).map((i) => String(tiles[i].value)); // plus aucune case vide
           const ok = [q.answer, ...(q.accept || [])].some((seq) => seq.map(String).join('|') === got.join('|'));
           const r = ctx.attempt(ok);
           if (r === 'retry') {
@@ -632,30 +648,30 @@
       const n = q.pairs.length;
       const right = M.shuffle(M.range(0, n - 1));
       const left = q.shuffleLeft ? M.shuffle(M.range(0, n - 1)) : M.range(0, n - 1);
-      const done = new Set();
-      let selL = null,
+      const done = new Set<number>();
+      let selL: number | null = null,
         mistakes = 0;
       const colors = ['#ef476f', '#118ab2', '#06a77d', '#f78c40', '#9b5de5', '#f4b400', '#2b2d42', '#e76f51'];
       host.innerHTML = `<div class="match"><div class="match-col">${left.map((i) => `<button class="match-item" data-side="L" data-i="${i}">${q.pairs[i].left}</button>`).join('')}</div>
         <div class="match-col">${right.map((i) => `<button class="match-item" data-side="R" data-i="${i}">${q.pairs[i].right}</button>`).join('')}</div></div>`;
-      const btn = (side, i) => M.$(`.match-item[data-side="${side}"][data-i="${i}"]`, host);
-      const lockPair = (i, color) => {
+      const btn = (side: string, i: number) => M.$<HTMLButtonElement>(`.match-item[data-side="${side}"][data-i="${i}"]`, host)!; // rendus ci-dessus
+      const lockPair = (i: number, color: string) => {
         [btn('L', i), btn('R', i)].forEach((b) => {
           b.classList.add('paired');
           b.disabled = true;
           b.style.setProperty('--pair', color);
         });
       };
-      const sayIt = (side, i) => {
+      const sayIt = (side: string | undefined, i: number) => {
         const p = q.pairs[i],
           t = side === 'L' ? p.sayLeft : p.sayRight;
         if (t) M.say(t, { lang: (side === 'L' ? p.langLeft : p.langRight) || q.lang, raw: true });
       };
       host.onclick = (e) => {
         if (ctx.done) return;
-        const b = e.target.closest('.match-item');
+        const b = M.closest<HTMLButtonElement>(e, '.match-item');
         if (!b || b.disabled) return;
-        const i = +b.dataset.i;
+        const i = Number(b.dataset.i);
         sayIt(b.dataset.side, i);
         if (b.dataset.side === 'L') {
           M.$$('.match-item[data-side="L"]', host).forEach((x) => x.classList.remove('sel'));
@@ -700,8 +716,8 @@
     answerLabel: () => 'voir les boîtes',
     render(host, q, ctx) {
       const order = M.shuffle(M.range(0, q.items.length - 1));
-      const placed = {};
-      let sel = null,
+      const placed: Record<number, Value> = {};
+      let sel: number | null = null,
         mistakes = 0;
       const draw = () => {
         host.innerHTML = `<div class="sort-pool">${
@@ -723,16 +739,16 @@
       draw();
       host.onclick = (e) => {
         if (ctx.done) return;
-        const it = e.target.closest('.sort-item:not(.in)');
+        const it = M.closest(e, '.sort-item:not(.in)');
         if (it) {
-          sel = +it.dataset.i;
+          sel = Number(it.dataset.i);
           M.sfx.tap();
           const s = q.items[sel].say;
           if (s) M.say(s, { lang: q.items[sel].lang || q.lang, raw: true });
           draw();
           return;
         }
-        const bin = e.target.closest('.sort-bin');
+        const bin = M.closest(e, '.sort-bin');
         if (!bin) return;
         const bdef = q.bins.find((b) => same(b.id, bin.dataset.bin));
         if (bdef && bdef.say) M.say(bdef.say, { lang: bdef.lang || q.lang, raw: true });
@@ -777,12 +793,12 @@
     instruction: () => 'Touche un trou, puis choisis le bon mot 👇',
     answerLabel: (q) => q.blanks.map((b) => M.esc(b.answer)).join(' · '),
     render(host, q, ctx) {
-      const fill = q.blanks.map(() => null);
-      const bad = new Set();
+      const fill: (string | null | undefined)[] = q.blanks.map(() => null);
+      const bad = new Set<number>();
       let cur = 0;
-      const draw = (reveal) => {
-        const html = q.text.replace(/\{(\d+)\}/g, (m, i) => {
-          i = +i;
+      const draw = (reveal?: boolean) => {
+        const html = q.text.replace(/\{(\d+)\}/g, (m: string, k: string) => {
+          const i = +k;
           const v = reveal ? q.blanks[i].answer : fill[i];
           return `<button class="cloze-gap ${cur === i && !reveal ? 'sel' : ''} ${v ? 'filled' : ''} ${bad.has(i) ? 'wrong' : ''} ${reveal ? 'good' : ''}" data-i="${i}">${v ? M.esc(v) : '&nbsp;?&nbsp;'}</button>`;
         });
@@ -799,14 +815,14 @@
       draw();
       host.onclick = (e) => {
         if (ctx.done) return;
-        const g = e.target.closest('.cloze-gap');
+        const g = M.closest(e, '.cloze-gap');
         if (g) {
-          cur = +g.dataset.i;
+          cur = Number(g.dataset.i);
           M.sfx.tap();
           draw();
           return;
         }
-        const c = e.target.closest('.chip-btn');
+        const c = M.closest(e, '.chip-btn');
         if (c) {
           fill[cur] = c.dataset.c;
           bad.delete(cur);
@@ -816,7 +832,7 @@
           draw();
           return;
         }
-        if (e.target.closest('.fmt-check')) {
+        if (M.closest(e, '.fmt-check')) {
           if (fill.some((v) => v == null)) return ctx.feedback('bad', "Remplis tous les trous d'abord 🙂");
           bad.clear();
           fill.forEach((v, i) => {
@@ -824,7 +840,7 @@
           });
           const r = ctx.attempt(bad.size === 0);
           if (r === 'retry') {
-            cur = [...bad][0];
+            cur = [...bad][0] ?? cur; // au moins un trou fautif (sinon ce n'est pas « retry »)
             draw();
           }
         }
@@ -848,41 +864,51 @@
       if (!Array.isArray(q.answer) || !q.answer.length || q.answer.some((i) => !Number.isInteger(i) || i < 0)) return 'answer : indices';
       if (q.target === 'passage') {
         if (q.unit === 'sentence') return;
-        const toks = q._passageTokens || (q.passage && q.passage.tokens);
+        const toks = q._passageTokens || (typeof q.passage === 'object' && q.passage.tokens);
         if (toks && q.answer.some((i) => i >= toks.length || toks[i].w === '¶')) return 'answer : indice hors du passage';
         return;
       }
-      if (!Array.isArray(q.words) || q.words.length < 2) return 'words : au moins 2';
-      if (q.answer.some((i) => i >= q.words.length || q.words[i] === '¶')) return 'answer : indice invalide';
+      const words = q.words;
+      if (!Array.isArray(words) || words.length < 2) return 'words : au moins 2';
+      if (q.answer.some((i) => i >= words.length || words[i] === '¶')) return 'answer : indice invalide';
     },
     instruction: (q) =>
       q.select === 'one' || q.answer.length === 1 ? 'Touche le bon mot 👇' : `Touche les bons mots (${q.answer.length}), puis Vérifier 👇`,
-    answerLabel: (q) => (q.target === 'passage' ? 'voir le texte' : q.answer.map((i) => M.esc(q.words[i])).join(', ')),
+    answerLabel: (q) => (q.target === 'passage' ? 'voir le texte' : q.answer.map((i) => M.esc(need(q.words, 'words')[i])).join(', ')),
     render(host, q, ctx) {
       const one = q.select === 'one' || (q.select !== 'many' && q.answer.length === 1);
-      const sel = new Set();
+      const sel = new Set<number>();
       const P = q.target === 'passage' ? ctx.passage : null;
       const sentence = q.unit === 'sentence';
       const markCls = 'mk-' + (q.mark || 'q');
-      let els;
+      let els: (HTMLElement | undefined)[];
       if (P) {
         host.innerHTML = one ? '' : '<button class="btn primary big fmt-check">✓ Vérifier</button>';
         P.setMarking(true);
         els = P.tokens;
       } else {
-        host.innerHTML = `<div class="tapwords ${q.mode === 'letters' ? 'letters' : ''}">${q.words.map((w, i) => (w === '¶' ? '<span class="tw-br"></span>' : `<button class="tw" data-i="${i}">${M.esc(w)}</button>`)).join(q.mode === 'letters' ? '' : ' ')}</div>${one ? '' : '<button class="btn primary big fmt-check">✓ Vérifier</button>'}`;
-        els = M.$$('.tw', host).reduce((a, b) => {
-          a[+b.dataset.i] = b;
+        host.innerHTML = `<div class="tapwords ${q.mode === 'letters' ? 'letters' : ''}">${need(q.words, 'words')
+          .map((w, i) => (w === '¶' ? '<span class="tw-br"></span>' : `<button class="tw" data-i="${i}">${M.esc(w)}</button>`))
+          .join(q.mode === 'letters' ? '' : ' ')}</div>${one ? '' : '<button class="btn primary big fmt-check">✓ Vérifier</button>'}`;
+        els = M.$$('.tw', host).reduce<HTMLElement[]>((a, b) => {
+          a[Number(b.dataset.i)] = b;
           return a;
         }, []);
       }
-      const unitOf = (i) => (sentence ? P.tokenData[i].s : i);
-      const elsOfUnit = (u) => (sentence ? els.filter((e, i) => e && P.tokenData[i].s === u) : [els[u]].filter(Boolean));
-      const paint = (u, cls, on) => elsOfUnit(u).forEach((e) => e.classList.toggle(cls, on));
+      /** Jetons du passage (unit:'sentence' exige target:'passage'). */
+      const tokenData = () => need(P, 'passage').tokenData;
+      const unitOf = (i: number) => (sentence ? tokenData()[i].s : i);
+      const elsOfUnit = (u: number): HTMLElement[] =>
+        sentence ? els.filter((e, i): e is HTMLElement => !!e && tokenData()[i].s === u) : [els[u]].filter((e): e is HTMLElement => !!e);
+      const paint = (u: number, cls: string, on: boolean) => elsOfUnit(u).forEach((e) => e.classList.toggle(cls, on));
       const hintSpan = () => {
-        if (q.hintSpan) for (let i = q.hintSpan[0]; i <= q.hintSpan[1]; i++) els[i] && els[i].classList.add('hintspan');
+        if (q.hintSpan)
+          for (let i = q.hintSpan[0]; i <= q.hintSpan[1]; i++) {
+            const t = els[i];
+            if (t) t.classList.add('hintspan');
+          }
       };
-      const tap = (i) => {
+      const tap = (i: number) => {
         if (ctx.done) return;
         const u = unitOf(i);
         if (one) {
@@ -895,12 +921,13 @@
           }
           return;
         }
-        sel.has(u) ? sel.delete(u) : sel.add(u);
+        if (sel.has(u)) sel.delete(u);
+        else sel.add(u);
         paint(u, 'sel', sel.has(u));
         M.sfx.tap();
       };
-      const onClick = (e) => {
-        const c = e.target.closest('.fmt-check');
+      const onClick = (e: MouseEvent) => {
+        const c = M.closest(e, '.fmt-check');
         if (c && !ctx.done) {
           if (!sel.size) return ctx.feedback('bad', 'Touche au moins un mot 🙂');
           const ok = sameSet([...sel], q.answer);
@@ -922,8 +949,8 @@
           return;
         }
         if (!P) {
-          const b = e.target.closest('.tw');
-          if (b) tap(+b.dataset.i);
+          const b = M.closest(e, '.tw');
+          if (b) tap(Number(b.dataset.i));
         }
       };
       host.onclick = onClick;
@@ -965,29 +992,31 @@
         : "Touche la bonne réponse sur l'image 👇",
     answerLabel: (q) => q.answerText || "voir l'image",
     render(host, q, ctx) {
-      const many = Array.isArray(q.answer);
-      const sel = new Set();
+      const all = Array.isArray(q.answer) ? q.answer : null; // plusieurs zones → Vérifier
+      const many = !!all;
+      const sel = new Set<string>();
       host.innerHTML = `<div class="hotspot">${q.html}</div>${many ? '<button class="btn primary big fmt-check">✓ Vérifier</button>' : ''}`;
-      const zones = (id) => M.$$(`[data-hot="${id}"]`, host);
+      const zones = (id: string) => M.$$<SVGElement>(`[data-hot="${id}"]`, host);
       host.onclick = (e) => {
         if (ctx.done) return;
-        if (many && e.target.closest('.fmt-check')) {
+        if (all && M.closest(e, '.fmt-check')) {
           if (!sel.size) return ctx.feedback('bad', 'Touche au moins une zone 🙂');
-          const r = ctx.attempt(sameSet([...sel], q.answer), [...sel]);
+          const r = ctx.attempt(sameSet([...sel], all), [...sel]);
           if (r === 'retry')
             sel.forEach((id) => {
-              if (!q.answer.some((a) => same(a, id))) {
+              if (!all.some((a) => same(a, id))) {
                 sel.delete(id);
                 zones(id).forEach((z) => z.classList.remove('hot-sel'));
               }
             });
           return;
         }
-        const h = e.target.closest('[data-hot]');
+        const h = M.closest<SVGElement>(e, '[data-hot]');
         if (!h) return;
-        const id = h.dataset.hot;
+        const id = String(h.dataset.hot); // [data-hot] : l'attribut existe
         if (many) {
-          sel.has(id) ? sel.delete(id) : sel.add(id);
+          if (sel.has(id)) sel.delete(id);
+          else sel.add(id);
           zones(id).forEach((z) => z.classList.toggle('hot-sel', sel.has(id)));
           M.sfx.tap();
           return;
@@ -999,7 +1028,7 @@
       };
       return {
         reveal() {
-          (many ? q.answer : [q.answer]).forEach((id) => zones(id).forEach((x) => x.classList.add('hot-right')));
+          (Array.isArray(q.answer) ? q.answer : [q.answer]).forEach((id) => zones(id).forEach((x) => x.classList.add('hot-right')));
           if (q.answerSay) M.say(q.answerSay, { lang: q.lang, raw: true });
         },
       };
@@ -1022,27 +1051,33 @@
     instruction: () => 'Touche une étiquette, puis la bonne partie du dessin 👇',
     answerLabel: () => 'voir les étiquettes',
     render(host, q, ctx) {
-      const all = M.shuffle([
+      interface Chip {
+        id: string | null;
+        text: string;
+        say?: string;
+        k: number | string;
+      }
+      const all = M.shuffle<Chip>([
         ...q.labels.map((l, i) => ({ ...l, k: i })),
         ...(q.distractors || []).map((t, i) => ({ id: null, text: t, k: 'd' + i })),
       ]);
-      const placed = new Set();
-      let sel = null,
+      const placed = new Set<number | string>();
+      let sel: string | null | undefined = null,
         mistakes = 0;
       host.innerHTML = `<div class="label-bank"></div><div class="hotspot label-fig">${q.html}</div>`;
       const svg = M.$('svg', host);
       const drawBank = () => {
-        M.$('.label-bank', host).innerHTML =
+        M.$('.label-bank', host)!.innerHTML =
           all
             .filter((l) => !placed.has(l.k))
             .map((l) => `<button class="chip-btn ${sel === l.k ? 'sel' : ''}" data-k="${l.k}">${M.esc(l.text)}</button>`)
             .join('') || '<span class="muted">Tout est étiqueté ! 🎉</span>';
       };
-      const place = (l) => {
-        const z = M.$(`[data-hot="${l.id}"]`, host);
+      const place = (l: { id: string | null; text: string }) => {
+        const z = M.$<SVGGraphicsElement>(`[data-hot="${l.id}"]`, host);
         if (!z || !svg) return;
         z.classList.add('hot-right');
-        let x, y;
+        let x: number, y: number;
         if (z.dataset.anchor) [x, y] = z.dataset.anchor.split(',').map(Number);
         else {
           try {
@@ -1063,7 +1098,7 @@
       drawBank();
       host.onclick = (e) => {
         if (ctx.done) return;
-        const c = e.target.closest('.chip-btn');
+        const c = M.closest(e, '.chip-btn');
         if (c) {
           sel = c.dataset.k;
           const l = all.find((x) => String(x.k) === sel);
@@ -1072,7 +1107,7 @@
           drawBank();
           return;
         }
-        const h = e.target.closest('[data-hot]');
+        const h = M.closest<SVGElement>(e, '[data-hot]');
         if (!h) return;
         if (q.explore) {
           const l = q.labels.find((x) => same(x.id, h.dataset.hot));
@@ -1129,15 +1164,15 @@
     instruction: () => "Touche la droite à l'endroit choisi, puis Vérifier 👇",
     answerLabel: (q) => `environ ${q.answer}${q.unit ? ' ' + q.unit : ''}`,
     retryMessage: (q, v) =>
-      (v > q.answer ? 'Un peu trop loin vers la droite.' : 'Un peu trop loin vers la gauche.') + ' Essaie encore 💪' + hintHtml(q),
+      (Number(v) > q.answer ? 'Un peu trop loin vers la droite.' : 'Un peu trop loin vers la gauche.') + ' Essaie encore 💪' + hintHtml(q),
     render(host, q, ctx) {
       const X0 = 40,
         X1 = 960,
         Y = 90,
         span = q.hi - q.lo;
-      const x = (v) => X0 + ((v - q.lo) * (X1 - X0)) / span;
+      const x = (v: number) => X0 + ((v - q.lo) * (X1 - X0)) / span;
       const every = q.labelEvery || (span <= 20 ? 1 : span <= 100 ? 10 : 100);
-      let val = null,
+      let val: number | null = null,
         revealed = false;
       const draw = () => {
         let s = `<svg class="nline est" viewBox="0 0 1000 150"><line class="axis" x1="${X0 - 10}" y1="${Y}" x2="${X1 + 10}" y2="${Y}"/>`;
@@ -1154,12 +1189,12 @@
       draw();
       host.onclick = (e) => {
         if (ctx.done) return;
-        if (e.target.closest('.fmt-check')) {
+        if (M.closest(e, '.fmt-check')) {
           if (val == null) return ctx.feedback('bad', "Touche la droite d'abord 🙂");
           ctx.attempt(Math.abs(val - q.answer) <= q.tolerance, val);
           return;
         }
-        const svg = e.target.closest('svg');
+        const svg = M.closest<SVGSVGElement>(e, 'svg');
         if (!svg) return;
         const r = svg.getBoundingClientRect();
         const vx = ((e.clientX - r.left) / r.width) * 1000;
@@ -1188,7 +1223,7 @@
     render(host, q, ctx) {
       host.innerHTML = `${q.html || ''}<button class="btn blue big fmt-check">${q.button || "J'ai lu ✔"}</button>`;
       host.onclick = (e) => {
-        if (e.target.closest('.fmt-check') && !ctx.done) ctx.complete(true, true);
+        if (M.closest(e, '.fmt-check') && !ctx.done) ctx.complete(true, true);
       };
     },
   });
@@ -1207,7 +1242,7 @@
       const acts = q.actions || ['💬 On en a parlé ✔', '🙈 Je préfère passer'];
       host.innerHTML = `<div class="choices-grid" style="grid-template-columns:1fr">${acts.map((a, i) => `<button class="choice-btn" data-i="${i}">${a}</button>`).join('')}</div>`;
       host.onclick = (e) => {
-        const b = e.target.closest('.choice-btn');
+        const b = M.closest(e, '.choice-btn');
         if (b && !ctx.done) ctx.complete(true, true);
       };
     },
@@ -1217,15 +1252,24 @@
   /**
    * Monte une sous-question dans li (éléments .step-prompt/.step-body/.step-fb) et appelle onDone(first, ok).
    */
-  function runSub(li, s, ctx, onDone, vars = {}) {
-    const f = M.formats[s.format || s.input];
-    const pr = M.$('.step-prompt', li),
-      body = M.$('.step-body', li),
-      fb = M.$('.step-fb', li),
+  function runSub(
+    li: HTMLElement,
+    s: SubQuestion & StepExtras,
+    ctx: FormatCtx<unknown>,
+    onDone: (first: boolean, ok: boolean) => void,
+    vars: Record<string, string> = {},
+  ) {
+    const f = need(M.formats[M.formatOf(s)], 'format'); // vérifié par validate (steps, predict)
+    // Éléments rendus par subLi()
+    const pr = M.$('.step-prompt', li)!,
+      body = M.$('.step-body', li)!,
+      fb = M.$('.step-fb', li)!,
       vz = M.$('.step-viz', li);
-    const prompt = String(s.prompt || '').replace(/\{s(\d+)\}/g, (m, k) => (vars['s' + k] !== undefined ? vars['s' + k] : m));
+    const prompt = String(s.prompt || '').replace(/\{s(\d+)\}/g, (m: string, k: string) =>
+      vars['s' + k] !== undefined ? vars['s' + k] : m,
+    );
     const has = prompt.includes('{?}');
-    const setInline = (html) => (pr.innerHTML = has ? prompt.replace('{?}', html) : prompt);
+    const setInline = (html: string) => (pr.innerHTML = has ? prompt.replace('{?}', html) : prompt);
     setInline('<span class="ans-box">?</span>');
     if (vz) {
       vz.innerHTML = '';
@@ -1239,13 +1283,13 @@
     }
     let tries = 0,
       done = false,
-      inst = null;
+      inst: FormatInstance | null = null;
     const max = s.tries || (f.maxTries ? f.maxTries(s) : 2);
-    const finish = (first, ok) => {
+    const finish = (first: boolean, ok: boolean) => {
       if (done) return;
       done = true;
       if (inst && inst.lock) inst.lock();
-      else M.$$('button,input', body).forEach((b) => (b.disabled = true));
+      else M.$$<HTMLButtonElement | HTMLInputElement>('button,input', body).forEach((b) => (b.disabled = true));
       if (!ok && inst && inst.reveal) inst.reveal();
       fb.className = 'step-fb ' + (ok ? 'good' : 'bad');
       fb.innerHTML = f.ungraded
@@ -1254,11 +1298,11 @@
           ? s.after
             ? '✔️ ' + s.after
             : '✔️'
-          : `La bonne réponse : <b>${f.answerLabel ? f.answerLabel(s) : s.answer}</b>${s.after ? '<div>' + s.after + '</div>' : ''}`;
+          : `La bonne réponse : <b>${f.answerLabel ? f.answerLabel(s) : 'answer' in s ? s.answer : undefined}</b>${s.after ? '<div>' + s.after + '</div>' : ''}`;
       if (ok && !f.ungraded) M.sfx.pop();
       onDone(first, ok);
     };
-    const sub = {
+    const sub: FormatCtx<typeof s> = {
       q: s,
       host: body,
       hasInline: has,
@@ -1295,11 +1339,11 @@
     inst = f.render(body, s, sub) || {};
     return sub;
   }
-  const subLi = (k, label) =>
+  const subLi = (k: number, label: string) =>
     `<li class="step todo" data-k="${k}"><div class="step-head"><span class="step-num">${k + 1}</span><b>${label}</b></div><div class="step-prompt"></div><div class="step-viz"></div><div class="step-body"></div><div class="step-fb"></div></li>`;
-  const answerText = (s) => {
-    const f = M.formats[s.format || s.input];
-    return f && f.answerLabel ? M.text(f.answerLabel(s)) : String(s.answer);
+  const answerText = (s: SubQuestion) => {
+    const f = M.formats[M.formatOf(s)];
+    return f && f.answerLabel ? M.text(f.answerLabel(s)) : String('answer' in s ? s.answer : undefined);
   };
 
   /* ------------------------------------------------------------------ steps
@@ -1312,10 +1356,11 @@
       if (!Array.isArray(q.steps) || q.steps.length < 2) return 'steps : au moins 2';
       for (let i = 0; i < q.steps.length; i++) {
         const s = q.steps[i],
-          f = M.formats[s.format || s.input];
+          f = M.formats[M.formatOf(s)];
         if (!f || ['steps', 'predict'].includes(f.name)) return `étape ${i} : format invalide`;
         if (!s.prompt && f.name !== 'info') return `étape ${i} : prompt manquant`;
-        if (s.target === 'passage' && q.passage && q.passage.tokens) s._passageTokens = q.passage.tokens;
+        if ('target' in s && s.target === 'passage' && typeof q.passage === 'object' && q.passage.tokens)
+          s._passageTokens = q.passage.tokens;
         const e = f.validate && f.validate(s);
         if (e) return `étape ${i} : ${e}`;
       }
@@ -1324,20 +1369,20 @@
     answerLabel: () => 'voir les étapes',
     render(host, q, ctx) {
       const D = (M.ui && M.ui.DEMARCHE) || [];
-      const label = (s, k) =>
+      const label = (s: StepItem, k: number) =>
         s.label || (s.demarche != null && D[s.demarche] ? `${D[s.demarche].icon} ${D[s.demarche].label}` : 'Étape ' + (k + 1));
       const useDem = q.steps.some((s) => s.demarche != null) && M.ui;
       host.innerHTML = `${useDem ? '<div class="steps-dem"></div>' : ''}<ol class="steps">${q.steps.map((s, k) => subLi(k, label(s, k))).join('')}</ol>`;
-      const vars = {};
+      const vars: Record<string, string> = {};
       const scored = q.scoreSteps || q.steps.map((_, k) => k);
       let i = 0,
         allFirst = true;
       const run = () => {
         const s = q.steps[i],
-          li = M.$(`.step[data-k="${i}"]`, host);
+          li = M.$(`.step[data-k="${i}"]`, host)!; // rendu ci-dessus
         li.classList.remove('todo');
         li.classList.add('now');
-        if (useDem) M.$('.steps-dem', host).innerHTML = M.ui.demarche(D, s.demarche ?? -1);
+        if (useDem) M.$('.steps-dem', host)!.innerHTML = M.ui.demarche(D, s.demarche ?? -1);
         runSub(
           li,
           s,
@@ -1352,11 +1397,11 @@
               const go = () => {
                 if (host.isConnected && !ctx.done) run();
               };
-              const fb = M.$('.step-fb', li);
+              const fb = M.$('.step-fb', li)!;
               if (ok) setTimeout(go, 450);
               else {
                 fb.insertAdjacentHTML('beforeend', '<div><button class="btn yellow step-next">Continuer ➜</button></div>');
-                M.$('.step-next', fb).onclick = go;
+                M.$('.step-next', fb)!.onclick = go;
               }
             } else setTimeout(() => ctx.complete(allFirst, true), 350);
           },
@@ -1381,53 +1426,63 @@
       if (!q.predict.choices.some((c) => same(c.value, q.outcome))) return 'outcome absent de predict.choices';
       if (typeof q.simulate !== 'function') return 'simulate manquant';
       if (q.check) {
-        const f = M.formats[q.check.format];
+        const f = M.formats[String(q.check.format)];
         if (!f || ['steps', 'predict'].includes(f.name)) return 'check : format invalide';
         const e = f.validate && f.validate(q.check);
         if (e) return 'check : ' + e;
       }
     },
     instruction: () => "Qu'est-ce qui va arriver, selon toi ? 👇",
-    answerLabel: (q) => (q.check ? (M.formats[q.check.format].answerLabel || ((s) => s.answer))(q.check) : ''),
+    answerLabel: (q) => {
+      if (!q.check) return '';
+      const chk = q.check;
+      const f = need(M.formats[String(chk.format)], 'format');
+      return f.answerLabel ? f.answerLabel(chk) : String('answer' in chk ? chk.answer : undefined);
+    },
     render(host, q, ctx) {
       const ch = q.predict.choices;
       host.innerHTML = `<div class="predict">
         <div class="pr-ask"><b>🤔 ${q.predict.prompt || 'Je prédis…'}</b><div class="choices-grid" style="grid-template-columns:repeat(${ch.length <= 3 ? ch.length : 2},1fr)">${ch.map((c, i) => `<button class="choice-btn" data-i="${i}">${c.label}</button>`).join('')}</div></div>
         <div class="pr-sim" hidden></div><div class="pr-result" hidden></div>
         ${q.check ? `<ol class="steps pr-check" hidden>${subLi(0, "🔍 J'explique")}</ol>` : ''}</div>`;
-      let pred = null;
+      let pred: Choice | null = null;
       host.onclick = async (e) => {
         if (ctx.done) return;
-        const b = e.target.closest('.pr-ask .choice-btn');
+        const b = M.closest(e, '.pr-ask .choice-btn');
         if (b && pred == null) {
-          pred = ch[+b.dataset.i];
-          M.$$('.pr-ask .choice-btn', host).forEach((x) => {
+          pred = ch[Number(b.dataset.i)];
+          M.$$<HTMLButtonElement>('.pr-ask .choice-btn', host).forEach((x) => {
             x.disabled = true;
             x.classList.toggle('sel', x === b);
           });
           M.sfx.tap();
-          const sim = M.$('.pr-sim', host);
+          const sim = M.$('.pr-sim', host)!;
           sim.hidden = false;
           sim.innerHTML = '<button class="btn blue big pr-run">▶ Voir l\'expérience</button><div class="pr-stage"></div>';
           return;
         }
-        if (e.target.closest('.pr-run')) {
-          e.target.closest('.pr-run').remove();
+        const run = M.closest(e, '.pr-run');
+        if (run) {
+          run.remove();
+          const p = pred!; // « Voir l'expérience » n'apparaît qu'après la prédiction
           try {
-            await q.simulate(M.$('.pr-stage', host), pred.value);
+            await q.simulate(M.$('.pr-stage', host)!, p.value);
           } catch (err) {
             console.error(err);
           }
           if (!host.isConnected) return;
-          const res = M.$('.pr-result', host);
-          const outLabel = ch.find((c) => same(c.value, q.outcome)).label;
+          const res = M.$('.pr-result', host)!;
+          const outLabel = need(
+            ch.find((c) => same(c.value, q.outcome)),
+            'outcome',
+          ).label;
           res.hidden = false;
-          res.innerHTML = `<div class="callout blue">🔬 Tu avais prédit : <b>${pred.label}</b> — Résultat : <b>${outLabel}</b>. ${same(pred.value, q.outcome) ? 'Bien vu ! 👀' : "Surprise ! C'est comme ça qu'on apprend. 🌱"}${q.result ? '<div>' + q.result + '</div>' : ''}</div>`;
+          res.innerHTML = `<div class="callout blue">🔬 Tu avais prédit : <b>${p.label}</b> — Résultat : <b>${outLabel}</b>. ${same(p.value, q.outcome) ? 'Bien vu ! 👀' : "Surprise ! C'est comme ça qu'on apprend. 🌱"}${q.result ? '<div>' + q.result + '</div>' : ''}</div>`;
           if (q.check) {
-            const ol = M.$('.pr-check', host);
+            const ol = M.$('.pr-check', host)!;
             ol.hidden = false;
             ctx.feedback('', 'Explique ce que tu as observé 👇');
-            const li = M.$('.step', ol);
+            const li = M.$('.step', ol)!;
             li.classList.remove('todo');
             li.classList.add('now');
             runSub(li, q.check, ctx, (first, ok) => {
@@ -1443,8 +1498,8 @@
   });
   /** Une carte predict sans check n'est pas comptée. */
   M.isUngraded = (q) => {
-    const f = M.formats[q.format || q.input];
-    return !!(f && f.ungraded) || (f && f.name === 'predict' && !q.check);
+    const f = M.formats[M.formatOf(q)];
+    return !!(f && f.ungraded) || (!!f && f.name === 'predict' && !('check' in q && q.check));
   };
 
   M.formatOf = (q) => q.format || q.input;

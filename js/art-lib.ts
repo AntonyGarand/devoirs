@@ -14,13 +14,15 @@
   const M = window.M;
   const O = '#2b2d42';
   let uid = 0;
-  const V = (body) =>
+  const V = (body: string) =>
     `<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">${body}</svg>`;
-  const R = (name, emoji, fn) => M.art.register(name, (o) => V(fn(o || {}, 'a' + ++uid)), emoji);
+  /** Enregistre un dessin; fn reçoit les options et un id unique (dégradés, découpes). */
+  const R = (name: string, emoji: string, fn: (o: ArtOpts, id: string) => string) =>
+    M.art.register(name, (o) => V(fn(o || {}, 'a' + ++uid)), emoji);
   const st = `stroke="${O}" stroke-width="3" stroke-linejoin="round"`;
-  const win = (x, y, w = 12, h = 12) =>
+  const win = (x: number, y: number, w = 12, h = 12) =>
     `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="#cfeefa" ${st}/><path d="M${x + w / 2} ${y} V${y + h} M${x} ${y + h / 2} H${x + w}" stroke="${O}" stroke-width="1.5"/>`;
-  const shine = (x, y, w) => `<rect x="${x}" y="${y}" width="${w}" height="4" rx="2" fill="#fff" opacity=".55"/>`;
+  const shine = (x: number, y: number, w: number) => `<rect x="${x}" y="${y}" width="${w}" height="4" rx="2" fill="#fff" opacity=".55"/>`;
 
   /** Chaîne <svg> à imbriquer dans un autre SVG, positionnée en x,y avec la taille w × h. */
   M.art.svg = function (name, { x = 0, y = 0, w = 100, h = 100 } = {}) {
@@ -134,27 +136,31 @@
     '📚',
     () => `
     <rect x="12" y="12" width="76" height="78" rx="4" fill="#c98b52" ${st}/><path d="M12 50 H88" stroke="${O}" stroke-width="3"/>
-    ${[
-      ['#ef476f', 18, 8, 32],
-      ['#118ab2', 27, 9, 30],
-      ['#ffd166', 37, 7, 34],
-      ['#06a77d', 45, 10, 28],
-      ['#9b5de5', 56, 8, 32],
-    ]
+    ${(
+      [
+        ['#ef476f', 18, 8, 32],
+        ['#118ab2', 27, 9, 30],
+        ['#ffd166', 37, 7, 34],
+        ['#06a77d', 45, 10, 28],
+        ['#9b5de5', 56, 8, 32],
+      ] as const
+    )
       .map(
         ([c, x, w, h]) =>
           `<rect x="${x}" y="${50 - h + 2}" width="${w}" height="${h - 2}" rx="1.5" fill="${c}" stroke="${O}" stroke-width="2"/>`,
       )
       .join('')}
     <rect x="66" y="22" width="9" height="28" rx="1.5" fill="#f78c40" stroke="${O}" stroke-width="2" transform="rotate(14 70 50)"/>
-    ${[
-      ['#06a77d', 18, 9, 30],
-      ['#ef476f', 28, 8, 26],
-      ['#118ab2', 37, 11, 32],
-      ['#ffd166', 49, 8, 28],
-      ['#f78c40', 58, 9, 30],
-      ['#9b5de5', 68, 9, 26],
-    ]
+    ${(
+      [
+        ['#06a77d', 18, 9, 30],
+        ['#ef476f', 28, 8, 26],
+        ['#118ab2', 37, 11, 32],
+        ['#ffd166', 49, 8, 28],
+        ['#f78c40', 58, 9, 30],
+        ['#9b5de5', 68, 9, 26],
+      ] as const
+    )
       .map(
         ([c, x, w, h]) => `<rect x="${x}" y="${88 - h}" width="${w}" height="${h}" rx="1.5" fill="${c}" stroke="${O}" stroke-width="2"/>`,
       )

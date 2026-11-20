@@ -8,7 +8,7 @@
   const M = window.M;
 
   /** Un exemple par format (sert aussi de référence pour les auteurs). */
-  M.FORMAT_SAMPLES = {
+  const SAMPLES: { [K in FormatName]: () => QuestionOf<K> } = {
     number: () => ({
       prompt: '<div class="eq">7 + 5 = {?}</div>',
       format: 'number',
@@ -204,9 +204,12 @@
     }),
   };
 
+  M.FORMAT_SAMPLES = SAMPLES;
+
   M.styleguide = function (app) {
-    const sw = (name, v, light) => `<div class="sg-sw ${light ? 'light' : ''}" style="background:var(${v})">${name}<br>${v}</div>`;
-    const formats = Object.values(M.formats);
+    const sw = (name: string, v: string, light?: number) =>
+      `<div class="sg-sw ${light ? 'light' : ''}" style="background:var(${v})">${name}<br>${v}</div>`;
+    const formats = Object.values(M.formats).filter((f): f is FormatDef => !!f);
     app.innerHTML = `
       <div class="learn-top"><a class="btn ghost" href="#/parents">← Parents</a><h1>🎨 Guide de style</h1></div>
       <p class="learn-intro">Le cadre commun de toutes les matières : jetons de design, composants et formats de questions. Voir aussi <code>docs/framework.md</code>.</p>
@@ -325,16 +328,17 @@
         })}`,
       })}
       ${M.ui.section({ icon: '❓', title: 'Formats de questions', intro: 'Chaque format se teste ci-dessous. Une question = une carte : texte à lire (passage) ou écoute (audio) au besoin, consigne, visuel, réponse, rétroaction, explication.', body: formats.map((f) => `<h3>${f.name}</h3><p class="muted">${f.doc || ''}</p><div class="sg-q" data-f="${f.name}"></div>`).join('') })}`;
-    M.ui.tabs(M.$('#sgTabs'), [
+    // Conteneurs rendus ci-dessus
+    M.ui.tabs(M.$('#sgTabs')!, [
       { id: 'a', label: '🔴 Jetons', render: (p) => (p.innerHTML = '<p>Panneau A</p>') },
       { id: 'b', label: '🐸 Droite', render: (p) => (p.innerHTML = '<p>Panneau B</p>') },
     ]);
-    M.ui.stepper(M.$('#sgStep'), { label: 'Nombre', value: 4, min: 0, max: 10 });
-    M.ui.flashcards(M.$('#sgFlash'), [
+    M.ui.stepper(M.$('#sgStep')!, { label: 'Nombre', value: 4, min: 0, max: 10 });
+    M.ui.flashcards(M.$('#sgFlash')!, [
       { front: '🍎', back: 'apple', say: 'apple', lang: 'en-CA' },
       { front: '🐶', back: 'dog', say: 'dog', lang: 'en-CA' },
     ]);
-    M.ui.slider(M.$('#sgSlider'), {
+    M.ui.slider(M.$('#sgSlider')!, {
       label: 'Arrosage',
       stops: [
         { value: 0, icon: '🏜️', label: 'rien' },
@@ -343,20 +347,20 @@
       ],
       value: 1,
     });
-    M.ui.feelings(M.$('#sgFeel'));
-    const bar = M.viz.barModel(M.$('#sgBar'), {
+    M.ui.feelings(M.$('#sgFeel')!);
+    const bar = M.viz.barModel(M.$('#sgBar')!, {
       type: 'tout',
       rows: [{ segs: [{ v: 8 }, { v: 5, tone: 'B' }] }],
       total: { unknown: true },
       answer: 13,
     });
-    M.$('#sgBarShow').onclick = () => bar.showMe();
-    M.ui.reading(M.$('#sgRead'), {
+    M.$('#sgBarShow')!.onclick = () => bar.showMe();
+    M.ui.reading(M.$('#sgRead')!, {
       title: 'Le castor',
       text: 'Le castor vit au bord de la rivière. Il construit un barrage avec des branches.',
     });
     M.$$('.sg-q').forEach((el) => {
-      const mk = M.FORMAT_SAMPLES[el.dataset.f];
+      const mk: (() => Question) | undefined = SAMPLES[el.dataset.f as FormatName]; // data-f : nom d'un format enregistré (ou absent du guide)
       if (mk) M.ui.miniQuiz(el, [mk], { title: 'Exemple' });
       else el.innerHTML = M.ui.callout("Pas d'exemple pour ce format.", { tone: 'warn' });
     });

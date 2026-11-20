@@ -15,7 +15,7 @@
   'use strict';
   const M = window.M;
 
-  const cyrb53 = (str, seed = 0) => {
+  const cyrb53 = (str: string, seed = 0) => {
     let h1 = 0xdeadbeef ^ seed,
       h2 = 0x41c6ce57 ^ seed;
     for (let i = 0; i < str.length; i++) {
@@ -27,16 +27,27 @@
     h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
     return 4294967296 * (2097151 & h2) + (h1 >>> 0);
   };
-  const EMOJI = /[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{1F3FB}-\u{1F3FF}️‍⃣]/gu;
+  // Chaque code isolé est voulu (teinte de peau, sélecteur de variante, ZWJ, touche) : tous sont retirés un par un.
+  // eslint-disable-next-line no-misleading-character-class
+  const EMOJI = /[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{1F3FB}-\u{1F3FF}\u{FE0F}\u{200D}\u{20E3}]/gu;
   const NUM = /(\d+(?:[   ]\d{3})*(?:,\d+)?)/;
-  const lang2 = (l) =>
+  const lang2 = (l: string | undefined) =>
     String(l || 'fr')
       .toLowerCase()
       .startsWith('en')
       ? 'en'
       : 'fr';
 
-  const C = {
+  /** Ensemble des ids enregistrés (lu une fois). */
+  const idSet = (): Set<string> =>
+    C._set ||
+    (C._set = new Set(
+      String(M.CLIP_INDEX || '')
+        .split(/\s+/)
+        .filter(Boolean),
+    ));
+  // stop() et play() : ajoutés plus bas.
+  const C: Omit<ClipsApi, 'stop' | 'play'> = {
     base: 'audio/',
     /** Texte tel qu'envoyé à la synthèse (casse gardée). */
     clean: (t) =>
@@ -59,20 +70,14 @@
     split(t) {
       return C.clean(t)
         .split(NUM)
-        .map((p, i) => (i % 2 ? { num: true, text: p.replace(/ /g, ' ') } : { text: C.piece(p) }))
+        .map((p, i): ClipPart => (i % 2 ? { num: true, text: p.replace(/ /g, ' ') } : { text: C.piece(p) }))
         .filter((p) => p.text && /[\p{L}\p{N}]/u.test(p.text));
     },
     _set: null,
     has(id) {
-      if (!C._set)
-        C._set = new Set(
-          String(M.CLIP_INDEX || '')
-            .split(/\s+/)
-            .filter(Boolean),
-        );
-      return C._set.has(id);
+      return idSet().has(id);
     },
-    count: () => (C.has(''), C._set.size),
+    count: () => idSet().size,
     /** Liste d'ids à jouer pour ce texte, ou null. */
     plan(text, lang) {
       if (!C.count()) return null;
@@ -87,17 +92,17 @@
   };
 
   /* ---- Lecture : deux éléments <audio> en alternance (le suivant se charge pendant le premier) ---- */
-  let cur = null,
+  let cur: HTMLAudioElement | null = null,
     playTok = 0,
-    pending = null;
+    pending: ((v: ClipPlayResult) => void) | null = null;
   const mk = () => {
     const a = new Audio();
     a.preload = 'auto';
     return a;
   };
   const els = typeof Audio === 'function' ? [mk(), mk()] : [];
-  const url = (id) => C.base + id + '.mp3';
-  C.stop = () => {
+  const url = (id: string) => C.base + id + '.mp3';
+  const stop = () => {
     playTok++;
     if (cur) {
       try {
@@ -110,8 +115,8 @@
     if (p) p(false);
   };
   /** Joue les ids à la suite. Résout true (fini), false (arrêté) ou 'fail' (fichier introuvable). */
-  C.play = (ids, rate = 1) =>
-    new Promise((resolve) => {
+  const play = (ids: string[], rate = 1) =>
+    new Promise<ClipPlayResult>((resolve) => {
       if (!els.length) return resolve('fail');
       if (pending) {
         const p = pending;
@@ -120,7 +125,7 @@
       } // lecture précédente interrompue
       const tok = ++playTok;
       let settled = false;
-      const res = (v) => {
+      const res = (v: ClipPlayResult) => {
         if (settled) return;
         settled = true;
         if (pending === res) pending = null;
@@ -157,12 +162,12 @@
         } catch (e) {}
         const p = a.play();
         if (p && p.catch)
-          p.catch((e) => {
-            if (tok === playTok) res(e && e.name === 'NotAllowedError' ? false : 'fail');
+          p.catch((e: unknown) => {
+            if (tok === playTok) res(typeof e === 'object' && e !== null && 'name' in e && e.name === 'NotAllowedError' ? false : 'fail');
           });
       };
       next();
     });
 
-  M.clips = C;
+  M.clips = Object.assign(C, { stop, play });
 })();

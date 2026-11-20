@@ -13,8 +13,16 @@
   'use strict';
   const M = window.M;
 
-  const KEYS = { maths: 0, francais: 5, anglais: 7, univers: 2, sciences: 9 }; // demi-tons au-dessus de do
-  const MOODS = {
+  const KEYS: Record<string, number> = { maths: 0, francais: 5, anglais: 7, univers: 2, sciences: 9 }; // demi-tons au-dessus de do
+  interface MoodDef {
+    bpm: number;
+    progs: number[][];
+    arp: number;
+    mel: number;
+    shaker: boolean;
+    bassBeats: number[];
+  }
+  const MOODS: Record<MusicMood, MoodDef> = {
     // degrés (0 = I) de 8 mesures; tempo; densités
     jeu: {
       bpm: 92,
@@ -43,23 +51,24 @@
   };
   const MAJOR = [0, 2, 4, 5, 7, 9, 11];
   const PENTA = [0, 2, 4, 7, 9];
-  const hz = (midi) => 440 * Math.pow(2, (midi - 69) / 12);
-  const chordOf = (deg) => [0, 2, 4].map((k) => MAJOR[(deg + k) % 7] + 12 * Math.floor((deg + k) / 7));
+  const hz = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
+  const chordOf = (deg: number) => [0, 2, 4].map((k) => MAJOR[(deg + k) % 7] + 12 * Math.floor((deg + k) / 7));
 
-  let ctx = null,
-    master = null,
-    duckGain = null,
-    verb = null,
-    noiseBuf = null;
-  let timer = null,
+  /** Contexte en direct (navigateur) ou hors ligne (render, outils). */
+  type Ctx = AudioContext | OfflineAudioContext;
+  let ctx: Ctx | null = null,
+    master: GainNode | null = null,
+    duckGain: GainNode | null = null,
+    verb: ConvolverNode | null = null,
+    noiseBuf: AudioBuffer | null = null;
+  let timer: number | undefined,
     nextT = 0,
     step = 0,
-    bar = 0,
-    section = 0;
-  let mood = 'jeu',
+    bar = 0;
+  let mood: MusicMood = 'jeu',
     key = 0,
     prog = MOODS.jeu.progs[0],
-    motif = null,
+    motif: (number | null)[] = [], // rempli par newSection() avant la première note
     seed = 1;
   let started = false,
     speaking = false,
@@ -74,18 +83,20 @@
     return typeof v === 'number' ? v : 0.5;
   };
 
-  function ensure() {
-    if (ctx) return true;
-    let c;
+  /** Contexte prêt (créé au besoin), ou null. */
+  function ensure(): Ctx | null {
+    if (ctx) return ctx;
+    let c: AudioContext;
     try {
       c = M.sfx && M.sfx.ctx ? M.sfx.ctx() : new (window.AudioContext || window.webkitAudioContext)();
     } catch (e) {
-      return false;
+      return null;
     }
     build(c);
-    return true;
+    return c;
   }
-  function build(c) {
+  /** Construit le graphe (nappe → filtre → réverbération → atténuation pendant la voix); retourne le volume général. */
+  function build(c: Ctx): GainNode {
     ctx = c;
     master = ctx.createGain();
     master.gain.value = 0;
@@ -98,8 +109,8 @@
     verb = ctx.createConvolver();
     const len = ctx.sampleRate * 2.4,
       ir = ctx.createBuffer(2, len, ctx.sampleRate);
-    for (let c = 0; c < 2; c++) {
-      const d = ir.getChannelData(c);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = ir.getChannelData(ch);
       for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2);
     }
     verb.buffer = ir;
@@ -112,20 +123,27 @@
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.2, ctx.sampleRate);
     const nd = noiseBuf.getChannelData(0);
     for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+    return master;
   }
+  /** Graphe construit par build() : les instruments ne jouent qu'après. */
+  const graph = () => {
+    if (!ctx || !master) throw new Error('musique : graphe audio absent');
+    return { ac: ctx, out: master };
+  };
 
   /* ---- instruments ---- */
-  function env(g, t, a, peak, d) {
+  function env(g: GainNode, t: number, a: number, peak: number, d: number) {
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(peak, t + a);
     g.gain.exponentialRampToValueAtTime(0.0001, t + a + d);
   }
-  function pad(notes, t, dur) {
+  function pad(notes: number[], t: number, dur: number) {
+    const { ac, out } = graph();
     notes.forEach((n) =>
       [-6, 6].forEach((cents) => {
-        const o = ctx.createOscillator(),
-          g = ctx.createGain(),
-          f = ctx.createBiquadFilter();
+        const o = ac.createOscillator(),
+          g = ac.createGain(),
+          f = ac.createBiquadFilter();
         o.type = 'triangle';
         o.frequency.value = hz(n);
         o.detune.value = cents;
@@ -135,64 +153,72 @@
         g.gain.exponentialRampToValueAtTime(0.022, t + Math.min(1.2, dur * 0.4));
         g.gain.setValueAtTime(0.022, t + dur * 0.8);
         g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.9);
-        o.connect(f).connect(g).connect(master);
+        o.connect(f).connect(g).connect(out);
         o.start(t);
         o.stop(t + dur + 1);
       }),
     );
   }
-  function bass(n, t, d) {
-    const o = ctx.createOscillator(),
-      g = ctx.createGain();
+  function bass(n: number, t: number, d: number) {
+    const { ac, out } = graph();
+    const o = ac.createOscillator(),
+      g = ac.createGain();
     o.type = 'sine';
     o.frequency.value = hz(n);
     env(g, t, 0.02, 0.11, d);
-    o.connect(g).connect(master);
+    o.connect(g).connect(out);
     o.start(t);
     o.stop(t + d + 0.1);
   }
-  function mallet(n, t, v = 0.07) {
+  function mallet(n: number, t: number, v = 0.07) {
+    const { ac, out } = graph();
     // marimba : fondamentale + 4e harmonique très brève
-    [
-      [1, v, 0.5],
-      [4, v * 0.35, 0.08],
-    ].forEach(([mul, peak, d]) => {
-      const o = ctx.createOscillator(),
-        g = ctx.createGain();
+    (
+      [
+        [1, v, 0.5],
+        [4, v * 0.35, 0.08],
+      ] as const
+    ).forEach(([mul, peak, d]) => {
+      const o = ac.createOscillator(),
+        g = ac.createGain();
       o.type = 'sine';
       o.frequency.value = hz(n) * mul;
       env(g, t, 0.005, peak, d);
-      o.connect(g).connect(master);
+      o.connect(g).connect(out);
       o.start(t);
       o.stop(t + d + 0.05);
     });
   }
-  function bell(n, t, v = 0.05) {
+  function bell(n: number, t: number, v = 0.05) {
+    const { ac, out } = graph();
     // boîte à musique : partiels inharmoniques légers
-    [
-      [1, v, 1.4],
-      [2.76, v * 0.3, 0.5],
-      [5.4, v * 0.12, 0.25],
-    ].forEach(([mul, peak, d]) => {
-      const o = ctx.createOscillator(),
-        g = ctx.createGain();
+    (
+      [
+        [1, v, 1.4],
+        [2.76, v * 0.3, 0.5],
+        [5.4, v * 0.12, 0.25],
+      ] as const
+    ).forEach(([mul, peak, d]) => {
+      const o = ac.createOscillator(),
+        g = ac.createGain();
       o.type = 'sine';
       o.frequency.value = hz(n) * mul;
       env(g, t, 0.004, peak, d);
-      o.connect(g).connect(master);
+      o.connect(g).connect(out);
       o.start(t);
       o.stop(t + d + 0.05);
     });
   }
-  function shaker(t, v) {
-    const s = ctx.createBufferSource(),
-      f = ctx.createBiquadFilter(),
-      g = ctx.createGain();
+  function shaker(t: number, v: number) {
+    const { ac, out } = graph();
+    const s = ac.createBufferSource(),
+      f = ac.createBiquadFilter(),
+      g = ac.createGain();
     s.buffer = noiseBuf;
     f.type = 'highpass';
     f.frequency.value = 7000;
     env(g, t, 0.003, v, 0.05);
-    s.connect(f).connect(g).connect(master);
+    s.connect(f).connect(g).connect(out);
     s.start(t);
     s.stop(t + 0.1);
   }
@@ -200,7 +226,7 @@
   /* ---- composition ---- */
   function newMotif() {
     // 2 mesures de croches : notes de la gamme pentatonique, notes d'accord sur les temps forts
-    const m = [];
+    const m: (number | null)[] = [];
     let deg = Math.floor(rnd() * 5);
     for (let i = 0; i < 16; i++) {
       const strong = i % 4 === 0;
@@ -212,18 +238,17 @@
       deg = Math.max(0, Math.min(9, deg + Math.round((rnd() - 0.5) * 3)));
       m.push(deg);
     }
-    if (m.every((x) => x === null)) m[0] = 2;
+    if (m.every((x): boolean => x === null)) m[0] = 2;
     return m;
   }
   function newSection() {
     const md = MOODS[mood];
     prog = md.progs[Math.floor(rnd() * md.progs.length)];
     motif = newMotif();
-    section++;
   }
-  const melNote = (deg) => 72 + key + PENTA[deg % 5] + 12 * Math.floor(deg / 5);
+  const melNote = (deg: number) => 72 + key + PENTA[deg % 5] + 12 * Math.floor(deg / 5);
 
-  function scheduleStep(t) {
+  function scheduleStep(t: number) {
     const md = MOODS[mood];
     const spb = 60 / md.bpm,
       eighth = spb / 2;
@@ -262,13 +287,13 @@
 
   function loop() {
     clearTimeout(timer); // jamais deux chaînes de minuteries
-    timer = null;
+    timer = undefined;
     if (!ctx || !started) return;
     while (nextT < ctx.currentTime + 0.35) nextT += scheduleStep(nextT);
     timer = setTimeout(loop, 90);
   }
-  function fade(to, sec = 1.2) {
-    if (!ctx) return;
+  function fade(to: number, sec = 1.2) {
+    if (!ctx || !master) return; // construits ensemble par build()
     const g = master.gain,
       t = ctx.currentTime;
     g.cancelScheduledValues(t);
@@ -277,7 +302,7 @@
   }
   const level = () => 1.1 * vol();
   function applyDuck() {
-    if (!ctx) return;
+    if (!ctx || !duckGain) return; // construits ensemble par build()
     const l = focusOn ? 0.06 : speaking ? 0.22 : 1;
     const g = duckGain.gain,
       t = ctx.currentTime;
@@ -295,14 +320,16 @@
     } catch (e) {}
   }
   function start() {
-    if (!enabled() || held || started || (typeof document !== 'undefined' && document.hidden) || !ensure()) return;
+    if (!enabled() || held || started || (typeof document !== 'undefined' && document.hidden)) return;
+    const ac = ensure();
+    if (!ac) return;
     resumeCtx();
     started = true;
     seed = 7 + key * 31 + (mood === 'calme' ? 1000 : 0);
     step = 0;
     bar = 0;
     newSection();
-    nextT = ctx.currentTime + 0.1;
+    nextT = ac.currentTime + 0.1;
     loop();
     fade(level(), 2.5);
   }
@@ -315,7 +342,7 @@
 
   M.music = {
     mood(m, subject) {
-      const k = KEYS[subject] ?? 0;
+      const k = KEYS[String(subject)] ?? 0;
       if (m === mood && k === key) return;
       const was = started;
       if (was) stop(0.6);
@@ -337,8 +364,9 @@
       else setTimeout(start, 300);
     },
     set(on) {
-      S() && S().set('music', !!on);
-      on ? start() : stop();
+      if (S()) S().set('music', !!on);
+      if (on) start();
+      else stop();
     },
     toggle() {
       this.set(!enabled());
@@ -346,7 +374,7 @@
     },
     on: enabled,
     volume(v) {
-      S() && S().set('musicVol', v);
+      if (S()) S().set('musicVol', v);
       if (started) fade(level(), 0.3);
     },
     /** Pendant la voix : musique à 20 %. */
@@ -363,9 +391,8 @@
     /** Rendu hors ligne (outil d'écoute) : tout est planifié d'avance dans un OfflineAudioContext. */
     render(offline, secs, m = 'jeu', subject) {
       mood = MOODS[m] ? m : 'jeu';
-      key = KEYS[subject] ?? 0;
-      build(offline);
-      master.gain.value = 1.1 * 0.5;
+      key = KEYS[String(subject)] ?? 0;
+      build(offline).gain.value = 1.1 * 0.5;
       seed = 7 + key * 31 + (mood === 'calme' ? 1000 : 0);
       step = 0;
       bar = 0;
@@ -387,8 +414,10 @@
     if (!ctx) return;
     if (document.hidden) {
       clearTimeout(timer);
-      timer = null;
-      ctx.suspend && ctx.suspend();
+      timer = undefined;
+      // Dans le navigateur, ctx est toujours le contexte en direct (render() ne sert qu'aux outils).
+      const live = ctx as AudioContext;
+      if (live.suspend) live.suspend();
     } else {
       resumeCtx();
       if (started) {
