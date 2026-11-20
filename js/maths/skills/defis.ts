@@ -3,6 +3,41 @@
    docs/hld/maths-problemes.md § 6) : mini-sudoku, balances mystères,
    Qui suis-je ?, compter l'argent (sans virgule, jamais ¢ et $ ensemble).
    ===================================================================== */
+
+/** Mini-sudoku : grille complète, cases cachées, case ❓ (rangée, colonne). */
+interface SudokuMeta {
+  g: number[][];
+  hide: number[];
+  qr: number;
+  qc: number;
+}
+/** Balance simple (n objets pareils = t, un objet vaut v). */
+interface BalOne {
+  n: number;
+  v: number;
+  t: number;
+}
+/** Deux balances (premier objet v, second w). */
+interface BalTwo {
+  v: number;
+  w: number;
+}
+/** Indice de « Qui suis-je ? » : vrai si le nombre le respecte. */
+type ClueFn = (x: number) => boolean;
+interface MoneyMeta {
+  /** Valeur de chaque pièce ou billet, dans l'ordre. */
+  steps: number[];
+  total: number;
+}
+interface QuestionExtras {
+  _sudoku?: SudokuMeta;
+  _bal?: BalOne | BalTwo;
+  _clues?: ClueFn[];
+  _cluesIncl?: ClueFn[];
+  _n?: number;
+  _money?: MoneyMeta;
+}
+
 (function () {
   'use strict';
   const M = window.M;
@@ -11,11 +46,11 @@
     pick = M.pick,
     shuffle = M.shuffle;
   const NB = ' ';
-  const T = (s) => (M.pb ? M.pb.typo(s) : s);
-  const css = (str) => {
+  const T = (s: string): string => (M.pb ? M.pb.typo(s) : s);
+  const css = (str: string) => {
     try {
       M.css(str);
-    } catch (e) {
+    } catch {
       /* hors navigateur */
     }
   };
@@ -78,7 +113,7 @@
     return g.map((r) => r.map((v) => sym[v]));
   }
   /** Candidats d'une case selon rangée, colonne et bloc 2 × 2 (cases visibles seulement). */
-  const cands = (g, hide, r, c) =>
+  const cands = (g: number[][], hide: Set<number>, r: number, c: number) =>
     [0, 1, 2, 3].filter((v) => {
       for (let k = 0; k < 4; k++) {
         if (!hide.has(r * 4 + k) && g[r][k] === v) return false;
@@ -89,7 +124,8 @@
       for (let i = br; i < br + 2; i++) for (let j = bc; j < bc + 2; j++) if (!hide.has(i * 4 + j) && g[i][j] === v) return false;
       return true;
     });
-  M.registerSkill({
+  type SudokuQ = QuestionOf<'choice'> & { _sudoku: SudokuMeta };
+  M.registerSkill<SudokuQ>({
     id: 'defi-sudoku',
     domain: D,
     title: 'Mini-sudoku',
@@ -109,13 +145,13 @@
         while (hide.size < extra + 1) hide.add(rnd(0, 15));
         const cs = cands(g, hide, qr, qc);
         if (cs.length !== 1 || cs[0] !== g[qr][qc]) continue;
-        const cell = (i) => {
+        const cell = (i: number) => {
           const r = Math.floor(i / 4),
             c = i % 4;
           return `<span class="df-cell ${r === 1 ? 'r1' : ''} ${c === 1 ? 'c1' : ''} ${i === qi ? 'q' : hide.has(i) ? 'e' : ''}">${i === qi ? '❓' : hide.has(i) ? '' : fr[g[r][c]][0]}</span>`;
         };
         const ans = g[qr][qc];
-        return {
+        const q: SudokuQ = {
           prompt: T(
             'Chaque fruit va <b>une seule fois</b> dans chaque rangée, chaque colonne et chaque carré. Quel fruit va dans la case ❓ ?',
           ),
@@ -132,6 +168,7 @@
           explain: `Il manque seulement ${fr[ans][0]} : les autres fruits sont déjà dans la rangée, la colonne ou le carré.`,
           _sudoku: { g, hide: [...hide], qr, qc },
         };
+        return q;
       }
       throw new Error('sudoku introuvable');
     },
@@ -147,9 +184,12 @@
      Balances mystères (objets de valeur inconnue)
      ================================================================== */
   const OBJ = ['🍎', '🍌', '🍐', '🧸', '⚽', '🎁'];
-  const pan = (l, r) =>
+  const pan = (l: string, r: number) =>
     `<div class="df-bal"><div class="df-pan">${l}</div><span class="df-eqs">=</span><div class="df-pan"><b>${r}</b></div></div>`;
-  M.registerSkill({
+  type BalQ =
+    | (QuestionOf<'number'> & { format: 'number'; _bal: BalOne })
+    | (QuestionOf<'steps'> & { format: 'steps'; steps: (QuestionOf<'number'> & StepExtras)[]; _bal: BalTwo });
+  M.registerSkill<BalQ>({
     id: 'defi-balances',
     domain: D,
     title: 'Les balances mystères',
@@ -209,17 +249,27 @@
       };
     },
     check(q) {
-      const b = q._bal;
       if (q.format === 'number') {
+        const b = q._bal;
         if (b.n * b.v !== b.t || q.answer !== b.v) return 'balance fausse';
-      } else if (q.steps[0].answer !== b.v || q.steps[1].answer !== b.w || b.v === b.w) return 'balances fausses';
+      } else {
+        const b = q._bal;
+        if (q.steps[0].answer !== b.v || q.steps[1].answer !== b.w || b.v === b.w) return 'balances fausses';
+      }
     },
   });
 
   /* ==================================================================
      Qui suis-je ? (indices sur un nombre < 100)
      ================================================================== */
-  M.registerSkill({
+  interface Clue {
+    t: string;
+    f: ClueFn;
+    /** Lecture inclusive des bornes (défaut : f). */
+    fi?: ClueFn;
+  }
+  type QuiQ = QuestionOf<'choice'> & { _clues: ClueFn[]; _cluesIncl: ClueFn[]; _n: number };
+  M.registerSkill<QuiQ>({
     id: 'defi-qui-suis-je',
     domain: D,
     title: 'Qui suis-je ?',
@@ -232,7 +282,7 @@
       const n = rnd(lvl === 0 ? 11 : 12, max);
       const d = Math.floor(n / 10),
         u = n % 10;
-      const clues = [
+      const clues: Clue[] = [
         { t: `Je suis ${n % 2 ? 'impair' : 'pair'}.`, f: (x) => x % 2 === n % 2 },
         // « entre » : jamais de bornes parmi les choix (lecture inclusive ou exclusive → même réponse)
         {
@@ -250,15 +300,15 @@
             ? clues
             : (() => {
                 const k = n - rnd(1, 3);
-                return [clues[0], clues[1], { t: `Je suis plus grand que ${k}.`, f: (x) => x > k, fi: (x) => x >= k }];
+                return [clues[0], clues[1], { t: `Je suis plus grand que ${k}.`, f: (x: number) => x > k, fi: (x: number) => x >= k }];
               })();
-      const ok = (x) => use.every((c) => c.f(x)) || use.every((c) => (c.fi || c.f)(x));
+      const ok = (x: number) => use.every((c) => c.f(x)) || use.every((c) => (c.fi || c.f)(x));
       const pool = shuffle(
         [n + 1, n - 1, n + 10, n - 10, n + 2, n - 2, u * 10 + d, n + 5].filter((x) => x > 0 && x <= 99 && x !== n && !ok(x)),
       );
       const opts = [...new Set([n, ...pool])].slice(0, 4);
       if (opts.length < 3) return this.gen({ lvl });
-      return {
+      const q: QuiQ = {
         prompt: T('Qui suis-je ? Lis les indices.'),
         format: 'choice',
         answer: n,
@@ -278,11 +328,12 @@
         _cluesIncl: use.map((c) => c.fi || c.f),
         _n: n,
       };
+      return q;
     },
     check(q) {
-      const good = q.choices.filter((c) => q._clues.every((f) => f(c.value)));
+      const good = q.choices.filter((c) => q._clues.every((f) => f(Number(c.value))));
       if (good.length !== 1 || good[0].value !== q._n) return `${good.length} choix respectent les indices`;
-      const incl = q.choices.filter((c) => q._cluesIncl.every((f) => f(c.value)));
+      const incl = q.choices.filter((c) => q._cluesIncl.every((f) => f(Number(c.value))));
       if (incl.length !== 1) return `${incl.length} choix respectent les indices (bornes incluses)`;
     },
   });
@@ -290,21 +341,21 @@
   /* ==================================================================
      L'argent : compter des pièces ou des billets (enrichissement)
      ================================================================== */
-  const COIN = {
+  const COIN: Record<number, { r: number; fill: string; ring?: string; txt: string }> = {
     5: { r: 21, fill: '#d9d9d9', txt: '5 ¢' },
     10: { r: 18, fill: '#e6e6e6', txt: '10 ¢' },
     25: { r: 24, fill: '#cfcfcf', txt: '25 ¢' },
     100: { r: 26, fill: '#e9b949', txt: '1 $' },
     200: { r: 28, fill: '#e9b949', ring: '#c7c7c7', txt: '2 $' },
   };
-  const BILL = { 5: '#7fb3e6', 10: '#b48ad6', 20: '#7cc79a' };
-  const coinSvg = (v) => {
+  const BILL: Record<number, string> = { 5: '#7fb3e6', 10: '#b48ad6', 20: '#7cc79a' };
+  const coinSvg = (v: number) => {
     const c = COIN[v];
     return `<svg viewBox="0 0 64 64" role="img" aria-label="${c.txt}"><circle cx="32" cy="32" r="${c.r + 3}" fill="${c.ring || c.fill}" stroke="#7a7466" stroke-width="2"/><circle cx="32" cy="32" r="${c.r - 2}" fill="${c.fill}"/><text x="32" y="38" text-anchor="middle" font-size="${c.r > 22 ? 15 : 13}" font-weight="900" fill="#2b2d42">${c.txt}</text></svg>`;
   };
-  const billSvg = (v) =>
+  const billSvg = (v: number) =>
     `<svg viewBox="0 0 110 60" role="img" aria-label="${v} $"><rect x="3" y="3" width="104" height="54" rx="6" fill="${BILL[v]}" stroke="#2b2d42" stroke-width="2"/><circle cx="55" cy="30" r="15" fill="#ffffffaa"/><text x="55" y="37" text-anchor="middle" font-size="20" font-weight="900" fill="#2b2d42">${v} $</text></svg>`;
-  M.registerSkill({
+  M.registerSkill<QuestionOf<'number'> & { _money: MoneyMeta }>({
     id: 'argent-compter',
     domain: D,
     title: "Compter l'argent",
@@ -315,7 +366,7 @@
     parentNote:
       'Pièces et billets génériques (pas de reproduction officielle). Pas de virgule : on compte soit des cents, soit des dollars entiers.',
     gen({ lvl }) {
-      let items, unit;
+      let items: (number | string)[], unit: string;
       if (lvl === 0) {
         const c = pick([5, 10, 100]);
         const n = rnd(2, c === 10 ? 8 : 9);
@@ -342,8 +393,8 @@
         ];
         unit = '$';
       }
-      const val = (it) => (typeof it === 'string' ? +it.slice(1) : unit === '$' ? it / 100 : it);
-      const total = items.reduce((s, it) => s + val(it), 0);
+      const val = (it: number | string) => (typeof it === 'string' ? +it.slice(1) : unit === '$' ? it / 100 : it);
+      const total = items.reduce<number>((s, it) => s + val(it), 0);
       if (total >= 100 || (lvl === 2 && total > 50)) return this.gen({ lvl });
       const html = items.map((it) => (typeof it === 'string' ? billSvg(+it.slice(1)) : coinSvg(it))).join('');
       const steps = items.map(val);
@@ -359,7 +410,7 @@
           unit === '¢'
             ? `Compte par bonds : commence par les plus grosses valeurs.`
             : 'Commence par les billets, puis les pièces de 2 $, puis celles de 1 $.',
-        explain: `On compte par bonds : ${steps.reduce((acc, v, i) => (acc.push((i ? acc[i - 1] : 0) + v), acc), []).join(', ')}. Il y a ${total}${NB}${unit}.`,
+        explain: `On compte par bonds : ${steps.reduce<number[]>((acc, v, i) => (acc.push((i ? acc[i - 1] : 0) + v), acc), []).join(', ')}. Il y a ${total}${NB}${unit}.`,
         _money: { steps, total },
       };
     },

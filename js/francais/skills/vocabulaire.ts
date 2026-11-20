@@ -9,8 +9,8 @@
   const D = 'fr-vocabulaire';
   const ABC = 'abcdefghijklmnopqrstuvwxyz'.split('');
   const VOY = ['a', 'e', 'i', 'o', 'u', 'y'];
-  const first = (w) => w.normalize('NFD').charAt(0).toLowerCase();
-  const BIGL = (l) => `<span class="fr-big" style="font-size:2rem">${l}</span>`;
+  const first = (w: string) => w.normalize('NFD').charAt(0).toLowerCase();
+  const BIGL = (l: string) => `<span class="fr-big" style="font-size:2rem">${l}</span>`;
 
   /* ---------------- 🔤 L'ordre alphabétique ---------------- */
   M.registerSkill({
@@ -62,7 +62,7 @@
       }
       const n = lvl === 2 ? 5 : 3;
       const pool = M.shuffle(FR.mots((m) => m.em && m.cls === 'nom' && /^[a-zéèêàâîôûœ]/.test(m.w)));
-      const picked = [];
+      const picked: FrMot[] = [];
       for (const m of pool) {
         if (picked.length >= n) break;
         if (!picked.some((x) => first(x.w) === first(m.w))) picked.push(m);
@@ -79,7 +79,7 @@
     },
     check(q) {
       if (q.format === 'order') {
-        const f = q.choices.map((c) => first(c.value));
+        const f = q.choices.map((c) => first(String(c.value)));
         if (new Set(f).size !== f.length) return 'premières lettres en double';
       }
     },
@@ -146,7 +146,7 @@
       };
     },
     check(q) {
-      const vals = q.choices ? q.choices.map((c) => c.value) : q.items.map((i) => i.label);
+      const vals = 'choices' in q && q.choices ? q.choices.map((c) => c.value) : 'items' in q ? q.items.map((i) => i.label) : [];
       if (!FR.uniqueNorm(vals)) return 'mots en double';
     },
   });

@@ -23,7 +23,7 @@
     /* hors navigateur */
   }
 
-  const DEFIS = {
+  const DEFIS: Record<string, string> = {
     vue: 'Regarde par la fenêtre : nomme 3 couleurs que tu vois. Tes <b>yeux</b> travaillent !',
     ouie: "Ferme les yeux 10 secondes, sans parler. Qu'est-ce que tu entends ? Tes <b>oreilles</b> travaillent !",
     odorat: 'Avec un adulte, sens une orange, puis du savon, les yeux fermés. Lequel est lequel ? Ton <b>nez</b> travaille !',
@@ -72,10 +72,10 @@
           intro: 'Dormir assez, bouger, bien manger et se laver les mains aident le corps à grandir et à rester en forme.',
           body: '<div class="sc-hab-quiz"></div>',
         })}`;
-      const $ = (s) => M.$(s, el);
+      const $ = <E extends Element = HTMLElement>(s: string): E => M.$<E>(s, el)!; // élément qu'on vient de rendre
 
       $('.sc-explore').onclick = (e) => {
-        const z = e.target.closest('[data-hot]');
+        const z = M.closest(e, '[data-hot]');
         if (!z) return;
         const id = z.dataset.hot,
           p = SC.CORPS.find((x) => x.id === id);
@@ -87,9 +87,12 @@
         }
       };
       $('.sc-sens').onclick = (e) => {
-        const b = e.target.closest('.sc-tile');
+        const b = M.closest(e, '.sc-tile');
         if (!b) return;
-        const s = SC.SENS.find((x) => x.id === b.dataset.id);
+        const s = SC.must(
+          SC.SENS.find((x) => x.id === b.dataset.id),
+          'sens ' + b.dataset.id,
+        );
         M.$$('.sc-sens .sc-tile', el).forEach((x) => x.classList.toggle('on', x === b));
         M.sfx.tap();
         $('.sc-sens-defi').innerHTML = `${s.icon} <b>${SC.cap(s.sens)}</b> (${s.organe}) : ${DEFIS[s.id]}`;

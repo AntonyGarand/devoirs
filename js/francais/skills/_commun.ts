@@ -10,10 +10,73 @@
      dictee(…)             : question de dictée (audio mot – phrase – mot)
      sceneHtml             : petite scène emoji (sur / sous / dans / à côté de)
    ===================================================================== */
+
+/** Mot de la banque dont les champs K sont présents (FR.mots avec un prédicat-garde). */
+type FrMotWith<K extends keyof FrMot> = FrMot & { [P in K]-?: NonNullable<FrMot[P]> };
+type FrPosition = 'debut' | 'milieu' | 'fin';
+/** Options de FR.dictee. */
+interface FrDicteeOpts {
+  /** Phrase lue entre deux lectures du mot. */
+  phrase?: string | null;
+  prompt?: string;
+  prefix?: string;
+  hint?: string;
+  explain?: string;
+  caseSensitive?: boolean | 'first';
+  keyboard?: 'accents' | 'full' | 'none';
+}
+interface FrancaisApi {
+  /** Normalisation : NFC, apostrophe droite, minuscules. */
+  norm(s: string | number): string;
+  realSet(): Set<string>;
+  isReal(w: string | number): boolean;
+  homophonesOf(w: string): string[];
+  isHomophone(w: string): boolean;
+  /** Toutes les fautes candidates (une seule transformation chacune), par ordre de préférence. */
+  fautesAll(w: string, extra?: string[]): string[];
+  /** n fautes plausibles, jamais un vrai mot (noEr : aucune faute qui touche une finale é / er / ez). */
+  fautes(w: string, n?: number, opts?: { exclude?: string[]; noEr?: boolean }): string[];
+  settle(skillId: string): void;
+  track(skillId: string, key: string | number): void;
+  /** Choix pondéré (ratés et jamais vus d'abord), noté « en attente » (clé : m.w par défaut). */
+  pickMot<T extends { w: string }>(skillId: string, pool: readonly T[]): T;
+  pickMot<T>(skillId: string, pool: readonly T[], keyFn: (m: T) => string): T;
+  /** Mots de la banque qui satisfont pred (un prédicat-garde précise le type). */
+  mots<T extends FrMot>(pred: (m: FrMot) => m is T): T[];
+  mots(pred: (m: FrMot) => unknown): FrMot[];
+  esc(s: string | number): string;
+  b(w: string | number): string;
+  q(w: string): string;
+  /** Choix texte (value = libellé) mélangés, lus si sayIt. */
+  choices<V extends string>(arr: readonly V[], sayIt?: boolean): Choice<V>[];
+  uniqueNorm(arr: readonly (string | number)[]): boolean;
+  un(m: FrMot): 'un' | 'une';
+  elide(w: string): boolean;
+  le(m: FrMot): string;
+  plur(m: FrMot): string;
+  fem(m: FrMot): string | undefined;
+  motTip(m: FrMot | null | undefined): string;
+  motHtml(m: FrMot): string;
+  dictee(w: string, opts?: FrDicteeOpts): QuestionOf<'text'>;
+  letterTiles(w: string, k?: number): { tiles: string[]; answer: string[] };
+  sceneHtml(suj: FrSceneSujet, rel: FrSceneRelation, obj: FrSceneObjet): string;
+  /** Le son id (erreur s'il est inconnu). */
+  getSon(id: string): FrSon;
+  sonRef(id: string): string;
+  sonCard(id: string): string;
+  sonSay(id: string): string;
+  hasSon(m: FrMot, id: string): boolean;
+  hasNear(m: FrMot, id: string): boolean;
+  letterIdx(m: FrMotWith<'gr'>, id: string): number[];
+  grHtml(m: FrMotWith<'gr'>, id: string): string;
+  position(m: FrMotWith<'gr'>, id: string): FrPosition | null;
+  checkChoices(q: Question): string | undefined;
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  const FR = (M.FR = M.FR || {});
+  const FR = (M.FR = M.FR || ({} as FrancaisApi));
 
   try {
     M.css(`
@@ -46,9 +109,9 @@
   } catch (e) {}
 
   /* ---------------- Normalisation et mots réels ---------------- */
-  const norm = (s) => String(s).normalize('NFC').replace(/[’`]/g, "'").trim().toLocaleLowerCase('fr-CA');
+  const norm = (s: string | number): string => String(s).normalize('NFC').replace(/[’`]/g, "'").trim().toLocaleLowerCase('fr-CA');
   FR.norm = norm;
-  let REAL = null;
+  let REAL: Set<string> | null = null;
   /** Mots courants (homophones et quasi-homophones fréquents) absents de la banque : jamais proposés comme faute. */
   const VRAIS_MOTS = (
     'sens sent sang cent sans penser pensé panser pansé pense panse danse dense chair cher chère chaire pré prés près prêt ' +
@@ -65,8 +128,8 @@
     .filter(Boolean);
   FR.realSet = () => {
     if (REAL) return REAL;
-    REAL = new Set();
-    const add = (w) => w && REAL.add(norm(w));
+    const real = (REAL = new Set<string>());
+    const add = (w: string | undefined) => w && real.add(norm(w));
     (FR.MOTS || []).forEach((m) => {
       add(m.w);
       add(m.fem);
@@ -83,7 +146,7 @@
     (FR.REELS || []).forEach(add);
     // formes des verbes en -er de la banque (arriver → arrive, arrivez, arrivé, arrivée…) : jamais proposées comme faute
     (FR.MOTS || [])
-      .filter((m) => m.cls === 'v' && /er$/.test(m.w))
+      .filter((m) => m.c === 'v' && m.w.endsWith('er'))
       .forEach((m) => {
         const r = m.w.slice(0, -2);
         [
@@ -110,7 +173,7 @@
         ].forEach((t) => add(r + t));
       });
     VRAIS_MOTS.forEach(add);
-    return REAL;
+    return real;
   };
   FR.isReal = (w) => FR.realSet().has(norm(w));
   FR.homophonesOf = (w) => {
@@ -120,18 +183,17 @@
   FR.isHomophone = (w) => FR.homophonesOf(w).length > 0;
 
   /* ---------------- Fautes plausibles ---------------- */
-  const V = 'aeiouyéèêàâîôûœ';
   // [regex, remplacements] — ordre de préférence (même son d'abord)
   // Les « lookbehind » (?<…) n'existent qu'à partir de Safari 16.4 : construits à l'exécution, ignorés si non pris en charge
   // (une regex littérale ferait échouer tout le fichier sur un vieil iPad).
-  const R = (src) => {
+  const R = (src: string): RegExp | null => {
     try {
       return new RegExp(src, 'g');
     } catch (e) {
       return null;
     }
   };
-  const RULES = [
+  const RULES_ALL: [RegExp | null, string[]][] = [
     [/eau/g, ['au', 'o']],
     [R('(?<!e)au'), ['o', 'eau']],
     [R('(?<![aeoué])o(?![nmiuy])'), ['au']],
@@ -180,12 +242,13 @@
     [/î/g, ['i']],
     [/ç/g, ['c']],
     [R('(?<=[^aeiouy])e$'), ['']],
-  ].filter((r) => r[0]);
+  ];
+  const RULES = RULES_ALL.filter((r): r is [RegExp, string[]] => !!r[0]);
   /** Toutes les fautes candidates (une seule transformation chacune), par ordre de préférence. */
   FR.fautesAll = function (w, extra = []) {
-    const out = [];
+    const out: string[] = [];
     const low = w;
-    const push = (x) => {
+    const push = (x: string) => {
       if (x && x !== w && !out.includes(x)) out.push(x);
     };
     // lettre muette finale connue (mots.js)
@@ -206,7 +269,7 @@
     return out.filter((x) => x.length >= 2 && !/^\s|\s$|''|--/.test(x));
   };
   /** Finale en [é] écrite é / ée / és / er / ez (pas encore enseignée en début de 2e année). */
-  const FIN_E = (x) => (/(ées|ée|és|é|er|ez)$/.exec(norm(x)) || [''])[0];
+  const FIN_E = (x: string) => (/(ées|ée|és|é|er|ez)$/.exec(norm(x)) || [''])[0];
   /** n fautes plausibles, toutes différentes du mot et entre elles, jamais un vrai mot.
       noEr : aucune faute qui change une finale é / er / ez (ni qui en crée une). */
   FR.fautes = function (w, n = 2, { exclude = [], noEr = false } = {}) {
@@ -214,7 +277,7 @@
     const ok = FR.fautesAll(w).filter((x) => !bad.has(norm(x)) && !FR.isReal(x) && (!noEr || FIN_E(x) === FIN_E(w)));
     // préférer les premières (même son), avec un peu de hasard
     const top = M.shuffle(ok.slice(0, Math.max(n + 2, 4)));
-    const res = [];
+    const res: string[] = [];
     for (const x of top.concat(ok)) {
       if (res.length >= n) break;
       if (!res.some((y) => norm(y) === norm(x))) res.push(x);
@@ -223,7 +286,7 @@
   };
 
   /* ---------------- Progression par mot (résultat lu au prochain gen) ---------------- */
-  const PENDING = {};
+  const PENDING: Record<string, { key: string | number; n: number }> = {};
   FR.settle = (skillId) => {
     const pend = PENDING[skillId];
     if (!pend) return;
@@ -236,15 +299,24 @@
     PENDING[skillId] = { key, n: s ? s.n : 0 };
   };
   /** Choisit un mot (pondéré : ratés et jamais vus d'abord) et le note comme « en attente ». */
-  FR.pickMot = (skillId, pool, keyFn = (m) => m.w) => {
+  const wOf = (m: unknown): string => (typeof m === 'object' && m !== null && 'w' in m ? String(m.w) : String(m));
+  function pickMot<T extends { w: string }>(skillId: string, pool: readonly T[]): T;
+  function pickMot<T>(skillId: string, pool: readonly T[], keyFn: (m: T) => string): T;
+  function pickMot<T>(skillId: string, pool: readonly T[], keyFn: (m: T) => string = wOf): T {
     FR.settle(skillId);
     const m = M.pickWeighted(pool, keyFn, skillId);
     FR.track(skillId, keyFn(m));
     return m;
-  };
+  }
+  FR.pickMot = pickMot;
 
   /* ---------------- Petits outils ---------------- */
-  FR.mots = (pred) => (FR.MOTS || []).filter(pred);
+  function mots<T extends FrMot>(pred: (m: FrMot) => m is T): T[];
+  function mots(pred: (m: FrMot) => unknown): FrMot[];
+  function mots(pred: (m: FrMot) => unknown): FrMot[] {
+    return (FR.MOTS || []).filter(pred);
+  }
+  FR.mots = mots;
   FR.esc = M.esc;
   FR.b = (w) => `<b>${M.esc(w)}</b>`;
   FR.q = (w) => `« ${w} »`;
@@ -264,7 +336,7 @@
     if (!m) return '';
     const tips = [];
     if (m.gr) {
-      const hard = m.gr.find((p) => p.g.length > 1 && p.s && FR.son && FR.son(p.s) && FR.son(p.s).multi);
+      const hard = m.gr.find((p) => p.g.length > 1 && p.s && FR.son && FR.son(p.s)?.multi);
       if (hard) tips.push(`On entend [${hard.s}] : ici, il s'écrit <b>${hard.g}</b>.`);
     }
     if (m.mu) tips.push(`Une lettre muette se cache à la fin : <b>${m.mu}</b>${m.why ? ` (on l'entend dans ${FR.q(m.why)})` : ''}.`);
@@ -282,7 +354,7 @@
    */
   FR.dictee = (w, opts = {}) => {
     const seq = opts.phrase ? [w, opts.phrase, w] : [w, w];
-    const q = {
+    const q: QuestionOf<'text'> = {
       prompt: opts.prompt || 'Écoute et écris le mot.',
       audio: { seq, pause: 900, autoplay: 'once' },
       format: 'text',
@@ -300,7 +372,7 @@
   FR.letterTiles = (w, k = 2) => {
     const letters = [...w];
     // une intruse ne doit jamais permettre d'écrire un autre vrai mot (ex. vert → vers)
-    const makesReal = (c) => letters.some((_, i) => FR.isReal(letters.slice(0, i).join('') + c + letters.slice(i + 1).join('')));
+    const makesReal = (c: string) => letters.some((_, i) => FR.isReal(letters.slice(0, i).join('') + c + letters.slice(i + 1).join('')));
     const pool = 'aeiouéèsntrlmpcdbfgv'.split('').filter((c) => !letters.includes(c) && !makesReal(c));
     const extra = M.shuffle(pool).slice(0, k);
     return { tiles: letters.concat(extra), answer: letters };
@@ -310,17 +382,22 @@
   FR.sceneHtml = (suj, rel, obj) =>
     `<span class="fr-scene" aria-label="${M.esc(suj.le + ' ' + rel.mot + ' ' + obj.le)}"><span class="s ${rel.id}">${suj.em}</span><span class="o">${obj.em}</span></span>`;
 
+  FR.getSon = (id) => {
+    const s = FR.son(id);
+    if (!s) throw new Error('son inconnu : ' + id);
+    return s;
+  };
   /** Mot-repère d'un son (jamais de son isolé à voix haute). */
   FR.sonRef = (id) => {
     const s = FR.son(id);
     return s ? `le son <b>${s.label}</b> comme dans <b>${s.repere}</b> ${s.em}` : id;
   };
   FR.sonCard = (id) => {
-    const s = FR.son(id);
+    const s = FR.getSon(id);
     return `<span class="fr-card-son"><span class="e">${s.em}</span>${s.label} comme dans <b>${s.repere}</b></span>`;
   };
   FR.sonSay = (id) => {
-    const s = FR.son(id);
+    const s = FR.getSon(id);
     return `le son de ${s.repere}`;
   };
   /** Le mot contient-il le son (ou un son proche) ? */
@@ -332,7 +409,7 @@
   };
   /** Indices des lettres qui font le son id. */
   FR.letterIdx = (m, id) => {
-    const out = [];
+    const out: number[] = [];
     let i = 0;
     m.gr.forEach((p) => {
       [...p.g].forEach(() => {
@@ -357,8 +434,8 @@
 
   /** Contrôle commun : aucune valeur de choix en double après normalisation; réponse présente. */
   FR.checkChoices = (q) => {
-    if (q.choices) {
-      const labels = q.choices.map((c) => norm(M.text ? String(c.value) : c.value));
+    if ('choices' in q && q.choices) {
+      const labels = q.choices.map((c) => norm(String(c.value)));
       if (new Set(labels).size !== labels.length) return 'choix en double après normalisation';
     }
   };

@@ -28,9 +28,10 @@
         })}
         ${M.ui.section({ icon: '🎵', title: 'Le chant « Touch your head »', intro: 'Écoute le chant, puis chante-le en faisant les gestes.', body: '<div class="en-ch"></div>' + M.ui.callout("Fais les gestes en même temps ! Ton corps t'aide à te souvenir des mots.", { tone: 'tip' }) })}
         ${M.ui.section({ icon: '✅', title: 'Vérifie ta compréhension', body: '<div class="en-mq"></div>' })}`;
-      const host = M.$('.en-bodyhost', el),
-        heard = M.$('.en-heard', el);
-      const show = (id) => {
+      const host = M.$('.en-bodyhost', el)!,
+        heard = M.$('.en-heard', el)!;
+      const show = (id: string | undefined): void => {
+        if (!id) return;
         const w = EN.word[id];
         if (!w) return;
         M.$$('[data-hot]', host).forEach((z) => z.classList.toggle('on', z.dataset.hot === id));
@@ -39,18 +40,18 @@
         M.say(w.word, { lang: LANG, raw: true });
       };
       host.onclick = (e) => {
-        const z = e.target.closest('[data-hot]');
+        const z = M.closest<SVGElement>(e, '[data-hot]');
         if (z) show(z.dataset.hot);
       };
-      M.$('.en-pairs', el).onclick = (e) => {
-        const b = e.target.closest('.en-pair');
+      M.$('.en-pairs', el)!.onclick = (e) => {
+        const b = M.closest(e, '.en-pair');
         if (b) show(b.dataset.part);
       };
       EN.mountChant(
-        M.$('.en-ch', el),
-        EN.CHANTS.find((c) => c.id === 'touch-head'),
+        M.$('.en-ch', el)!,
+        EN.CHANTS.find((c) => c.id === 'touch-head')!, // comptine de data/chants.ts
       );
-      M.ui.miniQuiz(M.$('.en-mq', el), [EN.quiz('en-corps', 0), EN.quiz('en-corps', 0), EN.quiz('en-corps', 1)]);
+      M.ui.miniQuiz(M.$('.en-mq', el)!, [EN.quiz('en-corps', 0), EN.quiz('en-corps', 0), EN.quiz('en-corps', 1)]);
       EN.voiceWarn(el);
     },
   });
@@ -81,7 +82,7 @@
         ${M.ui.section({ icon: '🎉', title: 'Les encouragements', intro: 'Quand tu réussis, on te dit :', body: `<div class="en-tiles">${M.ui.vocab(CHEERS.map(([e, en, fr]) => ({ emoji: e, word: en, say: en, lang: LANG, note: fr })))}</div>` })}
         ${M.ui.section({ icon: '🙋', title: 'Mes besoins', intro: 'Pour demander quelque chose en anglais :', body: EN.exprTiles(needs) + M.ui.callout("Tu ne comprends pas ? C'est normal ! Demande : " + M.ui.gloss('Can you repeat, please?', "Peux-tu répéter, s'il te plaît ?", { lang: LANG }), { tone: 'tip' }) })}
         ${M.ui.section({ icon: '🦫', title: 'Castor a dit…', intro: "Écoute la consigne et touche l'enfant qui la fait.", body: '<div class="en-mq"></div>' })}`;
-      M.ui.miniQuiz(M.$('.en-mq', el), [EN.quiz('en-actions', 0), EN.quiz('en-actions', 0), EN.quiz('en-actions', 1)], {
+      M.ui.miniQuiz(M.$('.en-mq', el)!, [EN.quiz('en-actions', 0), EN.quiz('en-actions', 0), EN.quiz('en-actions', 1)], {
         title: 'Castor a dit…',
       });
       EN.voiceWarn(el);

@@ -7,6 +7,32 @@
    M.EN.svg(name, opts)  → SVG brut (pour composer des scènes)
    M.EN.place(svg, x, y, w, h) → SVG imbriqué positionné
    ===================================================================== */
+
+/** Options des dessins d'anglais : couleur (recoloriable), partie du corps illuminée. */
+interface EnArtOpts extends ArtOpts {
+  color?: string;
+  part?: string;
+}
+/** Corps d'enfant (M.EN.bodySvg). */
+interface EnBodyOpts {
+  /** Zone illuminée. */
+  highlight?: string;
+  /** Zones actives (une zone inactive se fond dans sa zone « parent »). */
+  zones?: string[];
+  /** Parents qui absorbent leurs sous-zones. */
+  fold?: string[];
+  glow?: boolean;
+}
+
+interface EnglishApi {
+  /** SVG brut d'un dessin (pour composer des scènes). */
+  svg(name: string, opts?: EnArtOpts): string;
+  /** SVG imbriqué positionné. */
+  place(svg: string, x: number, y: number, w: number, h: number): string;
+  /** Corps d'enfant de face, zones data-hot. */
+  bodySvg(o?: EnBodyOpts): string;
+}
+
 (function () {
   'use strict';
   const M = window.M;
@@ -14,16 +40,16 @@
   const INK = '#2b2d42',
     SKIN = '#ffd3a8',
     SKIN_D = '#e9b48a';
-  const hex = (c) => EN.hex(c);
-  const dk = (c, k = -0.3) => EN.shade(hex(c), k);
-  const lt = (c, k = 0.45) => EN.shade(hex(c), k);
-  const strokeFor = (c) => (hex(c).toLowerCase() === '#ffffff' ? '#9aa0a6' : dk(c, -0.35));
-  const svg = (vb, body, label = '') =>
+  const hex = (c: string | undefined): string => EN.hex(c);
+  const dk = (c: string, k = -0.3): string => EN.shade(hex(c), k);
+  const strokeFor = (c: string): string => (hex(c).toLowerCase() === '#ffffff' ? '#9aa0a6' : dk(c, -0.35));
+  const svg = (vb: string, body: string, label = ''): string =>
     `<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg"${label ? ` role="img" aria-label="${M.esc(label)}"` : ''}>${body}</svg>`;
 
-  const RAW = {};
+  type Draw = (o: EnArtOpts) => string;
+  const RAW: Record<string, Draw> = {};
   /** Enregistre un dessin à la fois dans M.art (partagé) et en brut (scènes). */
-  const reg = (name, fn, emoji) => {
+  const reg = (name: string, fn: Draw, emoji?: string): void => {
     RAW[name] = fn;
     M.art.register(name, fn, emoji);
   };
@@ -64,9 +90,9 @@
   );
 
   const mitten = (
-    c,
-    s,
-  ) => `<ellipse cx="12" cy="52" rx="8" ry="13" transform="rotate(-25 12 52)" fill="${c}" stroke="${s}" stroke-width="3"/>
+    c: string,
+    s: string,
+  ): string => `<ellipse cx="12" cy="52" rx="8" ry="13" transform="rotate(-25 12 52)" fill="${c}" stroke="${s}" stroke-width="3"/>
     <path d="M14 82 L14 38 Q14 14 30 14 Q46 14 46 38 L46 82 Z" fill="${c}" stroke="${s}" stroke-width="3"/>
     <rect x="11" y="76" width="38" height="18" rx="6" fill="#fff" stroke="#b8bcc4" stroke-width="3"/>
     <path d="M22 50 l4 4 l4 -4 l4 4 l4 -4" stroke="#fff" stroke-width="3" fill="none" opacity=".8"/>`;
@@ -242,8 +268,21 @@
 
   /* ------------------------------ poses (consignes d'action) ------------------------------ */
   /** Bonhomme : tête, tronc, bras et jambes à partir de points; extra = décor. */
-  function kid(p, extra = '', under = '') {
-    const line = (pts, w, c) =>
+  type Pt = [number, number];
+  interface Pose {
+    head: Pt;
+    neck: Pt;
+    hip: Pt;
+    shoulder?: Pt;
+    armL: Pt[];
+    armR: Pt[];
+    legL: Pt[];
+    legR: Pt[];
+    /** Yeux fermés. */
+    closed?: boolean;
+  }
+  function kid(p: Pose, extra = '', under = ''): string {
+    const line = (pts: Pt[], w: number, c: string): string =>
       `<polyline points="${pts.map((q) => q.join(',')).join(' ')}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
     const sh = p.shoulder || [p.neck[0], p.neck[1] + 4];
     return svg(
@@ -262,7 +301,7 @@
     );
   }
   const ground = '<line x1="6" y1="114" x2="94" y2="114" stroke="#c7c2b4" stroke-width="3" stroke-linecap="round"/>';
-  const STAND = {
+  const STAND: Pose = {
     head: [50, 22],
     neck: [50, 34],
     hip: [50, 72],
@@ -283,7 +322,7 @@
       [55, 110],
     ],
   };
-  const POSES = {
+  const POSES: Record<string, () => string> = {
     'stand-up': () =>
       kid(
         STAND,
@@ -490,7 +529,7 @@
     const hl = o.highlight || '';
     // zones actives (o.zones) : une zone inactive se fond dans sa zone « parent » (nez → tête);
     // o.fold : parents qui absorbent leurs sous-zones (si on demande « head », toucher le nez compte).
-    const PARENT = {
+    const PARENT: Record<string, string> = {
       eyes: 'head',
       nose: 'head',
       mouth: 'head',
@@ -502,7 +541,7 @@
     };
     const act = o.zones ? new Set(o.zones) : null,
       fold = o.fold || [];
-    const hot = (id) => {
+    const hot = (id: string): string | null => {
       const p = PARENT[id];
       if (!act) return fold.includes(p) ? p : id;
       if (p && fold.includes(p) && act.has(p)) return p;
@@ -510,7 +549,7 @@
       return p && act.has(p) ? p : null;
     };
     const glow = o.glow ? ' style="filter:drop-shadow(0 0 9px #ffb703) drop-shadow(0 0 4px #ffb703)"' : '';
-    const H = (id) => {
+    const H = (id: string): string => {
       const h = hot(id);
       return (h ? `data-hot="${h}"` : '') + (hl === id ? ` class="on"${glow}` : '');
     };

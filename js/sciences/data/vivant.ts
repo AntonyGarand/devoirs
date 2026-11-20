@@ -4,10 +4,111 @@
    Formulations validées : chrysalide (pas « cocon ») pour le monarque; la plante
    ne « mange » pas la terre (elle y puise de l'eau et des minéraux).
    ===================================================================== */
+
+/** Énoncé vrai / faux. */
+interface ScVf {
+  t: string;
+  v: boolean;
+  /** Explication. */
+  e: string;
+  /** Pour le niveau 0. */
+  facile?: boolean;
+}
+interface ScPartiePlante {
+  id: string;
+  nom: string;
+  label: string;
+  role: string;
+  court: string;
+  /** Nom au pluriel. */
+  pl: boolean;
+  /** Fruit, graine : au-delà des 4 parties de base. */
+  extra?: boolean;
+}
+interface ScLegume {
+  id: string;
+  nom: string;
+  label: string;
+  /** Id de la partie de la plante. */
+  p: string;
+  facile?: boolean;
+}
+interface ScBesoin {
+  id: string;
+  label: string;
+  /** Niveau minimal. */
+  lvl?: number;
+}
+interface ScPot {
+  id: string;
+  /** 0 rien · 1 un peu · 2 juste assez · 3 trop. */
+  eau: number;
+  /** 0 placard · 1 ombre · 2 fenêtre. */
+  lum: number;
+  texte: string;
+  best?: boolean;
+  why?: string;
+}
+/** Étape dessinée dans un cycle (M.SC.mountCycle; art = dessin si l'emoji n'existe pas). */
+interface ScCycleStage {
+  emoji: string;
+  art?: string;
+  label: string;
+  recent?: boolean;
+}
+/** Stade d'un cycle de vie. */
+interface ScStade extends ScCycleStage {
+  id: string;
+  texte: string;
+}
+interface ScCycle {
+  titre: string;
+  icon: string;
+  stades: ScStade[];
+}
+interface ScSens {
+  id: string;
+  sens: string;
+  organe: string;
+  icon: string;
+  label: string;
+}
+interface ScApi {
+  PARTIES_PLANTE: ScPartiePlante[];
+  LEGUMES_PARTIE: ScLegume[];
+  PLANTE_PARTIES_VF: ScVf[];
+  BESOINS_PLANTE: { oui: ScBesoin[]; non: ScBesoin[] };
+  BESOINS_ANIMAL: { oui: ScBesoin[]; non: ScBesoin[] };
+  POTS: ScPot[];
+  PLANTE_VF: ScVf[];
+  CYCLES: Record<string, ScCycle>;
+  /** a : adulte, e : emoji de l'adulte, b : bébé. */
+  BEBES: { a: string; e: string; b: string }[];
+  CYCLES_VF: ScVf[];
+  CORPS: { id: string; nom: string; label: string }[];
+  /** left : partie du corps, right : fonction. */
+  FONCTIONS: { id: string; left: string; right: string }[];
+  HABITUDES: { saine: string[]; pas: string[] };
+  SENS: ScSens[];
+  /** t : situation, a : id du sens, audio : son à écouter. */
+  SENS_Q: { t: string; a: string; audio?: string }[];
+  SENS_MULTI: { t: string; choix: string[]; a: string[]; e: string }[];
+  SENS_VERBE: Record<string, string>;
+  PRODUITS: { id: string; produit: string; origine: string; oLabel: string }[];
+  RECETTES: { id: string; titre: string; etapes: string[] }[];
+  NATUREL: string[];
+  FABRIQUE: string[];
+  /** piege : réponse contre-intuitive. */
+  VIVANT: { l: string; piege?: boolean }[];
+  NON_VIVANT: { l: string; piege?: boolean }[];
+  /** o : objet, b : besoin à l'origine. */
+  OBJETS_BESOIN: { o: string; b: string }[];
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  const SC = (M.SC = M.SC || {});
+  const SC = (M.SC = M.SC || ({} as ScApi));
 
   /* ---- Plante : parties et rôles ---- */
   SC.PARTIES_PLANTE = [

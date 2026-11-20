@@ -6,6 +6,31 @@
      EN.dialog(lines)           bulles de dialogue (🔊 par réplique, ▶ tout le dialogue)
      EN.quiz(skillId, lvl)      question de miniQuiz générée par une habileté
    ===================================================================== */
+
+/** Réplique d'un dialogue (M.EN.dialog) : qui parle (emoji), texte, sens, voix (pitch), bulle à droite. */
+interface EnDialogLine {
+  who: string;
+  name?: string;
+  en: string;
+  fr?: string;
+  pitch?: number;
+  right?: boolean;
+}
+
+interface EnglishApi {
+  /** Tuiles M.ui.vocab (image + mot + sens) lues en anglais. */
+  tiles(words: EnWord[], size?: number): string;
+  exprTiles(xs: EnExpr[]): string;
+  /** Question de miniQuiz générée par une habileté. */
+  quiz(skillId: string, lvl?: number): () => Question;
+  /** Comptine : 🔊 / 🐢, vers par vers, mots touchables. */
+  mountChant(el: HTMLElement, ch: EnChant): void;
+  /** Bulles de dialogue (🔊 par réplique, ▶ tout le dialogue : voir bindDialog). */
+  dialog(lines: EnDialogLine[], opts?: { id?: string }): string;
+  /** Branche le bouton ▶ d'un dialogue (deux hauteurs de voix). */
+  bindDialog(el: HTMLElement, lines: Pick<EnDialogLine, 'en' | 'pitch' | 'right'>[], id?: string): void;
+}
+
 (function () {
   'use strict';
   const M = window.M;
@@ -35,7 +60,7 @@
 
   /** Comptine : en-tête (🔊 normal, 🐢 lent), vers numérotés avec image, 🔊 par vers, mot lu au toucher. */
   EN.mountChant = (el, ch) => {
-    const words = (s) =>
+    const words = (s: string): string =>
       s
         .split(/(\s+)/)
         .map((w) => (/\s/.test(w) || !w ? w : `<span class="rw">${M.esc(w)}</span>`))
@@ -44,15 +69,15 @@
       <button class="btn blue en-play">🔊 Écouter</button><button class="btn en-slow">🐢 Lentement</button></div>
       <ol lang="en">${ch.lines.map((l) => `<li><span class="g">${EN.picStr(l.g, 34)}</span><span>${words(l.en)}</span>${M.ui.speak(l.en, { lang: LANG })}</li>`).join('')}</ol>
       <div class="muted reading-tip">Touche un mot pour l'entendre. Dis chaque vers avec la voix !</div></div>`;
-    const segs = (rate) => ch.lines.map((l) => ({ text: l.en, lang: LANG, raw: true, rate }));
+    const segs = (rate?: number): SaySegment[] => ch.lines.map((l) => ({ text: l.en, lang: LANG, raw: true, rate }));
     el.onclick = (e) => {
-      if (e.target.closest('.en-play')) return M.say(segs(), { pause: 450 });
-      if (e.target.closest('.en-slow')) return M.say(segs(0.6), { pause: 650 });
-      const w = e.target.closest('.rw');
+      if (M.closest(e, '.en-play')) return M.say(segs(), { pause: 450 });
+      if (M.closest(e, '.en-slow')) return M.say(segs(0.6), { pause: 650 });
+      const w = M.closest(e, '.rw');
       if (w) {
         M.$$('.rw.on', el).forEach((x) => x.classList.remove('on'));
         w.classList.add('on');
-        M.say(w.textContent.replace(/[.,!?;:«»"()…]/g, ''), { lang: LANG, raw: true });
+        M.say((w.textContent || '').replace(/[.,!?;:«»"()…]/g, ''), { lang: LANG, raw: true });
       }
     };
   };
@@ -98,7 +123,7 @@
         ${M.ui.section({ icon: '🤝', title: 'Les mots amis', body: M.ui.callout('Certains mots anglais ressemblent au français ! Ce sont des <b>mots amis</b>. Écoute-les : tu les comprends déjà.', { tone: 'tip' }) + `<div class="en-cog">${cognates.map((w) => `${EN.wordPic(w, 28)} ${M.ui.gloss(w.word, w.fr, { lang: LANG })}`).join(' ')}</div><p class="muted">Touche une fois pour écouter, une 2<sup>e</sup> fois pour voir le mot français.</p>` })}
         ${M.ui.section({ icon: '✅', title: 'Vérifie ta compréhension', body: '<div class="en-mq"></div>' })}`;
       M.ui.tabs(
-        M.$('.en-themes', el),
+        M.$('.en-themes', el)!,
         TABS.map(([t, label]) => ({
           id: t,
           label,
@@ -106,7 +131,7 @@
             const ws = EN.ofTheme(t, 2);
             panel.innerHTML = EN.tiles(ws) + '<h3>🃏 Cartes-éclair</h3><div class="en-fc"></div>';
             M.ui.flashcards(
-              M.$('.en-fc', panel),
+              M.$('.en-fc', panel)!,
               M.shuffle(ws).map((w) => ({
                 front: EN.wordPic(w, 96),
                 back: `<span lang="en">${M.esc(w.word)}</span><small style="font-size:1rem;color:var(--muted)">${M.esc(w.fr)}</small>`,
@@ -117,7 +142,7 @@
           },
         })),
       );
-      M.ui.miniQuiz(M.$('.en-mq', el), [EN.quiz('en-ecoute-image', 0), EN.quiz('en-couleurs', 0), EN.quiz('en-nombres', 0)]);
+      M.ui.miniQuiz(M.$('.en-mq', el)!, [EN.quiz('en-ecoute-image', 0), EN.quiz('en-couleurs', 0), EN.quiz('en-nombres', 0)]);
       EN.voiceWarn(el);
     },
   });

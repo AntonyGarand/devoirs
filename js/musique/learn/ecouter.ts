@@ -9,7 +9,7 @@
   const M = window.M;
   const MU = M.MU;
   if (!MU) return;
-  const COL = { A: '#3a86ff', B: '#f78c40' };
+  const COL: Record<string, string> = { A: '#3a86ff', B: '#f78c40' };
 
   M.registerLearn({
     id: 'mu-l-ecouter',
@@ -42,12 +42,13 @@
           body: `<div class="mu-gal mu-moods"></div><div class="callout mu-mood-txt" style="margin-top:10px">Touche une musique ☝️</div><div class="mu-feel" style="margin-top:10px"></div>`,
         }) +
         M.ui.section({ icon: '✅', title: '4. Vérifie ta compréhension', body: '<div class="mu-quiz"></div>' });
-      const $ = (s) => M.$(s, el);
+      // éléments rendus juste au-dessus (el.innerHTML) : jamais null
+      const $ = <E extends Element = HTMLElement>(s: string) => M.$<E>(s, el)!;
 
       /* 1. formes */
       const A = MU.phrase({ inst: 'xylo', root: 67, notes: [0, 2, 4, 2, 0, 4, 7, 0] });
       const B = MU.phrase({ inst: 'flute', root: 62, rhythm: 'saute', notes: [7, 9, 7, 4, 2, 4, 2, 0] });
-      const len = (p) => p[p.length - 1].t + p[p.length - 1].dur + 0.45;
+      const len = (p: MuTimedEvent[]) => p[p.length - 1].t + p[p.length - 1].dur + 0.45;
       const FORMS = ['AB', 'ABA'];
       $('.mu-forms').innerHTML = FORMS.map(
         (f, i) =>
@@ -57,13 +58,13 @@
             .join('')}</div></div>`,
       ).join('');
       $('.mu-forms').onclick = async (e) => {
-        const b = e.target.closest('.mu-form-play');
+        const b = M.closest(e, '.mu-form-play');
         if (!b) return;
-        const f = FORMS[+b.dataset.i].split('');
-        const blocks = M.$$('.mu-blocks span', b.parentNode);
+        const f = FORMS[Number(b.dataset.i)].split('');
+        const blocks = M.$$('.mu-blocks span', b.parentNode!); // b est dans .mu-form-row
         let t = 0;
-        const evs = [],
-          starts = [];
+        const evs: MuEvent[] = [],
+          starts: number[] = [];
         f.forEach((l) => {
           starts.push(t);
           (l === 'A' ? A : B).forEach((e2) => evs.push({ ...e2, t: e2.t + t }));
@@ -91,24 +92,24 @@
           `<button class="mu-card" data-i="${i}"><span class="mu-big">${x.t.split(' ')[0]}</span><span>${x.t.replace(/^\S+ /, '')}</span></button>`,
       ).join('');
       $('.mu-qr').onclick = (e) => {
-        const b = e.target.closest('.mu-card');
+        const b = M.closest(e, '.mu-card');
         if (!b) return;
         M.$$('.mu-card', $('.mu-qr')).forEach((c) => c.classList.toggle('on', c === b));
-        MU.play(QR[+b.dataset.i].ev);
+        MU.play(QR[Number(b.dataset.i)].ev);
       };
 
       /* 3. caractère */
       const D = MU.MOODS;
-      $('.mu-moods').innerHTML = Object.keys(D)
+      $('.mu-moods').innerHTML = (Object.keys(D) as MuMood[]) // Object.keys est typé string[]
         .map(
           (k) =>
             `<button class="mu-card" data-k="${k}"><span class="mu-big">${D[k].icon}</span><span>Musique ${D[k].label}</span></button>`,
         )
         .join('');
       $('.mu-moods').onclick = (e) => {
-        const b = e.target.closest('.mu-card');
+        const b = M.closest(e, '.mu-card');
         if (!b) return;
-        const k = b.dataset.k;
+        const k = b.dataset.k as MuMood; // data-k : une clé de MU.MOODS (rendu ci-dessus)
         M.$$('.mu-card', $('.mu-moods')).forEach((c) => c.classList.toggle('on', c === b));
         MU.play(MU.piece(k));
         $('.mu-mood-txt').innerHTML = `Elle semble <b>${D[k].label}</b> ${D[k].icon} parce qu'${D[k].why}.`;

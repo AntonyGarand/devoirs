@@ -10,8 +10,8 @@
   const SC = M.SC;
   if (!SC) return;
 
-  const heure = (h) => (h === 0 || h === 24 ? 'minuit' : h === 12 ? 'midi' : h < 12 ? `${h} h du matin` : `${h} h`);
-  const moment = (h) =>
+  const heure = (h: number): string => (h === 0 || h === 24 ? 'minuit' : h === 12 ? 'midi' : h < 12 ? `${h} h du matin` : `${h} h`);
+  const moment = (h: number): { t: string; d: string } =>
     h === 6
       ? { t: '🌅 Le Soleil se lève', d: 'jour' }
       : h === 18
@@ -20,10 +20,10 @@
           ? { t: '🌞 Il fait jour', d: 'jour' }
           : { t: '🌙 Il fait nuit', d: 'nuit' };
   // Vu du pôle Nord, la Terre tourne dans le sens contraire des aiguilles d'une montre : à midi, la maison fait face au Soleil (à gauche).
-  const angleOf = (h) => 180 - (h - 12) * 15;
+  const angleOf = (h: number): number => 180 - (h - 12) * 15;
 
-  const shadowSvg = (h) => SC.svg.ombre({ h, arc: true, labels: true });
-  const erable = (id) => SC.svg.erable(id, { cls: 'sc-choice-fig sc-erable' });
+  const shadowSvg = (h: number): string => SC.svg.ombre({ h, arc: true, labels: true });
+  const erable = (id: string): string => SC.svg.erable(id, { cls: 'sc-choice-fig sc-erable' });
 
   M.registerLearn({
     id: 'sc-l-terre',
@@ -65,14 +65,14 @@
           body: '<div class="sc-te-tabs"></div>',
         }) +
         M.ui.section({ icon: '✅', title: '5. Vérifie ta compréhension', body: '<div class="sc-te-quiz"></div>' });
-      const $ = (s) => M.$(s, el);
+      const $ = <E extends Element = HTMLElement>(s: string): E => M.$<E>(s, el)!; // élément qu'on vient de rendre
 
       /* 1. rotation */
       // La Terre est dessinée une fois; ensuite on la fait seulement tourner (transition douce).
       $('.sc-te-earth').innerHTML =
         `<div class="sc-stage">${SC.svg.terre({ sunLeft: true, hot: false, houses: false, angle: angleOf(12) })}</div>`;
       let playing = false;
-      const showH = (h) => {
+      const showH = (h: number): void => {
         if (!playing) SC.earthAngle($('.sc-te-earth'), angleOf(h), true);
         const m = moment(h);
         $('.sc-te-txt').innerHTML = `<b>${SC.cap(heure(h))}</b> : ${m.t}.`;
@@ -119,7 +119,7 @@
         { value: 15, icon: '🕒', label: 'Après-midi' },
         { value: 17, icon: '🌇', label: 'Soir' },
       ];
-      const showSun = (h) => {
+      const showSun = (h: number): void => {
         $('.sc-te-tree').innerHTML = shadowSvg(h);
         $('.sc-te-sh').innerHTML =
           h === 12
@@ -131,9 +131,9 @@
 
       /* 3. astres */
       $('.sc-te-astres').onclick = (e) => {
-        const b = e.target.closest('.sc-tile');
+        const b = M.closest(e, '.sc-tile');
         if (!b) return;
-        const a = SC.ASTRES[+b.dataset.i];
+        const a = SC.ASTRES[Number(b.dataset.i)];
         M.$$('.sc-tile', $('.sc-te-astres')).forEach((x) => x.classList.toggle('on', x === b));
         $('.sc-te-astre').innerHTML = `<b>${a.label}</b> : ${a.type.toLowerCase()}. ${a.def}`;
         M.say(`${SC.plain(a.label)} : ${a.type}. ${a.def}`);

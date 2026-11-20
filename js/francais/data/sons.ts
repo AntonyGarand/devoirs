@@ -9,10 +9,29 @@
      regle   : régularité à dire à l'enfant
      confond : sons proches (jamais utilisés comme « non » pour ce son)
    ===================================================================== */
+
+/** Son du 1er cycle (M.FR.SONS). */
+interface FrSon {
+  id: string;
+  label: string;
+  repere: string;
+  em: string;
+  graphies: string[];
+  regle?: string;
+  /** Plusieurs graphies fréquentes. */
+  multi?: boolean;
+  confond?: string[];
+  voyelle?: boolean;
+}
+interface FrancaisApi {
+  SONS: FrSon[];
+  son(id: string): FrSon | undefined;
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  M.FR = M.FR || {};
+  M.FR = M.FR || ({} as FrancaisApi);
   M.FR.SONS = [
     { id: 'a', label: '[a]', repere: 'chat', em: '🐱', graphies: ['a', 'à', 'â'], voyelle: true },
     { id: 'i', label: '[i]', repere: 'lit', em: '🛏️', graphies: ['i', 'y', 'î'], voyelle: true },

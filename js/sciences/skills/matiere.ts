@@ -5,16 +5,46 @@
    Réutilisées par les pages Apprendre (eau, démarche).
    La prédiction (format predict) n'est jamais notée : seule la question check compte.
    ===================================================================== */
+
+/** Simulations (M.SC.sim) : dessinent dans el, puis animent; résolues à la fin. */
+interface ScSim {
+  /** Bac d'eau : l'objet flotte ou coule. */
+  bac(el: HTMLElement, o: ScObjet, opts?: { msg?: boolean }): Promise<void>;
+  /** Goutte d'eau : absorbée ou non. */
+  goutte(el: HTMLElement, o: ScObjet): Promise<void>;
+  /** Aimant en U qui descend vers l'objet. */
+  aimant(el: HTMLElement, o: ScObjet): Promise<void>;
+  /** Deux aimants droits (a, b : pôles face à face, 'N' ou 'S'). */
+  poles(el: HTMLElement, ab: { a: string; b: string }, opts?: { msg?: boolean }): Promise<void>;
+  /** Eau qui change d'état : bonhomme, congelateur, glacon, assiette, casserole. */
+  eau(el: HTMLElement, kind: string): Promise<void>;
+}
+interface ScApi {
+  sim: ScSim;
+}
+/** Expérience sur l'eau : prédiction (c : [valeur, libellé]), issue, question d'explication. */
+interface ScEauPred {
+  p: string;
+  c: [string, string][];
+  out: string;
+  check: { prompt: string; a: string; d: [string, string][] };
+  e: string;
+}
+
 (function () {
   'use strict';
   const M = window.M;
   const SC = M.SC;
   const Q = SC.Q;
   const cap = SC.cap;
-  const SIM = (SC.sim = SC.sim || {});
-  const lbl = (o) => SC.lbl(o);
-  const $ = (s, el) => el.querySelector(s);
-  const setT = (g, x, y, extra = '') => g && g.setAttribute('transform', `translate(${x} ${y})${extra}`);
+  const SIM = (SC.sim = SC.sim || ({} as ScSim));
+  const lbl = (o: ScObjet): string => SC.lbl(o);
+  /** Fiche d'un objet (erreur si l'id est inconnu). */
+  const obj = (id: string): ScObjet => SC.must(SC.objet(id), 'objet ' + id);
+  /** Élément d'une simulation qu'on vient de dessiner dans el. */
+  const $ = (s: string, el: ParentNode): Element => el.querySelector(s)!;
+  const setT = (g: Element | null, x: number, y: number, extra = ''): void | null =>
+    g && g.setAttribute('transform', `translate(${x} ${y})${extra}`);
 
   /* ================================================================ simulations */
   /** Bac d'eau : l'objet tombe et flotte (reste en surface) ou coule (va au fond). */
@@ -50,8 +80,8 @@
     if (o.absorbe) {
       await SC.tween(900, (t) => {
         d.setAttribute('transform', `translate(150 ${top}) scale(${1 - t})`);
-        wet.setAttribute('rx', 34 * t);
-        wet.setAttribute('ry', 16 * t);
+        wet.setAttribute('rx', String(34 * t));
+        wet.setAttribute('ry', String(16 * t));
       });
       $('.sc-msg', el).innerHTML = `🧽 L'eau entre dans ${o.nom} : ${SC.pron(o)} l'absorbe${o.nom.startsWith('les ') ? 'nt' : ''} !`;
     } else {
@@ -103,9 +133,9 @@
 
   /** Eau qui change : bonhomme, congélateur, glaçon, assiette, casserole. */
   SIM.eau = async function (el, kind) {
-    const svg = (inner) =>
+    const svg = (inner: string): string =>
       `<div class="sc-stage"><svg viewBox="0 0 300 200" class="sc-fig" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="200" rx="16" fill="#f6f1ff"/>${inner}</svg></div><div class="sc-msg"></div>`;
-    const msg = (h) => {
+    const msg = (h: string): void => {
       const m = $('.sc-msg', el);
       if (m) m.innerHTML = h;
     };
@@ -118,8 +148,8 @@
         f = $('.sc-flaque', el);
       await SC.tween(1600, (t) => {
         s.setAttribute('transform', `translate(150 172) scale(${1 - 0.85 * t}) translate(-150 -172)`);
-        f.setAttribute('rx', 10 + 60 * t);
-        f.setAttribute('ry', 3 + 7 * t);
+        f.setAttribute('rx', String(10 + 60 * t));
+        f.setAttribute('ry', String(3 + 7 * t));
       });
       return msg("☀️ Le bonhomme <b>fond</b> : la neige devient de l'eau liquide.");
     }
@@ -144,12 +174,12 @@
         w = $('.sc-eau', el);
       await SC.tween(1500, (t) => {
         const s = 44 * (1 - 0.9 * t);
-        i.setAttribute('width', s);
-        i.setAttribute('height', s);
-        i.setAttribute('x', 150 - s / 2);
-        i.setAttribute('y', 148 - s);
-        w.setAttribute('rx', 6 + 30 * t);
-        w.setAttribute('ry', 2 + 5 * t);
+        i.setAttribute('width', String(s));
+        i.setAttribute('height', String(s));
+        i.setAttribute('x', String(150 - s / 2));
+        i.setAttribute('y', String(148 - s));
+        w.setAttribute('rx', String(6 + 30 * t));
+        w.setAttribute('ry', String(2 + 5 * t));
       });
       return msg("✋ Le glaçon <b>fond</b> dans ta main : il devient de l'eau liquide.");
     }
@@ -160,8 +190,8 @@
       const w = $('.sc-eau', el),
         u = $('.sc-up', el);
       await SC.tween(1700, (t) => {
-        w.setAttribute('rx', 60 * (1 - t));
-        w.setAttribute('ry', 13 * (1 - t));
+        w.setAttribute('rx', String(60 * (1 - t)));
+        w.setAttribute('ry', String(13 * (1 - t)));
         u.setAttribute('opacity', String(Math.sin(t * Math.PI) * 0.8));
       });
       return msg("🌬️ L'eau a <b>disparu peu à peu</b> : elle s'est évaporée dans l'air, en vapeur invisible.");
@@ -189,7 +219,7 @@
 
   /* ================================================================ 10 */
   /** « De quel matériau… » : nom sans le matériau; exclus : cuillère, sac, règle, bocal (matériau variable). */
-  const MAT_NOM = {
+  const MAT_NOM: Record<string, string> = {
     canette: 'la canette',
     bille: 'la bille',
     crayon: 'le crayon à mine',
@@ -212,7 +242,7 @@
             ? M.pick(['absorbe', 'absorbe', 'texture'])
             : M.pick(['transp', 'transp', 'materiau', 'absorbe']);
       if (t === 'doux') {
-        const k = M.pick(['doux', 'rugueux']),
+        const k = M.pick(['doux', 'rugueux'] as const),
           autre = k === 'doux' ? 'rugueux' : 'doux';
         const good = M.pick(SC.objetsSurs('texture', k)),
           bad = Q.pickN(SC.objetsSurs('texture', autre), 2);
@@ -228,7 +258,7 @@
         };
       }
       if (t === 'texture') {
-        const items = [];
+        const items: ScItem[] = [];
         ['doux', 'rugueux'].forEach((k) =>
           Q.pickN(SC.objetsSurs('texture', k), 2).forEach((o) => items.push({ label: lbl(o), bin: k, key: o.id })),
         );
@@ -284,7 +314,7 @@
         };
       }
       if (t === 'transp') {
-        const items = [];
+        const items: ScItem[] = [];
         ['transparent', 'translucide', 'opaque'].forEach((k) =>
           Q.pickN(SC.objetsSurs('transp', k), 2).forEach((o) => items.push({ label: lbl(o), bin: k, key: o.id })),
         );
@@ -305,43 +335,46 @@
       // Nom qui ne dit pas le matériau (sinon la consigne donne la réponse); objets au matériau variable exclus.
       const o = M.pick(SC.objetsSurs('mat').filter((x) => !MAT_EXCLU.includes(x.id)));
       const nom = MAT_NOM[o.id] || o.nom;
+      const mat = SC.must(o.mat, 'matériau ' + o.id);
       const others = Q.pickN(
-        Object.keys(SC.MATERIAUX).filter((m) => m !== o.mat),
+        Object.keys(SC.MATERIAUX).filter((m) => m !== mat),
         2,
       );
-      const matMot = (m) => SC.plain(SC.MATERIAUX[m]).replace(/^(le |la |l')/i, '');
+      const matMot = (m: string): string => SC.plain(SC.MATERIAUX[m]).replace(/^(le |la |l')/i, '');
       return {
         prompt: `De quel <b>matériau</b> est fait${SC.fem(o) ? 'e' : ''} ${nom} ?`,
         format: 'choice',
-        answer: o.mat,
-        scene: [{ emoji: o.emoji && !o.recent ? o.emoji : '', art: o.emoji && !o.recent ? null : o.art, label: nom }],
-        choices: M.shuffle([o.mat, ...others]).map((m) => ({ label: SC.MATERIAUX[m], value: m })),
+        answer: mat,
+        scene: [{ emoji: o.emoji && !o.recent ? o.emoji : '', art: o.emoji && !o.recent ? undefined : (o.art ?? undefined), label: nom }],
+        choices: M.shuffle([mat, ...others]).map((m) => ({ label: SC.MATERIAUX[m], value: m })),
         hint: "Est-ce que ça vient d'un arbre ? Est-ce dur et froid comme une clé ? Est-ce que ça se plie comme un vêtement ?",
-        explain: `${cap(nom)} est fait${SC.fem(o) ? 'e' : ''} de <b>${matMot(o.mat)}</b>.`,
+        explain: `${cap(nom)} est fait${SC.fem(o) ? 'e' : ''} de <b>${matMot(mat)}</b>.`,
         _sc: { kind: 'mat', o: o.id },
       };
     },
     check(q) {
+      const sc = q._sc;
       const d = Q.dataOnce();
       if (d) return d;
-      if (q._sc === 'texture') return Q.checkSort(q, (k) => SC.objet(k).texture);
-      if (q._sc === 'transp') return Q.checkSort(q, (k) => SC.objet(k).transp);
-      if (q._sc && q._sc.kind === 'absorbe') {
-        const o = SC.objet(q._sc.o);
+      if (sc === 'texture') return Q.checkSort(q, (k) => obj(k).texture);
+      if (sc === 'transp') return Q.checkSort(q, (k) => obj(k).transp);
+      if (typeof sc === 'object' && sc.kind === 'absorbe') {
+        const o = obj(sc.o);
         if (o.absorbe === null) return 'objet ambigu';
-        return Q.checkOne(q.check, (v) => SC.objet(v).absorbe === true);
+        if (q.format !== 'predict' || !q.check) return 'question check manquante';
+        return Q.checkOne(q.check, (v) => obj(v).absorbe === true);
       }
-      if (q._sc && q._sc.kind === 'mat') {
+      if (typeof sc === 'object' && sc.kind === 'mat') {
         const nom = SC.plain(q.prompt);
         if (/métal|verre|bois|plastique|coton|aluminium|tissu/i.test(nom.replace(/matériau/, ''))) return 'la consigne nomme le matériau';
-        return Q.checkOne(q, (v) => SC.objet(q._sc.o).mat === v);
+        return Q.checkOne(q, (v) => obj(sc.o).mat === v);
       }
-      if (q._sc && q._sc.kind === 'doux') return Q.checkOne(q, (v) => SC.objet(v).texture === q._sc.k);
+      if (typeof sc === 'object' && sc.kind === 'doux') return Q.checkOne(q, (v) => obj(v).texture === sc.k);
     },
   });
 
   /* ================================================================ 11 */
-  const EAU_PRED = {
+  const EAU_PRED: Record<string, ScEauPred> = {
     bonhomme: {
       p: "Un bonhomme de neige reste au <b>soleil d'avril</b> tout l'après-midi. Que va-t-il arriver ?",
       c: [
@@ -433,7 +466,7 @@
       e: "L'eau qui bout devient de la <b>vapeur</b>, un gaz <b>invisible</b>. En se refroidissant dans l'air, la vapeur redevient de minuscules gouttes : c'est le petit nuage blanc. ⚠️ La chaleur, toujours avec un adulte !",
     },
   };
-  const eauPredict = (k) => {
+  const eauPredict = (k: string): QuestionOf<'predict'> => {
     const x = EAU_PRED[k];
     return {
       prompt: x.p,
@@ -551,14 +584,15 @@
       };
     },
     check(q) {
-      if (q._sc === 'sl') return Q.checkSort(q, (k) => (SC.SOLIDE.includes(k) ? 's' : SC.LIQUIDE.includes(k) ? 'l' : '?'));
-      if (q._sc && q._sc.kind === 'salee') return Q.checkOne(q, (v) => SC.EAU_SALEE.salee.includes(v));
+      const sc = q._sc;
+      if (sc === 'sl') return Q.checkSort(q, (k) => (SC.SOLIDE.includes(k) ? 's' : SC.LIQUIDE.includes(k) ? 'l' : '?'));
+      if (typeof sc === 'object' && sc.kind === 'salee') return Q.checkOne(q, (v) => SC.EAU_SALEE.salee.includes(v));
     },
   });
 
   /* ================================================================ 12 (enrichissement) */
   const OBVIOUS = ['bouchon', 'caillou', 'pomme', 'bille', 'plume', 'brique', 'pingpong', 'cle', 'clou'];
-  const WHY = {
+  const WHY: Record<string, { prompt: string; a: string; d: [string, string][]; hint: string; e: string }> = {
     orange: {
       prompt: "Pourquoi l'orange avec sa pelure flotte-t-elle ?",
       a: "Sa pelure est pleine de petites bulles d'air",
@@ -628,11 +662,11 @@
             : M.pick(['sort', 'pate', 'why']);
       if (t === 'quel') {
         const f = M.pick([true, false]);
-        const good = SC.objet(M.pick(OBVIOUS.filter((id) => SC.objet(id).float === f)));
+        const good = obj(M.pick(OBVIOUS.filter((id) => obj(id).float === f)));
         const bad = Q.pickN(
-          OBVIOUS.filter((id) => SC.objet(id).float !== f),
+          OBVIOUS.filter((id) => obj(id).float !== f),
           2,
-        ).map(SC.objet);
+        ).map((id) => obj(id));
         return {
           prompt: `Dans un bac d'eau, lequel va <b>${f ? 'flotter' : 'couler'}</b> ?`,
           format: 'choice',
@@ -651,10 +685,10 @@
         };
       }
       if (t === 'sort') {
-        const items = [];
-        const pool = (f) =>
+        const items: ScItem[] = [];
+        const pool = (f: boolean): ScObjet[] =>
           lvl === 0
-            ? OBVIOUS.map(SC.objet).filter((o) => o.float === f)
+            ? OBVIOUS.map((id) => obj(id)).filter((o) => o.float === f)
             : SC.objetsSurs('float', f).filter((o) => o.id !== 'bateau-pate' && o.id !== 'pate');
         [true, false].forEach((f) =>
           Q.pickN(pool(f), lvl === 0 ? 2 : 3).forEach((o) => items.push({ label: lbl(o), bin: f ? 'f' : 'c', key: o.id })),
@@ -697,9 +731,9 @@
         };
       }
       const id = t === 'obvious' ? M.pick(OBVIOUS) : M.pick(Object.keys(WHY));
-      const o = SC.objet(id);
+      const o = obj(id);
       const w = WHY[id];
-      const check = w
+      const check: QuestionOf<'choice'> = w
         ? {
             prompt: w.prompt,
             format: 'choice',
@@ -738,24 +772,25 @@
       };
     },
     check(q) {
+      const sc = q._sc;
       const d = Q.dataOnce();
       if (d) return d;
-      if (q._sc && q._sc.kind === 'quel') return Q.checkOne(q, (v) => SC.objet(v).float === q._sc.f);
-      if (q._sc === 'float')
+      if (typeof sc === 'object' && sc.kind === 'quel') return Q.checkOne(q, (v) => obj(v).float === sc.f);
+      if (sc === 'float')
         return Q.checkSort(q, (k) => {
-          const o = SC.objet(k);
+          const o = obj(k);
           return o.float === true ? 'f' : o.float === false ? 'c' : 'ambigu';
         });
-      if (q._sc && q._sc.kind === 'pred') {
-        const o = SC.objet(q._sc.o);
+      if (typeof sc === 'object' && sc.kind === 'pred') {
+        const o = obj(sc.o);
         if (o.float === null) return 'objet ambigu tiré';
-        if ((o.float ? 'flotte' : 'coule') !== q.outcome) return 'outcome incohérent';
+        if ((o.float ? 'flotte' : 'coule') !== ('outcome' in q ? q.outcome : undefined)) return 'outcome incohérent';
       }
     },
   });
 
   /* ================================================================ 13 */
-  const elle = (o) => SC.fem(o);
+  const elle = (o: ScObjet): boolean => SC.fem(o);
   const AIMANT_USAGE = [
     {
       t: "Des clous sont tombés dans le gazon. Qu'est-ce qui t'aide à les ramasser ?",
@@ -797,13 +832,13 @@
     gen({ lvl }) {
       const t = lvl === 0 ? 'sort' : lvl === 1 ? M.pick(['pred', 'pred', 'sort']) : M.pick(['poles', 'poles', 'usage', 'pred']);
       if (t === 'sort') {
-        const items = [];
+        const items: ScItem[] = [];
         Q.pickN(SC.objetsSurs('magnet', true), 2).forEach((o) => items.push({ label: lbl(o), bin: 'oui', key: o.id }));
         const non = SC.objetsSurs('magnet', false);
         const pickNon =
           lvl > 0 || Math.random() < 0.6
             ? [
-                SC.objet('canette'),
+                obj('canette'),
                 ...Q.pickN(
                   non.filter((o) => o.id !== 'canette'),
                   2,
@@ -952,19 +987,21 @@
       };
     },
     check(q) {
+      const sc = q._sc;
       const d = Q.dataOnce();
       if (d) return d;
-      if (q._sc === 'mag')
+      if (sc === 'mag')
         return Q.checkSort(q, (k) => {
-          const o = SC.objet(k);
+          const o = obj(k);
           return o.magnet === true ? 'oui' : o.magnet === false ? 'non' : 'ambigu';
         });
-      if (q._sc && q._sc.kind === 'pred') {
-        const o = SC.objet(q._sc.o);
+      if (typeof sc === 'object' && sc.kind === 'pred') {
+        const o = obj(sc.o);
         if (o.magnet === null) return 'objet ambigu tiré';
-        if ((o.magnet ? 'oui' : 'non') !== q.outcome) return 'outcome incohérent';
+        if ((o.magnet ? 'oui' : 'non') !== ('outcome' in q ? q.outcome : undefined)) return 'outcome incohérent';
       }
-      if (q._sc && q._sc.kind === 'poles' && (q._sc.same ? 'repousse' : 'attire') !== q.outcome) return 'pôles incohérents';
+      if (typeof sc === 'object' && sc.kind === 'poles' && (sc.same ? 'repousse' : 'attire') !== ('outcome' in q ? q.outcome : undefined))
+        return 'pôles incohérents';
     },
   });
 })();

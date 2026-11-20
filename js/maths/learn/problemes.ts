@@ -7,8 +7,29 @@
   const M = window.M;
   const D = 'problemes';
   const MINUS = '−';
-  const T = (s) => M.pb.typo(s);
-  const css = (str) => {
+  /** Problème généré par M.pb.make. */
+  type Prob = ReturnType<MApi['pb']['make']>;
+  /** Onglet d'un type de problème : nombres, modes, et rendu. */
+  interface TypeTabView {
+    story: string;
+    spec: BarModelSpec;
+    jet: string;
+    castor: string;
+  }
+  interface TypeTabCfg {
+    steppers: { label: string; value: number; min: number; max: number }[];
+    fix?: (vals: number[], mode: string | null) => number[];
+    modes?: { id: string; label: string }[];
+    render(vals: number[], mode: string | null, reveal: boolean): TypeTabView;
+  }
+  const T = (s: string) => M.pb.typo(s);
+  /** Calcul « a op b » d'un problème ajout / retrait / réunion (jamais une somme de termes). */
+  const opSolve = (p: Prob): PbSolveOp => {
+    const s = p.solve;
+    if (s.terms) throw new Error(`pb ${p.kind} : calcul attendu « a op b »`);
+    return s;
+  };
+  const css = (str: string) => {
     try {
       M.css(str);
     } catch (e) {
@@ -40,11 +61,13 @@
   .pb-l-chips .chip.on { background: var(--ink); color: #fff; border-color: var(--ink) }
   `);
 
-  const sec = (el, icon, title, body, intro) => el.insertAdjacentHTML('beforeend', M.ui.section({ icon, title, intro, body }));
-  const castor = (html) => M.ui.callout(html);
-  const bar = (spec) => `<div class="bm-wrap pb-stepbar">${M.viz.barModelHtml(spec)}</div>`;
-  const quizQ = (mk) => () => mk(M.pb.make({ kinds: ['ajout', 'retrait', 'reunion'], lvl: 0 }));
-  const withPassage = (pb, st) => M.pb.attach({ ...st, passage: M.pb.passage(pb), explain: `${pb.explain} ${M.esc(pb.reply)}` }, pb);
+  const sec = (el: HTMLElement, icon: string, title: string, body: string, intro?: string) =>
+    el.insertAdjacentHTML('beforeend', M.ui.section({ icon, title, intro, body }));
+  const castor = (html: string) => M.ui.callout(html);
+  const bar = (spec: BarModelSpec) => `<div class="bm-wrap pb-stepbar">${M.viz.barModelHtml(spec)}</div>`;
+  const quizQ = (mk: (pb: Prob) => Question) => (): Question => mk(M.pb.make({ kinds: ['ajout', 'retrait', 'reunion'], lvl: 0 }));
+  const withPassage = (pb: Prob, st: StepItem): Question =>
+    M.pb.attach({ ...st, passage: M.pb.passage(pb), explain: `${pb.explain} ${M.esc(pb.reply)}` }, pb);
 
   /* ==================================================================
      🧭 Ma démarche — un problème parcouru pas à pas
@@ -67,69 +90,78 @@
         <div class="pb-l-say"></div><div class="pb-l-stage"></div>
         <div class="pb-l-ctrl"><button class="btn primary big pb-l-next">Étape suivante ➜</button><button class="btn pb-l-again">↺ Recommencer</button><button class="btn pb-l-new">🔄 Un autre problème</button></div>`,
       );
-      const $ = (s) => M.$(s, el);
-      let pb, k;
+      const $ = <E extends Element = HTMLElement>(s: string) => M.$<E>(s, el)!;
+      let pb: Prob | undefined,
+        k = 0;
       // étapes : [indice de la démarche, texte, action]
-      const STAGES = [
+      const STAGES: [number, (p: Prob) => string, (p: Prob) => string][] = [
         [0, () => "Je lis le problème <b>deux fois</b>. Je peux l'écouter avec 🔊.", () => ''],
         [
           1,
           () => 'Je trouve la <b>question</b> : la phrase qui finit par « ? ». Je la colorie en bleu.',
-          () => {
-            mark('q');
+          (p) => {
+            mark(p, 'q');
             return '';
           },
         ],
         [
           1,
-          () => `J'encercle les <b>données</b> : les nombres utiles (${pb.knownVals.join(' et ')}).`,
-          () => {
-            mark('d');
+          (p) => `J'encercle les <b>données</b> : les nombres utiles (${p.knownVals.join(' et ')}).`,
+          (p) => {
+            mark(p, 'd');
             return '';
           },
         ],
         [
           2,
-          () =>
-            `Je fais un <b>dessin</b> : un modèle en barres. ${{ sum: 'On cherche le tout.', part: 'On cherche une partie.' }[pb.fam] || ''}`,
-          () => bar(pb.barSpec(false)),
+          (p) =>
+            `Je fais un <b>dessin</b> : un modèle en barres. ${({ sum: 'On cherche le tout.', part: 'On cherche une partie.' } as Record<string, string>)[p.fam] || ''}`,
+          (p) => bar(p.barSpec(false)),
         ],
         [
           3,
-          () => `Je <b>calcule</b> : ${M.pb.expr(pb.solve)}.`,
-          () => bar(pb.barSpec(true)) + `<div class="eq">${M.pb.expr(pb.solve)} = ${pb.answer}</div>`,
+          (p) => `Je <b>calcule</b> : ${M.pb.expr(p.solve)}.`,
+          (p) => bar(p.barSpec(true)) + `<div class="eq">${M.pb.expr(p.solve)} = ${p.answer}</div>`,
         ],
         [
           4,
-          () =>
-            T(
-              `Je <b>vérifie</b> : est-ce que ça a du sens ? ${pb.solve.op === '+' ? `${pb.answer} ${MINUS} ${pb.solve.b} = ${pb.solve.a}` : `${pb.answer} + ${pb.solve.b} = ${pb.solve.a}`} : on retrouve le nombre du départ !`,
-            ),
-          () =>
-            `<div class="eq">${pb.solve.op === '+' ? `${pb.answer} ${MINUS} ${pb.solve.b}` : `${pb.answer} + ${pb.solve.b}`} = ${pb.solve.a} ✔️</div>`,
+          (p) => {
+            const s = opSolve(p);
+            return T(
+              `Je <b>vérifie</b> : est-ce que ça a du sens ? ${s.op === '+' ? `${p.answer} ${MINUS} ${s.b} = ${s.a}` : `${p.answer} + ${s.b} = ${s.a}`} : on retrouve le nombre du départ !`,
+            );
+          },
+          (p) => {
+            const s = opSolve(p);
+            return `<div class="eq">${s.op === '+' ? `${p.answer} ${MINUS} ${s.b}` : `${p.answer} + ${s.b}`} = ${s.a} ✔️</div>`;
+          },
         ],
-        [5, () => 'Je <b>réponds</b> avec une phrase complète.', () => `<div class="pb-l-reply">💬 ${M.esc(pb.reply)}</div>`],
+        [5, () => 'Je <b>réponds</b> avec une phrase complète.', (p) => `<div class="pb-l-reply">💬 ${M.esc(p.reply)}</div>`],
       ];
-      const mark = (m) =>
+      const mark = (p: Prob, m: 'q' | 'd') =>
         M.$$('.ptok', $('.pb-l-text')).forEach((t, i) => {
-          const d = pb.tokens[i];
+          const d = p.tokens[i];
           if ((m === 'q' && d.q) || (m === 'd' && d.data)) t.classList.add('mk-' + m);
         });
       const draw = () => {
+        if (!pb) return;
         const [di, say, act] = STAGES[k];
         $('.pb-l-dem').innerHTML = M.ui.demarche(M.ui.DEMARCHE, di);
-        const txt = say();
+        const txt = say(pb);
         $('.pb-l-say').innerHTML = `${M.ui.DEMARCHE[di].icon} <span>${txt}</span> ${M.ui.speak(M.text(txt))}`;
-        const html = act();
+        const html = act(pb);
         if (html) $('.pb-l-stage').innerHTML = html;
-        $('.pb-l-next').disabled = k === STAGES.length - 1;
+        $<HTMLButtonElement>('.pb-l-next').disabled = k === STAGES.length - 1;
       };
-      const start = (fresh) => {
+      const start = (fresh: boolean) => {
         if (fresh || !pb) pb = M.pb.make({ kinds: ['ajout', 'retrait', 'reunion'], lvl: 0 });
+        const p = pb;
         k = 0;
-        $('.pb-l-title').textContent = `${pb.emoji} Le problème`;
-        $('.pb-l-read').innerHTML = M.ui.speak(pb.text);
-        $('.pb-l-text').innerHTML = pb.tokens.map((t, i) => `<span class="ptok" data-i="${i}">${M.esc(t.w)}</span>`).join(' ');
+        $('.pb-l-title').textContent = `${p.emoji} Le problème`;
+        $('.pb-l-read').innerHTML = M.ui.speak(p.text);
+        $('.pb-l-text').innerHTML = p.tokens
+          .map((t: Token, i: number) => `<span class="ptok" data-i="${i}">${M.esc(t.w)}</span>`)
+          .join(' ');
         $('.pb-l-stage').innerHTML = '';
         draw();
       };
@@ -155,9 +187,9 @@
         ${M.ui.callout("<b>Pour les parents :</b> faites raconter l'histoire <i>sans les nombres</i>, puis demandez « Que compte ce nombre ? » et « Qu'est-ce qu'on cherche ? ». Faites dire la phrase-réponse à voix haute.", { tone: 'info', who: '👪' })}`,
       );
       el.insertAdjacentHTML('beforeend', '<section class="l-sec"><div class="pb-l-quiz"></div></section>');
-      M.ui.miniQuiz(M.$('.pb-l-quiz', el), [
-        quizQ((pb) => withPassage(pb, M.pb.step.question(pb))),
-        quizQ((pb) => withPassage(pb, M.pb.step.donnees(pb))),
+      M.ui.miniQuiz(M.$('.pb-l-quiz', el)!, [
+        quizQ((q) => withPassage(q, M.pb.step.question(q))),
+        quizQ((q) => withPassage(q, M.pb.step.donnees(q))),
       ]);
     },
   });
@@ -165,20 +197,20 @@
   /* ==================================================================
      🧱 Les types de problèmes (schémas)
      ================================================================== */
-  const jetRows = (rows) =>
+  const jetRows = (rows: [string, string][]) =>
     `<div class="pb-l-jet">${rows.map(([nm, html]) => `<div>${nm ? `<b>${M.esc(nm)}</b>` : ''}${html}</div>`).join('')}</div>`;
-  const rep = (e, n) => e.repeat(Math.max(0, n));
-  function typeTab(panel, cfg) {
+  const rep = (e: string, n: number) => e.repeat(Math.max(0, n));
+  function typeTab(panel: HTMLElement, cfg: TypeTabCfg) {
     // cfg: { steppers:[{label,value,min,max}], fix?(vals) → vals, modes?:[{id,label}], render(vals, mode, reveal) → {story, spec, jet, castor, answer} }
     let vals = cfg.steppers.map((s) => s.value),
-      mode = cfg.modes ? cfg.modes[0].id : null,
+      mode: string | null = cfg.modes ? cfg.modes[0].id : null,
       reveal = false;
     panel.innerHTML = `${cfg.modes ? `<div class="pb-l-chips">${cfg.modes.map((m, i) => `<button class="chip ${i ? '' : 'on'}" data-m="${m.id}">${m.label}</button>`).join('')}</div>` : ''}
       <div class="pb-l-story"></div><div class="pb-l-steppers"></div><div class="pb-l-bars"></div><div class="pb-l-jets"></div>
       <div class="pb-l-ctrl"><button class="btn yellow pb-l-show">👀 Montre la réponse</button></div><div class="pb-l-castor"></div>`;
     const steppers = cfg.steppers.map((s, i) => {
       const host = document.createElement('span');
-      M.$('.pb-l-steppers', panel).appendChild(host);
+      M.$('.pb-l-steppers', panel)!.appendChild(host);
       return M.ui.stepper(host, {
         label: s.label,
         value: s.value,
@@ -202,21 +234,21 @@
         });
       }
       const r = cfg.render(vals, mode, reveal);
-      M.$('.pb-l-story', panel).innerHTML = `${r.story} ${M.ui.speak(M.text(r.story))}`;
-      M.$('.pb-l-bars', panel).innerHTML = bar(r.spec);
-      M.$('.pb-l-jets', panel).innerHTML = r.jet;
-      M.$('.pb-l-castor', panel).innerHTML = castor(r.castor);
+      M.$('.pb-l-story', panel)!.innerHTML = `${r.story} ${M.ui.speak(M.text(r.story))}`;
+      M.$('.pb-l-bars', panel)!.innerHTML = bar(r.spec);
+      M.$('.pb-l-jets', panel)!.innerHTML = r.jet;
+      M.$('.pb-l-castor', panel)!.innerHTML = castor(r.castor);
     };
-    M.$('.pb-l-show', panel).onclick = () => {
+    M.$('.pb-l-show', panel)!.onclick = () => {
       reveal = true;
       M.sfx.pop();
       draw();
     };
     if (cfg.modes)
-      M.$('.pb-l-chips', panel).onclick = (e) => {
-        const b = e.target.closest('.chip');
+      M.$('.pb-l-chips', panel)!.onclick = (e) => {
+        const b = M.closest(e, '.chip');
         if (!b) return;
-        mode = b.dataset.m;
+        mode = b.dataset.m ?? null;
         reveal = false;
         M.$$('.chip', panel).forEach((c) => c.classList.toggle('on', c === b));
         draw();
@@ -235,7 +267,7 @@
       el.insertAdjacentHTML('beforeend', '<section class="l-sec"><div class="pb-l-tabs"></div></section>');
       const P = M.people.pick(),
         Q = M.people.pick({ not: [P.n] });
-      M.ui.tabs(M.$('.pb-l-tabs', el), [
+      M.ui.tabs(M.$('.pb-l-tabs', el)!, [
         {
           id: 'chg',
           label: '➕➖ Ajouter / enlever',
@@ -432,12 +464,12 @@
         ${castor("Un mot ne choisit pas l'opération. <b>Le dessin</b> la choisit ! Demande-toi toujours : qui en a le plus ?")}`,
       );
       el.insertAdjacentHTML('beforeend', '<section class="l-sec"><div class="pb-l-quiz"></div></section>');
-      const tf = (mk) => () => {
+      const tf = (mk: (P: Person, Q: Person) => QuestionOf<'tf'>) => () => {
         const P = M.people.pick(),
           Q = M.people.pick({ not: [P.n] });
         return mk(P, Q);
       };
-      M.ui.miniQuiz(M.$('.pb-l-quiz', el), [
+      M.ui.miniQuiz(M.$('.pb-l-quiz', el)!, [
         tf((P) => {
           const a = M.rnd(3, 6),
             b = M.rnd(2, 4);
@@ -490,8 +522,8 @@
         `<p class="pb-l-story">${T(`${P.n} a 7 billes. ${P.Il} en gagne 5. À la fin, ${P.il} en a <b>plus</b> que 7 !`)}</p><div class="pb-l-nl"></div><div class="pb-l-ctrl"><button class="btn yellow pb-l-hop">👀 Montre-moi</button></div>
         ${castor("Si on en ajoute, la réponse est <b>plus grande</b> qu'au début. Si on en enlève, elle est <b>plus petite</b>.")}`,
       );
-      const nl = M.viz.numberLine(M.$('.pb-l-nl', el), { lo: 0, hi: 20, start: 7, end: 12, interactive: false });
-      M.$('.pb-l-hop', el).onclick = () => nl.showMe(12, 1);
+      const nl = M.viz.numberLine(M.$('.pb-l-nl', el)!, { lo: 0, hi: 20, start: 7, end: 12, interactive: false });
+      M.$('.pb-l-hop', el)!.onclick = () => nl.showMe(12, 1);
       sec(
         el,
         '2️⃣',
@@ -510,10 +542,10 @@
         'beforeend',
         `<section class="l-sec"><h2>🤖 Le robot calculateur se trompe-t-il ?</h2><p>Le robot a répondu à des problèmes. Dis s'il a raison.</p><div class="pb-l-quiz"></div></section>`,
       );
-      const robot = () => {
+      const robot = (): Question => {
         const pb = M.pb.make({ kinds: ['ajout', 'retrait', 'reunion'], lvl: M.pick([0, 1]), noHundreds: true });
         const ok = Math.random() < 0.5;
-        const s = pb.solve;
+        const s = opSolve(pb);
         const w = ok ? pb.answer : s.op === '+' ? Math.abs(s.a - s.b) : s.a + s.b;
         const good = ok || w === pb.answer;
         return M.pb.attach(
@@ -528,7 +560,7 @@
           pb,
         );
       };
-      M.ui.miniQuiz(M.$('.pb-l-quiz', el), [robot, robot, robot, robot], { title: 'Le robot a-t-il raison ?' });
+      M.ui.miniQuiz(M.$('.pb-l-quiz', el)!, [robot, robot, robot, robot], { title: 'Le robot a-t-il raison ?' });
     },
   });
 })();

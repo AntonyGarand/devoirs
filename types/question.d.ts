@@ -218,6 +218,8 @@ interface SortItem {
   bin: Value;
   say?: string;
   lang?: string;
+  /** Clé privée (non affichée) : identifie l'élément pour check() (ex. id de la fiche). */
+  key?: string;
 }
 interface SortFields {
   bins: SortBin[];

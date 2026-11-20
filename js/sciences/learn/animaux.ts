@@ -26,7 +26,8 @@
     /* hors navigateur */
   }
 
-  const DIMS = [
+  /** Filtres de la galerie : valeurs [clé, libellé] et test d'un animal. */
+  const DIMS: { id: string; label: string; values: () => [string, string][]; test: (a: ScAnimal, v: string) => boolean }[] = [
     {
       id: 'hab',
       label: '🏞️ Habitat',
@@ -52,7 +53,7 @@
       test: (a, v) => a.bouge.includes(v),
     },
   ];
-  const MANGE_TXT = { plantes: 'des plantes', animaux: "d'autres animaux", deux: 'des plantes et des animaux' };
+  const MANGE_TXT: Record<string, string> = { plantes: 'des plantes', animaux: "d'autres animaux", deux: 'des plantes et des animaux' };
 
   M.registerLearn({
     id: 'sc-l-animaux',
@@ -63,7 +64,12 @@
     intro:
       'Au Québec, il y a des animaux dans la forêt, les lacs, les champs, le fleuve et même en ville ! Choisis un filtre, puis touche un animal pour découvrir ses secrets.',
     render(el) {
-      const st = { dim: null, val: null, hiver: false, sel: null };
+      const st: { dim: string | null; val: string | null; hiver: boolean; sel: string | null } = {
+        dim: null,
+        val: null,
+        hiver: false,
+        sel: null,
+      };
       el.innerHTML = `
         ${M.ui.section({
           icon: '🔍',
@@ -83,7 +89,7 @@
           body: M.ui.vocab(SC.DOMESTIQUES.map((a) => ({ emoji: a.emoji, word: SC.cap(a.nom), note: 'Mange ' + a.nourri }))),
         })}
         ${M.ui.section({ icon: '✅', title: '5. Vérifie ta compréhension', body: '<div class="sc-an-quiz"></div>' })}`;
-      const $ = (s) => M.$(s, el);
+      const $ = <E extends Element = HTMLElement>(s: string): E => M.$<E>(s, el)!; // élément qu'on vient de rendre
 
       const drawFilters = () => {
         $('.sc-filters').innerHTML =
@@ -99,7 +105,15 @@
                 .join('')}</div>`,
           ).join('');
       };
-      const visible = () => SC.ANIMAUX.filter((a) => !st.dim || DIMS.find((d) => d.id === st.dim).test(a, st.val));
+      const visible = (): ScAnimal[] =>
+        SC.ANIMAUX.filter(
+          (a) =>
+            !st.dim ||
+            SC.must(
+              DIMS.find((d) => d.id === st.dim),
+              'filtre ' + st.dim,
+            ).test(a, st.val ?? ''),
+        );
       const drawGal = () => {
         const vis = visible();
         $('.sc-gal').innerHTML =
@@ -140,7 +154,7 @@
       drawGal();
 
       $('.sc-filters').onclick = (e) => {
-        const b = e.target.closest('[data-dim]');
+        const b = M.closest(e, '[data-dim]');
         if (!b) return;
         M.sfx.tap();
         st.dim = b.dataset.dim || null;
@@ -158,10 +172,13 @@
         drawGal();
       };
       $('.sc-gal').onclick = (e) => {
-        const c = e.target.closest('.sc-card');
+        const c = M.closest(e, '.sc-card');
         if (!c) return;
-        st.sel = c.dataset.id;
-        const a = SC.ANIMAUX.find((x) => x.id === st.sel);
+        st.sel = c.dataset.id ?? null;
+        const a = SC.must(
+          SC.ANIMAUX.find((x) => x.id === st.sel),
+          'animal ' + st.sel,
+        );
         M.sfx.tap();
         drawGal();
         drawDetail();
@@ -170,7 +187,7 @@
         if (d.scrollIntoView) d.scrollIntoView({ block: 'nearest', behavior: SC.reduced() ? 'auto' : 'smooth' });
       };
 
-      const gen = (id, lvl) => () =>
+      const gen = (id: string, lvl: number) => (): Question =>
         M.skillById[id] ? M.skillById[id].gen({ lvl }) : { prompt: 'Le castor est-il un animal sauvage ?', format: 'tf', answer: true };
       M.ui.miniQuiz($('.sc-an-quiz'), [gen('sc-animaux-alimentation', 0), gen('sc-animaux-adaptation', 0), gen('sc-animaux-habitats', 0)]);
     },

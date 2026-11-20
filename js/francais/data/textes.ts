@@ -1,8 +1,32 @@
 /* data/textes.js — textes courts originaux (compréhension, ordre d'une histoire) */
+
+type FrQuestionType = 'qui' | 'quoi' | 'ou' | 'quand' | 'inference' | 'substitution' | 'vocabulaire';
+/** Question de compréhension : choices[0] = bonne réponse; preuve = passage du texte qui la justifie. */
+interface FrTexteQuestion {
+  type: FrQuestionType;
+  q: string;
+  choices: string[];
+  preuve: string;
+  explain: string;
+}
+interface FrTexte {
+  id: string;
+  titre: string;
+  niveau: number;
+  genre: string;
+  texte: string;
+  /** Étapes de l'histoire, dans l'ordre. */
+  sequence?: { t: string; em: string }[];
+  questions: FrTexteQuestion[];
+}
+interface FrancaisApi {
+  TEXTES: FrTexte[];
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  M.FR = M.FR || {};
+  M.FR = M.FR || ({} as FrancaisApi);
   M.FR.TEXTES = [
     /* ================= NIVEAU 0 ================= */
     {

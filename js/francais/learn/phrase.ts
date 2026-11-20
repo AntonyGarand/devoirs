@@ -2,8 +2,8 @@
 (function () {
   'use strict';
   const M = window.M;
-  const gen = (id, lvl) => () => M.skillById[id].gen({ lvl });
-  const big = (h) => `<div class="fr-big" style="font-size:1.6rem">${h}</div>`;
+  const gen = (id: string, lvl: number) => () => M.skillById[id].gen({ lvl });
+  const big = (h: string) => `<div class="fr-big" style="font-size:1.6rem">${h}</div>`;
 
   M.registerLearn({
     id: 'fr-la-phrase',
@@ -50,7 +50,7 @@
             M.ui.callout("Devant une voyelle, <b>ne</b> devient <b>n'</b>."),
         }) +
         M.ui.section({ icon: '✅', title: 'Vérifie ta compréhension', body: '<div class="fr-mq"></div>' });
-      M.ui.miniQuiz(M.$('.fr-mq', el), [gen('fr-phrase-ponctuation', 0), gen('fr-ordre-mots', 0), gen('fr-phrase-ponctuation', 1)]);
+      M.ui.miniQuiz(M.$('.fr-mq', el)!, [gen('fr-phrase-ponctuation', 0), gen('fr-ordre-mots', 0), gen('fr-phrase-ponctuation', 1)]);
     },
   });
 })();

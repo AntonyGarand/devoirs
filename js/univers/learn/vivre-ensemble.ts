@@ -64,14 +64,14 @@
         }),
         ui.section({ icon: '✅', title: '5. Vérifie ta compréhension', body: '<div class="us-mq"></div>' }),
       ].join('');
-      ui.feelings(M.$('.us-feel', el), {
+      ui.feelings(M.$('.us-feel', el)!, {
         onPick: (f) => {
-          M.$('.us-feel-st', el).textContent = `${f.emoji} ${f.label}`;
+          M.$('.us-feel-st', el)!.textContent = `${f.emoji} ${f.label}`;
         },
       });
       // Cartes courtes (situation → geste) : le texte doit tenir sur une carte de téléphone.
       ui.flashcards(
-        M.$('.us-civ', el),
+        M.$('.us-civ', el)!,
         [
           ['👋', 'On me dit bonjour', '« Bonjour ! »'],
           ['✏️', 'On me prête un crayon', '« Merci ! »'],
@@ -88,7 +88,7 @@
         })),
       );
       ui.miniQuiz(
-        M.$('.us-mq', el),
+        M.$('.us-mq', el)!,
         ['us-emotions', 'us-civilite', 'us-besoins', 'us-conflits'].map((id) => () => M.skillById[id].gen({ lvl: 0 })),
       );
     },

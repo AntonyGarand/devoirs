@@ -2,10 +2,78 @@
    Chaque situation a un indice observable (cue, R2) et des distracteurs étiquetés (R4) :
    ok = réponse prosociale / juste · harm = geste qui blesse · off = hors sujet · opp = émotion opposée.
    emotion.ask = 'feel' (answer = id d'émotion, distract = ids de valence différente) | 'trigger' (choices). */
+
+/** Personnage fictif : prénom et féminin. */
+interface UsPerso {
+  n: string;
+  f: boolean;
+}
+interface UsScEmotionBase {
+  id: string;
+  lvl: number;
+  who: UsPerso;
+  scene: SceneItem[];
+  text: string;
+  /** Indice observable (R2). */
+  cue: string;
+}
+/** Quelle émotion ? answer = id d'émotion, distract = ids de valence différente. */
+interface UsScEmotionFeel extends UsScEmotionBase {
+  ask: 'feel';
+  answer: string;
+  distract: string[];
+}
+/** Qu'est-ce qui a déclenché l'émotion feel ? */
+interface UsScEmotionTrigger extends UsScEmotionBase {
+  ask: 'trigger';
+  feel: string;
+  choices: UsTagItem[];
+}
+type UsScEmotion = UsScEmotionFeel | UsScEmotionTrigger;
+interface UsScCivilite {
+  id: string;
+  lvl: number;
+  scene: SceneItem[];
+  text: string;
+  ask: string;
+  choices: UsTagItem[];
+  explain: string;
+}
+/** Conflit entre a et b : problème (prob[0] = le vrai), émotion, solutions (sol[0] = la seule sans blesser). */
+interface UsScConflit {
+  id: string;
+  a: UsPerso;
+  b: UsPerso;
+  feel: string;
+  /** Les deux ressentent l'émotion. */
+  both: boolean;
+  text: string;
+  prob: string[];
+  sol: string[];
+  after: string;
+}
+interface UsScenarios {
+  emotion: UsScEmotion[];
+  civilite: UsScCivilite[];
+  conflit: UsScConflit[];
+  /** Gestes pour se calmer (ok) / qui blessent (harm). */
+  calme: string[];
+  blesse: string[];
+  /** Messages au « je » (ok) / qui blessent (harm) / hors sujet (off). */
+  messages: { sit: string; who: UsPerso; ok: string; harm: string; off: string }[];
+  regles: { r: string; em: string; lieu: 'classe' | 'cour' | 'autobus'; raison: string }[];
+  reglesRaison2: { r: string; em: string; raison: string }[];
+  roles: { p: string; role: string }[];
+  problemes: { p: string; ok: string }[];
+}
+interface DataRegistry {
+  'us-scenarios': UsScenarios;
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  const P = (n, f) => ({ n, f });
+  const P = (n: string, f: boolean): UsPerso => ({ n, f });
   const Z = P('Zoé', true),
     AM = P('Amir', false),
     LE = P('Léa', true),
@@ -19,7 +87,7 @@
     GA = P('Gabriel', false),
     IN = P('Inès', true);
 
-  const emotion = [
+  const emotion: UsScEmotion[] = [
     {
       id: 'e1',
       lvl: 0,
@@ -310,7 +378,7 @@
     },
   ];
 
-  const civilite = [
+  const civilite: UsScCivilite[] = [
     {
       id: 'c1',
       lvl: 0,
@@ -567,7 +635,7 @@
   ];
 
   /* Conflits : problème, émotion probable, solution (une seule sans blesser), aide. */
-  const conflit = [
+  const conflit: UsScConflit[] = [
     {
       id: 'k1',
       a: LE,
@@ -724,7 +792,7 @@
   ];
 
   /* Règles : lieu (classe, cour, autobus) et raison. */
-  const regles = [
+  const regles: UsScenarios['regles'] = [
     { r: 'Lever la main pour parler', em: '✋', lieu: 'classe', raison: 'Pour que chacun parle à son tour.' },
     { r: 'Ranger son matériel', em: '🎒', lieu: 'classe', raison: 'Pour retrouver ses choses.' },
     { r: "Chuchoter pendant le travail d'équipe", em: '🤫', lieu: 'classe', raison: 'Pour ne pas déranger les autres équipes.' },

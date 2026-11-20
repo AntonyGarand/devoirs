@@ -5,10 +5,45 @@
      trombone / épingle (peuvent flotter grâce à la « peau » de l'eau), clé / pièce / cuillère
      (inox ou alliages parfois non attirés), éponge (flotte puis coule selon l'eau absorbée)…
    ===================================================================== */
+
+/** Objet (M.SC.OBJETS). Propriété null = ambiguë : jamais tirée pour cette notion. */
+interface ScObjet extends ScPic {
+  id: string;
+  nom: string;
+  emoji: string;
+  art: string | null;
+  /** Clé de M.SC.MATERIAUX. */
+  mat: string | null;
+  float: boolean | null;
+  magnet: boolean | null;
+  absorbe: boolean | null;
+  /** Clé de M.SC.TRANSP. */
+  transp: string | null;
+  texture: 'doux' | 'rugueux' | null;
+}
+/** Propriétés d'un objet (sans id, nom, image). */
+type ScObjetProps = Partial<Omit<ScObjet, 'id' | 'nom' | 'emoji'>>;
+interface ScApi {
+  MATERIAUX: Record<string, string>;
+  TRANSP: Record<string, ScLabelIcon & { def: string }>;
+  OBJETS: ScObjet[];
+  /** Nom féminin ? */
+  fem(o: ScObjet): boolean;
+  /** il / elle / ils / elles. */
+  pron(o: ScObjet): string;
+  objet(id: string): ScObjet | undefined;
+  /** Objets dont la propriété est sûre (non nulle), et égale à val si donnée. */
+  objetsSurs(prop: keyof ScObjet, val?: unknown): ScObjet[];
+  checkObjets(): string;
+}
+interface DataRegistry {
+  'sc.objets': ScObjet[];
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  const SC = (M.SC = M.SC || {});
+  const SC = (M.SC = M.SC || ({} as ScApi));
 
   SC.MATERIAUX = { bois: '🪵 Le bois', metal: '🔩 Le métal', plastique: '🧴 Le plastique', verre: '🫙 Le verre', tissu: '🧵 Le tissu' };
   SC.TRANSP = {
@@ -18,7 +53,7 @@
   };
 
   // O(id, nom, image, propriétés)
-  const O = (id, nom, img, p = {}) => ({
+  const O = (id: string, nom: string, img: string, p: ScObjetProps = {}): ScObjet => ({
     id,
     nom,
     emoji: img.startsWith('sc-') ? '' : img,
@@ -97,7 +132,7 @@
     SC.OBJETS.filter((o) => o[prop] !== null && o[prop] !== undefined && (val === undefined || o[prop] === val));
 
   SC.checkObjets = function () {
-    const err = [];
+    const err: string[] = [];
     const seen = new Set();
     SC.OBJETS.forEach((o) => {
       if (seen.has(o.id)) err.push('id en double ' + o.id);
@@ -105,7 +140,7 @@
       if (!o.emoji && !o.art) err.push(o.id + " : pas d'image");
       if (o.mat && !SC.MATERIAUX[o.mat]) err.push(o.id + ' : matériau');
       if (o.transp && !SC.TRANSP[o.transp]) err.push(o.id + ' : transparence');
-      ['float', 'magnet', 'absorbe'].forEach((k) => {
+      (['float', 'magnet', 'absorbe'] as const).forEach((k) => {
         if (o[k] !== null && typeof o[k] !== 'boolean') err.push(o.id + ' : ' + k);
       });
     });

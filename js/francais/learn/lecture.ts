@@ -3,7 +3,7 @@
   'use strict';
   const M = window.M;
   const FR = M.FR;
-  const gen = (id, lvl) => () => M.skillById[id].gen({ lvl });
+  const gen = (id: string, lvl: number) => () => M.skillById[id].gen({ lvl });
 
   M.registerLearn({
     id: 'fr-lire-detective',
@@ -59,8 +59,8 @@
           body: '<div class="row" style="font-size:1.1rem">🥚 <b>D\'abord</b>, la poule pond un œuf. → 🐣 <b>Ensuite</b>, le poussin sort. → 🐔 <b>Enfin</b>, il devient une poule.</div>',
         }) +
         M.ui.section({ icon: '✅', title: 'Vérifie ta compréhension', body: '<div class="fr-mq"></div>' });
-      M.ui.reading(M.$('.fr-read', el), { title: t.titre, text: t.texte });
-      M.ui.miniQuiz(M.$('.fr-mq', el), [gen('fr-lire-mots', 1), gen('fr-lire-phrases', 0), gen('fr-ordre-histoire', 0)]);
+      M.ui.reading(M.$('.fr-read', el)!, { title: t.titre, text: t.texte });
+      M.ui.miniQuiz(M.$('.fr-mq', el)!, [gen('fr-lire-mots', 1), gen('fr-lire-phrases', 0), gen('fr-ordre-histoire', 0)]);
     },
   });
 })();

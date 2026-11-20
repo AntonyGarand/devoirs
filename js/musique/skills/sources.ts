@@ -9,9 +9,9 @@
   const MU = M.MU;
   const pick = M.pick,
     shuffle = M.shuffle;
-  const pic = (x, size = 64) => M.art.html(x.art, { size, alt: x.nom });
-  const card = (x) => `<span class="mu-lblv">${pic(x, 50)}<span>${x.nom}</span></span>`;
-  const MAT = { bois: 'en <b>bois</b>', metal: 'en <b>métal</b>', peau: 'avec une <b>peau tendue</b>' };
+  const pic = (x: MuInstrument, size = 64) => M.art.html(x.art, { size, alt: x.nom });
+  const card = (x: MuInstrument) => `<span class="mu-lblv">${pic(x, 50)}<span>${x.nom}</span></span>`;
+  const MAT: Record<string, string> = { bois: 'en <b>bois</b>', metal: 'en <b>métal</b>', peau: 'avec une <b>peau tendue</b>' };
   // instruments faciles à distinguer à l'oreille, deux à deux
   const DISTINCT = ['tambour', 'triangle', 'maracas', 'claves', 'grelots', 'cymbales', 'xylophone', 'tambourin'];
 
@@ -34,8 +34,8 @@
           x.id === 'xylophone'
             ? MU.tune(130, { inst: 'xylo' }).slice(0, 5)
             : x.id === 'maracas'
-              ? [0, 0.25, 0.5, 0.62, 0.75].map((t) => ({ t, inst: 'maracas', vel: 0.8 }))
-              : [0, 0.6, 1.2].map((t) => ({ t, inst: x.inst, vel: 0.85, dur: x.qualite === 'sec' ? 0.2 : 1.5 }));
+              ? [0, 0.25, 0.5, 0.62, 0.75].map((at) => ({ t: at, inst: 'maracas', vel: 0.8 }))
+              : [0, 0.6, 1.2].map((at) => ({ t: at, inst: x.inst, vel: 0.85, dur: x.qualite === 'sec' ? 0.2 : 1.5 }));
         return {
           prompt: 'Écoute. Quel instrument entends-tu ?',
           format: 'choice',
@@ -116,7 +116,7 @@
         };
       }
       if (t === 'trier') {
-        const its = [];
+        const its: MuSourceItem[] = [];
         MU.SOURCE_BINS.forEach((b) =>
           shuffle(MU.SOURCES.filter((s) => s.bin === b.id))
             .slice(0, lvl === 1 ? 1 : 2)
@@ -133,9 +133,9 @@
         };
       }
       const seq = MU.seq(4).map(() => pick(MU.CORPS.slice(0, 3)));
-      if (new Set(seq.map((s) => s.id)).size < 2) seq[3] = MU.CORPS.find((c) => c.id !== seq[0].id);
-      const key = (s) => s.map((c) => c.id).join('-');
-      const alts = new Map();
+      if (new Set(seq.map((s) => s.id)).size < 2) seq[3] = MU.CORPS.find((c) => c.id !== seq[0].id) ?? seq[3]; // toujours trouvé (4 gestes différents)
+      const key = (s: MuBodySound[]) => s.map((c) => c.id).join('-');
+      const alts = new Map<string, MuBodySound[]>();
       for (let i = 0; i < 40 && alts.size < 2; i++) {
         const v = seq.slice();
         v[M.pick(MU.seq(4))] = pick(MU.CORPS.slice(0, 3));

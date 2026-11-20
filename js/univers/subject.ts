@@ -3,6 +3,43 @@
    Voir docs/hld/univers-social.md. Préfixe des ids : us-
    Helpers partagés : M.us (données, accords, choix étiquetés, vérifications R1–R8)
    ===================================================================== */
+
+/** Étiquette d'un choix (R4) : ok = bonne réponse, harm = geste qui blesse, off = hors sujet, opp = émotion opposée. */
+type UsTag = 'ok' | 'harm' | 'off' | 'opp';
+/** Choix à étiqueter (M.us.tagged). */
+interface UsTagItem {
+  label: string;
+  tag: UsTag;
+  why?: string;
+}
+/** Choix étiqueté produit par M.us.tagged (l'étiquette reste sur le choix pour M.us.lintTags). */
+interface UsTaggedChoice extends Choice<string> {
+  tag: UsTag;
+}
+/** Choix d'un format choice et sa réponse (à étaler dans la question). */
+interface UsChoiceSet<C extends Choice<string> = Choice<string>> {
+  choices: C[];
+  answer: string;
+}
+/** Données de la matière par id court : M.us.d('fetes') = M.data['us-fetes']. */
+type UsData = { [K in keyof DataRegistry as K extends `us-${infer R}` ? R : never]: DataRegistry[K] };
+/** Helpers partagés de l'univers social (M.us); les habiletés en ajoutent (planHtml, pic, timelineHtml, treeSvg). */
+interface UsApi {
+  d<K extends keyof UsData>(id: K): UsData[K];
+  /** Accord selon la personne : g(who, 'fâché', 'fâchée'). */
+  g(who: { f?: boolean }, m: string, f: string): string;
+  cap(s: string): string;
+  tagged(items: readonly UsTagItem[]): UsChoiceSet<UsTaggedChoice>;
+  lintTags(q: Question): CheckResult;
+  say(t: string): string;
+  simple(answer: string, distract: readonly string[]): UsChoiceSet;
+  /** x, ou une erreur claire si la donnée cherchée manque (what). */
+  must<T>(x: T | null | undefined, what: string): T;
+}
+interface MApi {
+  us: UsApi;
+}
+
 (function () {
   'use strict';
   const M = window.M;
@@ -26,8 +63,8 @@
       const graded = [
         q.prompt,
         q.say,
-        q.passage && (q.passage.html || ''),
-        ...(q.steps || []).filter((s) => s.format !== 'reflect').map((s) => s.prompt),
+        q.passage && ((typeof q.passage === 'object' && q.passage.html) || ''),
+        ...(('steps' in q && q.steps) || []).filter((s) => s.format !== 'reflect').map((s) => s.prompt),
       ]
         .filter((t) => typeof t === 'string')
         .join(' ');
@@ -37,7 +74,7 @@
         return "vie privée : question sur la famille de l'enfant";
       const t = M.us.lintTags(q);
       if (t) return t;
-      for (const s of q.steps || []) {
+      for (const s of ('steps' in q && q.steps) || []) {
         const e = M.us.lintTags(s);
         if (e) return 'étape : ' + e;
       }
@@ -97,32 +134,47 @@
   ].forEach((d) => M.registerDomain({ subject: 'univers', ...d }));
 
   /* ================= Helpers partagés ================= */
-  const us = (M.us = M.us || {});
+  const us = (M.us = M.us || ({} as UsApi));
   /** Données de la matière (enregistrées avec M.registerData('us-…')). */
-  us.d = (id) => M.data['us-' + id];
+  // as : TS ne relie pas DataRegistry[`us-${K}`] à UsData[K] (même type, clé remappée).
+  us.d = <K extends keyof UsData>(id: K): UsData[K] => M.data[`us-${id}`] as UsData[K];
   /** Accord : 'fâché'/'fâchée' selon la personne. */
   us.g = (who, m, f) => (who.f ? f : m);
   us.cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   /** Choix étiquetés (R4) → format choice. items = [{label, tag:'ok'|'harm'|'off'|'opp', why?}] */
   us.tagged = (items) => {
-    const sh = M.shuffle(items).map((c, i) => ({ label: c.label, value: 'c' + i, tag: c.tag, ...(c.why ? { why: c.why } : {}) }));
-    return { choices: sh, answer: sh.find((c) => c.tag === 'ok').value };
+    const sh: UsTaggedChoice[] = M.shuffle(items).map((c, i) => ({
+      label: c.label,
+      value: 'c' + i,
+      tag: c.tag,
+      ...(c.why ? { why: c.why } : {}),
+    }));
+    const ok = sh.find((c) => c.tag === 'ok');
+    if (!ok) throw new Error('M.us.tagged : aucun choix « ok »');
+    return { choices: sh, answer: ok.value };
   };
   /** R4 : une seule réponse ok, distracteurs étiquetés, et la réponse = le choix ok. */
   us.lintTags = (q) => {
-    const ch = q.choices;
+    if (!('choices' in q)) return;
+    const ch: (Choice & { tag?: string })[] = q.choices;
     if (!Array.isArray(ch) || !ch.some((c) => c.tag)) return;
     const ok = ch.filter((c) => c.tag === 'ok');
     if (ok.length !== 1) return `R4 : ${ok.length} réponse(s) « ok »`;
-    if (ch.some((c) => !['ok', 'harm', 'off', 'opp'].includes(c.tag))) return 'R4 : distracteur sans étiquette harm/off/opp';
+    if (ch.some((c) => !['ok', 'harm', 'off', 'opp'].includes(c.tag || ''))) return 'R4 : distracteur sans étiquette harm/off/opp';
     if (String(ok[0].value) !== String(q.answer)) return "R4 : la réponse n'est pas le choix « ok »";
+  };
+  us.must = (x, what) => {
+    if (x == null) throw new Error('univers social : donnée introuvable (' + what + ')');
+    return x;
   };
   /** Bouton 🔊 compact */
   us.say = (t) => M.ui.speak(M.text(t));
   /** Chaîne de choix simples à partir de libellés (bonne réponse + distracteurs). */
   us.simple = (answer, distract) => {
     const ch = M.shuffle([answer, ...distract]).map((l, i) => ({ label: l, value: 'v' + i }));
-    return { choices: ch, answer: ch.find((c) => c.label === answer).value };
+    const ok = ch.find((c) => c.label === answer);
+    if (!ok) throw new Error('M.us.simple : réponse absente');
+    return { choices: ch, answer: ok.value };
   };
 
   M.css(`

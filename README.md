@@ -18,28 +18,46 @@ Programme de formation de l'école québécoise (PFEQ) et ses Progressions des a
 - **Révision du jour** : questions entrelacées qui priorisent ce qui est le moins maîtrisé ou vu il y a longtemps.
 - **Parents** : méthodologie, correspondance avec le programme, diagnostic des voix, réglages, outils (liste de mots).
 
-Aucun serveur, aucune dépendance : ouvrir `index.html` (ou la version GitHub Pages). La progression est stockée dans le
+En ligne : https://devoir.garand.dev/. Le site publié n'a aucune dépendance; le code est en **TypeScript**, compilé par
+[tsrs](https://github.com/oxc-project/tsrs) dans `dist/` (voir « Développer »). `dist/index.html` s'ouvre aussi en `file://`.
+La progression est stockée dans le
 `localStorage` du navigateur (Parents → « Exporter / Importer la progression » pour la sauvegarder ou la transférer).
 
 ## Hors ligne et mises à jour (GitHub Pages)
 
-En http(s), `sw.js` (service worker) garde l'application en cache : elle s'ouvre sans réseau, la voix enregistrée
+En http(s), le service worker (`sw/sw.ts` → `dist/sw.js`) garde l'application en cache : elle s'ouvre sans réseau, la voix enregistrée
 (`audio/*.mp3`) et les sons d'instruments sont téléchargés une seule fois. `manifest.webmanifest` + `icons/` permettent
 « Ajouter à l'écran d'accueil ». En `file://`, rien de tout cela n'est activé.
 
-**Après toute modification de `index.html`, `css/` ou `js/`** (avant de publier) :
+La compilation (`npm run build`) remplit la liste des fichiers et l'empreinte de version du service worker : une nouvelle
+version est installée au prochain chargement; la page se recharge d'elle-même, sauf pendant une série de questions
+(rechargement à la page suivante).
+
+## Développer
+
+Node 24 ou plus récent (les outils `.ts` sont exécutés directement par Node).
 
 ```
-node tools/gen-sw.js     # met à jour la liste des fichiers et la version dans sw.js
+npm install
+npm run dev            # compile, sert dist/ sur http://localhost:8080 et recompile à chaque modification
+                       # (npm run dev -- --host 0.0.0.0 --port 8932 : essayer sur une tablette du réseau)
+npm run build          # compile dans dist/ (tsrs : js/**/*.ts → dist/js/**/*.js, sw/sw.ts → dist/sw.js) + fichiers statiques
+npm run check          # tout : types, lint, format, knip, contenu (ce que la CI exécute)
+npm run typecheck      # tsrs (port Rust de tsc 7) : site + outils, mode strict
+npm run lint           # oxlint            ·  npm run lint:fix
+npm run format         # oxfmt (écrit)     ·  npm run format:check
+npm run knip           # fichiers et dépendances inutilisés (points d'entrée lus dans index.html)
 ```
 
-Une nouvelle version est installée au prochain chargement; la page se recharge d'elle-même, sauf pendant une série de
-questions (rechargement à la page suivante). Sans `gen-sw.js`, les fichiers modifiés arrivent quand même, une visite plus tard.
+Pas de cadriciel d'interface ni de modules ES : le site garde son petit cadre maison (`window.M`, scripts classiques
+chargés dans l'ordre par `index.html`), maintenant typé (`types/*.d.ts`, voir docs/framework.md § Types). C'est ce qui
+permet de garder `file://` et un site sans dépendance. **Publication** : chaque poussée sur `main` passe par GitHub
+Actions (`.github/workflows/deploy.yml` : vérifications, compilation stricte, puis publication de `dist/` sur Pages).
 
 ## Documentation
 
 - [docs/framework.md](docs/framework.md) — **le cadre commun** : architecture, formats de questions, composants, style, règles de contenu, liste de contrôle pour ajouter une matière.
-- [docs/curriculum.md](docs/curriculum.md) — correspondance de chaque habileté avec le programme (générée par `node tools/gen-curriculum.js`).
+- [docs/curriculum.md](docs/curriculum.md) — correspondance de chaque habileté avec le programme (générée par `npm run curriculum`).
 - [docs/methodologie.md](docs/methodologie.md) — choix pédagogiques.
 - [docs/hld/](docs/hld/) — conception détaillée de chaque matière (portée, sources officielles, données, risques).
 - Guide de style vivant : site → Parents → 🎨 Guide de style (`#/style`).
@@ -47,9 +65,9 @@ questions (rechargement à la page suivante). Sans `gen-sw.js`, les fichiers mod
 ## Vérifier
 
 ```
-node tools/check-skills.js          # génère 900 questions par habileté et valide chacune (formats, sens, règles de matière)
-node tools/check-dupes.js           # niveaux qui ont peu de questions différentes (à enrichir)
-node tools/check-skills.js --only fr-
+npm run check:skills                # compile, puis génère 900 questions par habileté et valide chacune (formats, sens, règles)
+npm run check:dupes                 # niveaux qui ont peu de questions différentes (à enrichir)
+node tools/check-skills.ts --only fr-   # une matière (après npm run build)
 ```
 
 Dans le navigateur : `#/test` résout un exemple de chaque format et ouvre chaque habileté et chaque leçon.

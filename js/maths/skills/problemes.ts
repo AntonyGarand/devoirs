@@ -5,17 +5,27 @@
    ===================================================================== */
 (function () {
   'use strict';
+  /** Problème produit par le générateur (M.pb.make). */
+  /** Habileté du domaine (domain, check et polish ajoutés par reg). */
+  type PbSkillDef = Omit<SkillDef, 'domain'>;
+  /** Champs ajoutés par single() à la question simple. */
+  interface SingleExtra {
+    /** Phrases du texte montré (défaut : tout le problème). */
+    sentences?: PbSentence[];
+    explain?: string;
+    prompt?: string;
+  }
   const M = window.M;
   const D = 'problemes';
   const pick = M.pick,
     shuffle = M.shuffle,
     rnd = M.rnd;
   const MINUS = '−';
-  const T = (s) => M.pb.typo(s);
-  const css = (str) => {
+  const T = (s: string): string => M.pb.typo(s);
+  const css = (str: string) => {
     try {
       M.css(str);
-    } catch (e) {
+    } catch {
       /* hors navigateur (tools/check-skills.js) */
     }
   };
@@ -38,9 +48,9 @@
   .pb-seek { font-size: 1.15rem; font-weight: 700 }
   `);
 
-  const chk = (q) => M.pb.checkQ(q);
+  const chk = (q: Question) => M.pb.checkQ(q);
   // élision et typographie sur tout le texte produit (« de Amira » → « d'Amira »), y compris les étapes ajoutées après coup
-  const reg = (def) =>
+  const reg = (def: PbSkillDef) =>
     M.registerSkill({
       domain: D,
       check: chk,
@@ -51,20 +61,25 @@
         return q;
       },
     });
-  const attach = (q, pb) => M.pb.attach(q, pb);
-  const explainOf = (pb) => `${pb.explain} ${M.esc(pb.reply)}`;
+  const attach = (q: Question, pb: Pb) => M.pb.attach(q, pb);
+  /** Histoire sans nombres et sa question (fournies par le générateur pour l'ajout et le retrait). */
+  function noNumOf(pb: Pb): { noNum: PbSentence[]; noNumQ: PbSentence } {
+    if (!pb.noNum || !pb.noNumQ) throw new Error(`histoire sans nombres absente (${pb.kind})`);
+    return { noNum: pb.noNum, noNumQ: pb.noNumQ };
+  }
+  const explainOf = (pb: Pb) => `${pb.explain} ${M.esc(pb.reply)}`;
   /** Question simple (un format) bâtie à partir d'une étape du générateur, avec le texte du problème. */
-  function single(pb, step, extra = {}) {
+  function single(pb: Pb, step: StepItem, extra: SingleExtra = {}) {
     const q = { ...step, passage: M.pb.passage(pb, extra.sentences), explain: explainOf(pb), ...extra };
     delete q.demarche;
     delete q.after;
     delete q.sentences;
     return attach(q, pb);
   }
-  const barHtml = (spec) => `<span class="pb-bar">${M.viz.barModelHtml(spec, { scale: 1 })}</span>`;
+  const barHtml = (spec: BarModelSpec) => `<span class="pb-bar">${M.viz.barModelHtml(spec, { scale: 1 })}</span>`;
 
   /* ---------- Visuels : onglets barres ↔ jetons ---------- */
-  function barMount(el, pb) {
+  function barMount(el: HTMLElement, pb: Pb): ShowMeCtl {
     el.innerHTML = `<div class="bm-wrap pb-stepbar">${M.viz.barModelHtml(pb.barSpec(false))}</div>`;
     return {
       async showMe() {
@@ -75,10 +90,12 @@
       },
     };
   }
-  function jetonsMount(el, pb) {
+  /** Inconnue du problème → case cachée des jetons. */
+  const COUNTER_UNKNOWN: Partial<Record<string, 'r' | 'a' | 'b'>> = { fin: 'r', change: 'b', debut: 'a', tout: 'r', partie: 'b' };
+  function jetonsMount(el: HTMLElement, pb: Pb): ShowMeCtl {
     const v = pb.v,
       em = pb.emoji,
-      U = { fin: 'r', change: 'b', debut: 'a', tout: 'r', partie: 'b' }[pb.unknown];
+      U = COUNTER_UNKNOWN[pb.unknown];
     if (pb.kind === 'ajout') return M.viz.counters(el, { a: v.debut, b: v.change, op: 'add', unknown: U, emoji: em });
     if (pb.kind === 'retrait') return M.viz.counters(el, { a: v.debut, b: v.change, op: 'sub', unknown: U, emoji: em });
     if (pb.kind === 'reunion') return M.viz.counters(el, { a: v.p1, b: v.p2, op: 'add', unknown: U, emoji: em });
@@ -86,11 +103,11 @@
     if (pb.kind === 'deux' && M.opViz && M.opViz.bag) {
       const [o1, o2] = pb.ops,
         { a, b, c } = v;
-      const parts = [{ n: a, k: 'A' }];
+      const parts: OpBagPart[] = [{ n: a, k: 'A' }];
       if (o1 === '+') parts.push({ n: b, k: 'B' });
       if (o2 === '+') parts.push({ n: c, k: 'B' });
       const total = parts.reduce((s, p) => s + p.n, 0);
-      const cross = [];
+      const cross: number[] = [];
       let rm = (o1 === '-' ? b : 0) + (o2 === '-' ? c : 0);
       for (let i = (o1 === '+' ? a + b : a) - 1; rm > 0 && i >= 0; i--, rm--) cross.push(i);
       return M.opViz.bag(el, {
@@ -102,9 +119,9 @@
     }
     return barMount(el, pb);
   }
-  function withTabs(q, pb, jetons) {
-    let api = null;
-    const models = [{ label: '🧱 Barres', mount: (p) => barMount(p, pb) }];
+  function withTabs(q: Question, pb: Pb, jetons: boolean) {
+    let api: ShowMeCtl | null = null;
+    const models: { label: string; mount: (p: HTMLElement) => ShowMeCtl }[] = [{ label: '🧱 Barres', mount: (p) => barMount(p, pb) }];
     if (jetons) models.push({ label: '🔴 Jetons', mount: (p) => jetonsMount(p, pb) });
     q.viz = (el) => {
       api = null;
@@ -135,20 +152,27 @@
     desc: 'Des histoires à résoudre : ajouter, enlever, réunir, comparer.',
     pda: "Sens des opérations A.1, A.2 a–b — situations d'ajout, de retrait, de réunion, de comparaison, composition de transformations",
     gen({ lvl }) {
-      const kinds =
+      const kinds: PbKind[] =
         lvl === 0
           ? ['ajout', 'retrait', 'reunion']
           : lvl === 1
             ? ['ajout', 'retrait', 'reunion', 'comparaison', 'comparaison']
             : ['comparaison', 'ajout', 'retrait', 'deux', 'deux'];
-      const unknowns =
+      const unknowns: PbMakeOpts['unknowns'] =
         lvl === 0
-          ? null
+          ? undefined
           : lvl === 1
             ? { ajout: ['fin', 'change'], retrait: ['fin', 'change'], reunion: ['tout', 'partie'], comparaison: ['ecart'] }
             : { ajout: ['change', 'debut'], retrait: ['change', 'debut'], comparaison: ['ecart', 'petit', 'grand'] };
       const pb = M.pb.make({ kinds, unknowns, lvl: lvl ? 1 : 0, max: lvl ? 20 : 10 });
-      const q = { prompt: M.pb.storyHtml(pb), say: pb.text, format: 'number', answer: pb.answer, hint: pb.hint, explain: explainOf(pb) };
+      const q: QuestionOf<'number'> = {
+        prompt: M.pb.storyHtml(pb),
+        say: pb.text,
+        format: 'number',
+        answer: pb.answer,
+        hint: pb.hint,
+        explain: explainOf(pb),
+      };
       return attach(withTabs(q, pb, true), pb);
     },
   });
@@ -166,6 +190,7 @@
     gen({ lvl }) {
       const pb = M.pb.make({ kinds: ['ajout', 'retrait'], unknowns: { ajout: ['fin'], retrait: ['fin'] }, lvl: 0 });
       const plus = pb.kind === 'ajout';
+      const { noNum, noNumQ } = noNumOf(pb);
       if (lvl === 0) {
         return single(
           pb,
@@ -180,7 +205,7 @@
             hint: plus ? 'Relis la 2e phrase : on en ajoute ou on en enlève ?' : 'Relis la 2e phrase : on en ajoute ou on en enlève ?',
           },
           {
-            sentences: [...pb.noNum, pb.noNumQ],
+            sentences: [...noNum, noNumQ],
             explain: plus
               ? "On en <b>ajoute</b> : à la fin, il y en a plus qu'au début."
               : "On en <b>enlève</b> : à la fin, il y en a moins qu'au début.",
@@ -204,7 +229,7 @@
             hint: "Est-ce qu'on en ajoute ou est-ce qu'on en enlève ?",
           },
           {
-            sentences: [...pb.noNum, pb.noNumQ],
+            sentences: [...noNum, noNumQ],
             explain: plus
               ? 'On en ajoute : deux parties, et on cherche le tout.'
               : 'On en enlève : le début est le tout, on barre ce qui part.',
@@ -217,8 +242,8 @@
         lvl: 0,
         ctx: (c) => c.id !== pb.ctx.id,
       });
-      const wrongQ = other.noNumQ.text,
-        right = pb.noNumQ.text;
+      const wrongQ = noNumOf(other).noNumQ.text,
+        right = noNumQ.text;
       const silly = pb.text.includes(pb.P.n) ? T(`Quel âge a ${pb.P.n} ?`) : T('Quel temps fait-il ?');
       return single(
         pb,
@@ -234,7 +259,7 @@
           ]),
           hint: "La question doit parler des mêmes choses que l'histoire.",
         },
-        { sentences: pb.noNum, explain: `La question parle de la même chose que l'histoire : ${M.esc(right)}` },
+        { sentences: noNum, explain: `La question parle de la même chose que l'histoire : ${M.esc(right)}` },
       );
     },
   });
@@ -242,7 +267,9 @@
   /* ==================================================================
      2. Trouve la question
      ================================================================== */
-  function seekStep(pb) {
+  function seekStep(pb: Pb): StepItem {
+    const seek = pb.seekChoices;
+    if (!seek) throw new Error(`phrases-réponses absentes (${pb.kind})`);
     return {
       demarche: 1,
       prompt: T('Que cherche-t-on ? Choisis la phrase-réponse à compléter.'),
@@ -250,7 +277,7 @@
       cols: 1,
       answer: pb.unknown,
       choices: shuffle(
-        pb.seekChoices.map((c) => ({
+        seek.map((c) => ({
           label: `<span class="pb-seek">${M.esc(c.label)}</span>`,
           value: c.value,
           say: c.label.replace('❓', 'combien'),
@@ -275,7 +302,7 @@
       const pb = M.pb.make({
         kinds: ['ajout', 'retrait', 'reunion', 'comparaison'],
         unknowns:
-          lvl === 1 ? { ajout: ['change', 'debut'], retrait: ['change', 'debut'], reunion: ['partie'], comparaison: ['ecart'] } : null,
+          lvl === 1 ? { ajout: ['change', 'debut'], retrait: ['change', 'debut'], reunion: ['partie'], comparaison: ['ecart'] } : undefined,
         lvl: 1,
         distract: lvl === 2 ? 1 : 0,
       });
@@ -300,10 +327,12 @@
         const pb = M.pb.make({ kinds: ['ajout', 'retrait', 'reunion', 'comparaison', 'deux'], lvl: 1 });
         const pairs = pb.dataTok.map((ti) => {
           const t = pb.tokens[ti],
-            n = /^\d+/.exec(t.w)[0];
+            m = /^\d+/.exec(t.w);
+          if (!m) throw new Error(`donnée sans nombre : ${t.w}`);
+          const n = m[0];
           const sent = pb.tokens
             .filter((x) => x.s === t.s)
-            .map((x, k, arr) => (x === t ? x.w.replace(n, '…') : x.w))
+            .map((x) => (x === t ? x.w.replace(n, '…') : x.w))
             .join(' ');
           return { left: `<span class="pb-num">${n}</span>`, right: M.esc(sent), sayRight: sent.replace('…', 'combien') };
         });
@@ -332,11 +361,11 @@
      4. Les mots des maths (sens, jamais une liste mot → opération)
      ================================================================== */
   /** « que</b> Léa » / « qu'</b>Amira » : élision quand « que » est en gras. */
-  const queB = (nm) => (/^[AEIOUYÀÂÉÈÊÎÏÔÛ]/i.test(nm) ? `qu'</b>${nm}` : `que</b> ${nm}`);
-  const dots = (n, e = '🔵') => e.repeat(n);
-  const pic = (rows) =>
+  const queB = (nm: string) => (/^[AEIOUYÀÂÉÈÊÎÏÔÛ]/i.test(nm) ? `qu'</b>${nm}` : `que</b> ${nm}`);
+  const dots = (n: number, e = '🔵') => e.repeat(n);
+  const pic = (rows: [string, number, string?][]) =>
     `<span class="pb-pic">${rows.map(([nm, n, e]) => `<span class="pb-row"><b>${M.esc(nm)}</b>${dots(n, e)}</span>`).join('')}</span>`;
-  const plates = (groups, e) =>
+  const plates = (groups: number[], e: string) =>
     `<span class="pb-plates">${groups.map((n) => `<span class="pb-plate">${dots(n, e)}</span>`).join('')}</span>`;
   const WORDS = {
     entout(P) {
@@ -495,7 +524,7 @@
         explain: `${P.n} en a ${a}, ${Q.n} en a ${b}. ${P.n} en a ${d} de plus; ${Q.n} en a ${d} de moins.`,
       };
     },
-    chacun(P) {
+    chacun(P): Question {
       const n = rnd(2, 3),
         k = rnd(3, 5);
       if (n === k) return WORDS.chacun(P);
@@ -513,7 +542,7 @@
         explain: `« Chacun » : chaque ami reçoit ${k} biscuits. ${Array(n).fill(k).join(' + ')} = ${n * k}.`,
       };
     },
-    plusQue(P, Q) {
+    plusQue(P, Q): Question {
       const a = rnd(5, 9),
         d = rnd(2, 4);
       if (a - d === d) return WORDS.plusQue(P, Q);
@@ -545,7 +574,7 @@
         explain: `${Q.n} en a <b>moins</b> que ${P.n} : on fait ${g} ${MINUS} ${e} = ${g - e}. Les mots « de plus » ne veulent pas toujours dire + !`,
       };
     },
-  };
+  } satisfies Record<string, (P: Person, Q: Person) => Question>;
   reg({
     id: 'pb-mots',
     title: 'Les mots des maths',
@@ -556,7 +585,7 @@
     gen({ lvl }) {
       const P = M.people.pick(),
         Q = M.people.pick({ not: [P.n] });
-      const keys =
+      const keys: (keyof typeof WORDS)[] =
         lvl === 0
           ? ['entout', 'reste', 'entout', 'autant']
           : lvl === 1
@@ -569,13 +598,13 @@
   /* ==================================================================
      5. Quel schéma ?
      ================================================================== */
-  const SCHEMA_KINDS = [
+  const SCHEMA_KINDS: PbMakeOpts[] = [
     { kinds: ['ajout', 'retrait'], unknowns: { ajout: ['fin'], retrait: ['fin'] } },
     {
       kinds: ['ajout', 'retrait', 'reunion', 'comparaison'],
       unknowns: { ajout: ['fin', 'change'], retrait: ['fin', 'change'], reunion: ['tout', 'partie'], comparaison: ['ecart'] },
     },
-    { kinds: ['ajout', 'retrait', 'reunion', 'comparaison', 'groupes', 'partage'], unknowns: null },
+    { kinds: ['ajout', 'retrait', 'reunion', 'comparaison', 'groupes', 'partage'], unknowns: undefined },
   ];
   reg({
     id: 'pb-schema',
@@ -593,7 +622,7 @@
   /* ==================================================================
      6. Quelle opération ?
      ================================================================== */
-  function whyStep(pb) {
+  function whyStep(pb: Pb): StepItem {
     const ref = M.pb.senseRef(pb),
       plus = pb.answer > ref;
     const kw = pb.trap
@@ -651,7 +680,7 @@
     desc: 'Quand on ne connaît pas le début ou le changement.',
     pda: 'Sens des opérations A.2a (transformations, terme manquant); Opérations A.5 (équation à trou)',
     gen({ lvl }) {
-      const opts =
+      const opts: PbMakeOpts =
         lvl === 0
           ? { kinds: ['ajout', 'retrait'], unknowns: { ajout: ['change'], retrait: ['change'] }, lvl: 0 }
           : lvl === 1
@@ -691,7 +720,7 @@
         distract: Math.random() < 0.3 ? 1 : 0,
       });
       const grp = ['grp', 'shr', 'cnt'].includes(pb.fam);
-      const recipe = grp
+      const recipe: PbRecipeStep[] = grp
         ? ['donnees', 'schema', 'calcul', 'sens', 'phrase']
         : ['donnees', 'schema', 'operation', 'calcul', 'verifier', 'phrase'];
       return M.pb.toSteps(pb, recipe, { lvl, scoreSteps: ['schema', 'operation', 'calcul', 'phrase'] });
@@ -710,7 +739,7 @@
     pda: 'Sens des opérations A.2 b (composition de transformations positive ou négative), c (mixte)',
     gen({ lvl }) {
       const pb = M.pb.make({ kinds: ['deux'], lvl });
-      const recipe =
+      const recipe: PbRecipeStep[] =
         lvl === 0 ? ['donnees', 'plan', 'calcul1', 'calcul2', 'phrase'] : ['donnees', 'plan', 'calcul1', 'calcul2', 'sens', 'phrase'];
       return M.pb.toSteps(pb, recipe, { lvl: Math.min(1, lvl), scoreSteps: ['plan', 'calcul1', 'calcul2', 'phrase'] });
     },
@@ -719,13 +748,13 @@
   /* ==================================================================
      10. Ma réponse a-t-elle du sens ?
      ================================================================== */
-  function friendStep(pb) {
+  function friendStep(pb: Pb): StepItem {
     const F = M.people.pick({ not: [pb.P.n, pb.Q.n] });
     const s = pb.solve;
     const ok = Math.random() < 0.45;
     let w = pb.answer;
     if (!ok) {
-      const opp = s.op === '+' ? Math.abs(s.a - s.b) : s.a + s.b;
+      const opp = s.terms ? NaN : s.op === '+' ? Math.abs(s.a - s.b) : s.a + s.b;
       const cands = [opp, pb.answer + 10, pb.answer - 1, pb.answer + 2].filter(
         (x) => x > 0 && x !== pb.answer && !pb.knownVals.includes(x),
       );
@@ -812,6 +841,7 @@
     gen({ lvl }) {
       if (lvl === 1) {
         const pb = M.pb.make({ kinds: ['comparaison'], unknowns: { comparaison: ['ecart'] }, lvl: 1 });
+        if (pb.kind !== 'comparaison') throw new Error('comparaison attendue');
         const { grand: g, petit: p } = pb.v;
         const ens = pb.cmpEnsemble(),
           diff = pb.sentences[pb.qIndex].text;
@@ -837,11 +867,12 @@
       const story = pb.sentences.filter((s) => s.role !== 'question');
       const right = pb.sentences[pb.qIndex].text;
       const silly = pick([T('Combien de chats y a-t-il ?'), T(`De quelle couleur est la tuque de ${pb.P.n} ?`), T('Quel temps fait-il ?')]);
-      const choices = [
+      const choices: Choice[] = [
         { label: M.esc(right), value: 'ok', say: right },
         { label: M.esc(silly), value: 'silly', say: silly, why: "L'histoire ne donne pas cette information." },
       ];
-      if (lvl === 2) choices.push({ label: M.esc(pb.q1), value: 'q1', say: pb.q1, why: 'Celle-là se résout avec un seul calcul.' });
+      if (lvl === 2 && pb.kind === 'deux')
+        choices.push({ label: M.esc(pb.q1), value: 'q1', say: pb.q1, why: 'Celle-là se résout avec un seul calcul.' });
       return single(
         pb,
         {

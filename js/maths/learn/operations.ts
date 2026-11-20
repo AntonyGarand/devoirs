@@ -6,8 +6,29 @@
   'use strict';
   const M = window.M;
   const D = 'operations';
+  type OpStoryKind = 'ajout' | 'retrait' | 'reunion' | 'comparaison';
+  /** Histoire animée d'une section du sens des opérations. */
+  interface OpStory {
+    e: string;
+    a: number;
+    b: number;
+    p: OpPerson;
+    q: OpPerson;
+    txt: string;
+    ans: number;
+    eqTxt: string;
+    done: boolean;
+  }
+  /** Droite de la page « La droite numérique ». */
+  interface OpRange {
+    lo: number;
+    hi: number;
+    buttons: number[];
+    labelEvery?: number;
+    label: string;
+  }
   const MINUS = '−';
-  const css = (str) => {
+  const css = (str: string) => {
     try {
       M.css(str);
     } catch (e) {
@@ -76,7 +97,12 @@
      ------------------------------------------------------------------ */
   const rnd = M.rnd,
     pick = M.pick;
-  const NAMES = [
+  interface OpPerson {
+    n: string;
+    il: string;
+    Il: string;
+  }
+  const NAMES: [string, 'f' | 'm'][] = [
     ['Léa', 'f'],
     ['Félix', 'm'],
     ['Florence', 'f'],
@@ -90,16 +116,16 @@
     ['Alice', 'f'],
     ['Jacob', 'm'],
   ];
-  function person(not) {
-    let p,
+  function person(not?: OpPerson): OpPerson {
+    let p: [string, 'f' | 'm'],
       g = 0;
     do {
       p = pick(NAMES);
-    } while (not && p[0] === not.n && g++ < 50);
+    } while (p[0] === not?.n && g++ < 50);
     const f = p[1] === 'f';
     return { n: p[0], il: f ? 'elle' : 'il', Il: f ? 'Elle' : 'Il' };
   }
-  const OBJ = [
+  const OBJ: [string, string][] = [
     ['🍎', 'pommes'],
     ['🧤', 'mitaines'],
     ['🐟', 'poissons'],
@@ -108,9 +134,9 @@
     ['🃏', 'cartes de hockey'],
     ['🍁', "feuilles d'érable"],
   ];
-  const castor = (t, cls = '') => `<div class="callout ${cls}">🦫 ${t}</div>`;
-  const alive = (el, tok, get) => el.isConnected && tok === get();
-  const fireClick = (fn) => (e) => {
+  const castor = (t: string, cls = '') => `<div class="callout ${cls}">🦫 ${t}</div>`;
+  const alive = (el: Element, tok: number, get: () => number) => el.isConnected && tok === get();
+  const fireClick = (fn: (e: MouseEvent) => void) => (e: MouseEvent) => {
     try {
       fn(e);
     } catch (err) {
@@ -119,7 +145,7 @@
   };
 
   /** Ajoute une section et appelle init(sec). */
-  function section(root, title, html, init) {
+  function section(root: HTMLElement, title: string, html: string, init?: (sec: HTMLElement) => void) {
     const sec = document.createElement('section');
     sec.className = 'l-sec';
     sec.innerHTML = `<h2>${title}</h2>${html}`;
@@ -132,30 +158,36 @@
     return sec;
   }
   /** Sélecteur −/+ : html ; on lit/écrit la valeur via data-v. */
-  const stepper = (key, label, v) =>
+  const stepper = (key: string, label: string, v: number) =>
     `<span class="op-l-stp" data-k="${key}">${label} <button class="btn" data-d="-1">−</button><b>${v}</b><button class="btn" data-d="1">+</button></span>`;
   /** Branche les sélecteurs d'une section. state[key] borné par lim[key] = [min,max]. */
-  function wireSteppers(sec, state, lim, onChange) {
+  function wireSteppers<K extends string>(
+    sec: HTMLElement,
+    state: Record<K, number>,
+    lim: Record<K, [number, number]>,
+    onChange: (k: K) => void,
+  ) {
     sec.addEventListener(
       'click',
       fireClick((e) => {
-        const b = e.target.closest('.op-l-stp [data-d]');
+        const b = M.closest(e, '.op-l-stp [data-d]');
         if (!b || !sec.contains(b)) return;
-        const box = b.closest('.op-l-stp'),
-          k = box.dataset.k;
-        if (!(k in state)) return;
+        const box = b.closest<HTMLElement>('.op-l-stp')!,
+          key = box.dataset.k ?? '';
+        if (!(key in state)) return;
+        const k = key as K;
         const [mn, mx] = lim[k];
-        const v = Math.max(mn, Math.min(mx, state[k] + +b.dataset.d));
+        const v = Math.max(mn, Math.min(mx, state[k] + Number(b.dataset.d)));
         if (v === state[k]) return;
         state[k] = v;
-        box.querySelector('b').textContent = v;
+        M.$('b', box)!.textContent = String(v);
         M.sfx.tap();
         onChange(k);
       }),
     );
   }
   /** Cadre de dix statique. cells : 10 codes 'A' | 'B' | '' (+ suffixes x = surligné, n = nouveau) */
-  function frame(cells) {
+  function frame(cells: readonly string[]) {
     let h = '<div class="frame">';
     for (let i = 0; i < 10; i++) {
       const c = cells[i] || '';
@@ -166,8 +198,8 @@
     return h + '</div>';
   }
   /** Remplit un cadre avec n jetons ; mirror = remplit de droite à gauche. */
-  function fillFrame(n, kind, mirror) {
-    const cells = Array(10).fill('');
+  function fillFrame(n: number, kind: string, mirror?: boolean) {
+    const cells: string[] = Array(10).fill('');
     for (let i = 0; i < Math.min(10, n); i++) {
       const row = Math.floor(i / 5),
         col = i % 5;
@@ -175,10 +207,13 @@
     }
     return cells;
   }
-  const strat = () =>
+  const strat = (): {
+    add(a: number, b: number): { name: string; txt: string };
+    sub(a: number, b: number): { name: string; txt: string };
+  } =>
     M.opStrat || {
-      add: (a, b) => ({ name: '', txt: `${a} + ${b} = ${a + b}` }),
-      sub: (a, b) => ({ name: '', txt: `${a} − ${b} = ${a - b}` }),
+      add: (a: number, b: number) => ({ name: '', txt: `${a} + ${b} = ${a + b}` }),
+      sub: (a: number, b: number) => ({ name: '', txt: `${a} − ${b} = ${a - b}` }),
     };
 
   /* ==================================================================
@@ -206,19 +241,19 @@
           const st = { n: 4 };
           const draw = () => {
             const n = st.n;
-            const fr = sec.querySelector('.op-l-frames');
+            const fr = M.$('.op-l-frames', sec)!;
             fr.innerHTML = frame(fillFrame(n, 'A')) + '<span class="op-l-mirror">🪞</span>' + frame(fillFrame(n, 'B', true));
-            sec.querySelector('.op-l-eq').innerHTML = `${n} + ${n} = <span class="op-l-g">${2 * n}</span>`;
-            sec.querySelector('.op-l-chips').innerHTML = M.range(1, 10)
+            M.$('.op-l-eq', sec)!.innerHTML = `${n} + ${n} = <span class="op-l-g">${2 * n}</span>`;
+            M.$('.op-l-chips', sec)!.innerHTML = M.range(1, 10)
               .map((i) => `<span class="chip ${i === n ? 'on' : ''}" data-n="${i}">${i} + ${i}</span>`)
               .join('');
           };
           wireSteppers(sec, st, { n: [1, 10] }, draw);
-          sec.querySelector('.op-l-chips').addEventListener('click', (e) => {
-            const c = e.target.closest('.chip');
+          M.$('.op-l-chips', sec)!.addEventListener('click', (e) => {
+            const c = M.closest(e, '.chip');
             if (!c) return;
-            st.n = +c.dataset.n;
-            sec.querySelector('.op-l-stp b').textContent = st.n;
+            st.n = Number(c.dataset.n);
+            M.$('.op-l-stp b', sec)!.textContent = String(st.n);
             M.sfx.tap();
             draw();
           });
@@ -243,8 +278,8 @@
             const row = Math.floor(n / 5),
               col = n % 5;
             right[row * 5 + (4 - col)] = 'Bx';
-            sec.querySelector('.op-l-frames').innerHTML = frame(fillFrame(n, 'A')) + '<span class="op-l-mirror">+</span>' + frame(right);
-            sec.querySelector('.op-l-eq').innerHTML = `${n} + ${n + 1} = ${n} + ${n} + 1 = <span class="op-l-g">${2 * n + 1}</span>`;
+            M.$('.op-l-frames', sec)!.innerHTML = frame(fillFrame(n, 'A')) + '<span class="op-l-mirror">+</span>' + frame(right);
+            M.$('.op-l-eq', sec)!.innerHTML = `${n} + ${n + 1} = ${n} + ${n} + 1 = <span class="op-l-g">${2 * n + 1}</span>`;
           };
           wireSteppers(sec, st, { n: [1, 9] }, draw);
           draw();
@@ -262,18 +297,18 @@
         (sec) => {
           let a = 8,
             b = 5,
-            f1,
-            f2,
+            f1: string[] = [],
+            f2: string[] = [],
             tok = 0;
           const reset = () => {
             f1 = fillFrame(a, 'A');
             f2 = fillFrame(b, 'B');
-            sec.querySelector('.op-l-top').innerHTML = `${a} + ${b} = <span class="op-l-q">?</span>`;
-            sec.querySelector('.op-l-res').innerHTML = '';
+            M.$('.op-l-top', sec)!.innerHTML = `${a} + ${b} = <span class="op-l-q">?</span>`;
+            M.$('.op-l-res', sec)!.innerHTML = '';
             draw();
           };
           const draw = () => {
-            sec.querySelector('.op-l-frames').innerHTML = frame(f1) + frame(f2);
+            M.$('.op-l-frames', sec)!.innerHTML = frame(f1) + frame(f2);
           };
           async function go() {
             const t = ++tok;
@@ -297,11 +332,11 @@
             await M.sleep(400);
             if (!alive(sec, t, () => tok)) return;
             const rest = b - need;
-            sec.querySelector('.op-l-res').innerHTML = `${a} + ${need} = 10, puis 10 + ${rest} = <span class="op-l-g">${a + b}</span>`;
+            M.$('.op-l-res', sec)!.innerHTML = `${a} + ${need} = 10, puis 10 + ${rest} = <span class="op-l-g">${a + b}</span>`;
             M.sfx.good();
           }
-          sec.querySelector('.op-l-go').onclick = () => go();
-          sec.querySelector('.op-l-new').onclick = () => {
+          M.$('.op-l-go', sec)!.onclick = () => go();
+          M.$('.op-l-new', sec)!.onclick = () => {
             tok++;
             a = rnd(6, 9);
             b = rnd(11 - a, 9);
@@ -323,29 +358,28 @@
         (sec) => {
           let a = 7,
             b = 6,
-            api,
+            api: NumberLineCtl | null = null,
             tok = 0;
           const mount = () => {
-            sec.querySelector('.op-l-top').innerHTML = `${a} + ${b} = <span class="op-l-q">?</span>`;
-            sec.querySelector('.op-l-res').innerHTML = '';
-            api = M.viz.numberLine(sec.querySelector('.op-l-nl'), { lo: 0, hi: 20, start: a, interactive: false });
+            M.$('.op-l-top', sec)!.innerHTML = `${a} + ${b} = <span class="op-l-q">?</span>`;
+            M.$('.op-l-res', sec)!.innerHTML = '';
+            api = M.viz.numberLine(M.$('.op-l-nl', sec)!, { lo: 0, hi: 20, start: a, interactive: false });
           };
           async function go() {
             const t = ++tok;
             mount();
             await M.sleep(300);
             if (!alive(sec, t, () => tok)) return;
-            await api.hop(10);
+            await api?.hop(10);
             await M.sleep(250);
             if (!alive(sec, t, () => tok)) return;
-            await api.hop(a + b);
+            await api?.hop(a + b);
             if (!alive(sec, t, () => tok)) return;
-            sec.querySelector('.op-l-res').innerHTML =
-              `${a} + ${10 - a} = 10, puis 10 + ${b - (10 - a)} = <span class="op-l-g">${a + b}</span>`;
+            M.$('.op-l-res', sec)!.innerHTML = `${a} + ${10 - a} = 10, puis 10 + ${b - (10 - a)} = <span class="op-l-g">${a + b}</span>`;
             M.sfx.good();
           }
-          sec.querySelector('.op-l-go').onclick = () => go();
-          sec.querySelector('.op-l-new').onclick = () => {
+          M.$('.op-l-go', sec)!.onclick = () => go();
+          M.$('.op-l-new', sec)!.onclick = () => {
             tok++;
             a = rnd(5, 9);
             b = rnd(11 - a, 9);
@@ -367,14 +401,14 @@
         (sec) => {
           let x = 2,
             y = 9,
-            api,
+            api: NumberLineCtl | null = null,
             tok = 0;
           const mount = () => {
             const big = Math.max(x, y);
-            sec.querySelector('.op-l-cards').innerHTML =
+            M.$('.op-l-cards', sec)!.innerHTML =
               `<span class="op-l-card ${x >= y ? 'big' : ''}">${x}</span>+<span class="op-l-card ${y > x ? 'big' : ''}">${y}</span>`;
-            sec.querySelector('.op-l-res').innerHTML = '';
-            api = M.viz.numberLine(sec.querySelector('.op-l-nl'), {
+            M.$('.op-l-res', sec)!.innerHTML = '';
+            api = M.viz.numberLine(M.$('.op-l-nl', sec)!, {
               lo: 0,
               hi: 20,
               start: x >= y ? x : y,
@@ -387,26 +421,26 @@
             mount();
             const big = Math.max(x, y),
               small = Math.min(x, y);
-            const said = [];
+            const said: number[] = [];
             for (let i = 1; i <= small; i++) {
               await M.sleep(250);
               if (!alive(sec, t, () => tok)) return;
-              await api.hop(big + i);
+              await api?.hop(big + i);
               said.push(big + i);
-              sec.querySelector('.op-l-res').innerHTML = `${big}… ${said.join(', ')}`;
+              M.$('.op-l-res', sec)!.innerHTML = `${big}… ${said.join(', ')}`;
             }
             if (!alive(sec, t, () => tok)) return;
-            sec.querySelector('.op-l-res').innerHTML = `${big}… ${said.join(', ')} → ${x} + ${y} = <span class="op-l-g">${x + y}</span>`;
+            M.$('.op-l-res', sec)!.innerHTML = `${big}… ${said.join(', ')} → ${x} + ${y} = <span class="op-l-g">${x + y}</span>`;
             M.sfx.good();
           }
-          sec.querySelector('.op-l-swap').onclick = () => {
+          M.$('.op-l-swap', sec)!.onclick = () => {
             tok++;
             [x, y] = [y, x];
             M.sfx.tap();
             mount();
           };
-          sec.querySelector('.op-l-go').onclick = () => go();
-          sec.querySelector('.op-l-new').onclick = () => {
+          M.$('.op-l-go', sec)!.onclick = () => go();
+          M.$('.op-l-new', sec)!.onclick = () => {
             tok++;
             const s = rnd(1, 3),
               g = rnd(6, 15);
@@ -429,13 +463,13 @@
         (sec) => {
           let a = 13,
             b = 8,
-            api,
+            api: NumberLineCtl | null = null,
             tok = 0;
           const mount = () => {
-            sec.querySelector('.op-l-top').innerHTML =
+            M.$('.op-l-top', sec)!.innerHTML =
               `${a} − ${b} = <span class="op-l-q">?</span> &nbsp;➜&nbsp; ${b} + <span class="op-l-q">?</span> = ${a}`;
-            sec.querySelector('.op-l-res').innerHTML = '';
-            api = M.viz.numberLine(sec.querySelector('.op-l-nl'), { lo: 0, hi: 20, start: b, interactive: false });
+            M.$('.op-l-res', sec)!.innerHTML = '';
+            api = M.viz.numberLine(M.$('.op-l-nl', sec)!, { lo: 0, hi: 20, start: b, interactive: false });
           };
           async function go() {
             const t = ++tok;
@@ -443,18 +477,18 @@
             await M.sleep(300);
             if (!alive(sec, t, () => tok)) return;
             if (b < 10 && a > 10) {
-              await api.hop(10);
+              await api?.hop(10);
               await M.sleep(250);
               if (!alive(sec, t, () => tok)) return;
             }
-            await api.hop(a);
+            await api?.hop(a);
             if (!alive(sec, t, () => tok)) return;
             const parts = b < 10 && a > 10 ? `${10 - b} + ${a - 10} = ${a - b}` : `${a - b}`;
-            sec.querySelector('.op-l-res').innerHTML = `On a avancé de ${parts}. Donc ${a} − ${b} = <span class="op-l-g">${a - b}</span>`;
+            M.$('.op-l-res', sec)!.innerHTML = `On a avancé de ${parts}. Donc ${a} − ${b} = <span class="op-l-g">${a - b}</span>`;
             M.sfx.good();
           }
-          sec.querySelector('.op-l-go').onclick = () => go();
-          sec.querySelector('.op-l-new').onclick = () => {
+          M.$('.op-l-go', sec)!.onclick = () => go();
+          M.$('.op-l-new', sec)!.onclick = () => {
             tok++;
             a = rnd(11, 18);
             b = rnd(Math.max(a - 9, 5), 9);
@@ -484,24 +518,24 @@
             }
             const s = opr === '+' ? strat().add(a, b) : strat().sub(a, b);
             const res = opr === '+' ? a + b : a - b;
-            sec.querySelector('.op-l-eq').innerHTML = `${a} ${opr === '+' ? '+' : MINUS} ${b} = <span class="op-l-g">${res}</span>`;
+            M.$('.op-l-eq', sec)!.innerHTML = `${a} ${opr === '+' ? '+' : MINUS} ${b} = <span class="op-l-g">${res}</span>`;
             if (opr === '+') {
-              const cells = [];
+              const cells: string[] = [];
               for (let i = 0; i < a; i++) cells.push('A');
               for (let i = 0; i < b; i++) cells.push('B');
-              sec.querySelector('.op-l-frames').innerHTML = frame(cells.slice(0, 10)) + frame(cells.slice(10, 20));
+              M.$('.op-l-frames', sec)!.innerHTML = frame(cells.slice(0, 10)) + frame(cells.slice(10, 20));
             } else {
-              const cells = [];
+              const cells: string[] = [];
               for (let i = 0; i < a; i++) cells.push(i >= a - b ? 'Ax' : 'A');
-              sec.querySelector('.op-l-frames').innerHTML = frame(cells.slice(0, 10)) + (a > 10 ? frame(cells.slice(10, 20)) : '');
+              M.$('.op-l-frames', sec)!.innerHTML = frame(cells.slice(0, 10)) + (a > 10 ? frame(cells.slice(10, 20)) : '');
             }
-            sec.querySelector('.op-l-out').innerHTML = castor(`<b>${s.name || 'Calcul'}</b>${note} — ${s.txt}`, 'green');
+            M.$('.op-l-out', sec)!.innerHTML = castor(`<b>${s.name || 'Calcul'}</b>${note} — ${s.txt}`, 'green');
           };
           wireSteppers(sec, st, { a: [0, 10], b: [0, 10] }, draw);
-          sec.querySelector('.op-l-ops').addEventListener('click', (e) => {
-            const c = e.target.closest('.chip');
+          M.$('.op-l-ops', sec)!.addEventListener('click', (e) => {
+            const c = M.closest(e, '.chip');
             if (!c) return;
-            opr = c.dataset.op;
+            opr = c.dataset.op ?? '+';
             sec.querySelectorAll('.op-l-ops .chip').forEach((x) => x.classList.toggle('on', x === c));
             M.sfx.tap();
             draw();
@@ -516,8 +550,8 @@
      Page 2 — Le sens des opérations
      ================================================================== */
   /** Section d'histoire animée : kind = ajout | retrait | reunion | comparaison */
-  function storySection(root, kind) {
-    const META = {
+  function storySection(root: HTMLElement, kind: OpStoryKind) {
+    const META: Record<OpStoryKind, [string, string]> = {
       ajout: ['➕ Ajouter', 'On <b>ajoute</b> : la quantité augmente.'],
       retrait: ['➖ Enlever', 'On <b>enlève</b> : la quantité diminue.'],
       reunion: ['🤝 Réunir', 'On <b>réunit</b> deux groupes pour savoir combien il y en a en tout.'],
@@ -531,14 +565,14 @@
       <div class="op-l-ans"></div><div class="op-l-status"></div>
       <div class="row"><button class="btn blue op-l-play">▶ Regarder l'histoire</button><button class="btn primary op-l-new">🎲 À toi : une autre histoire</button></div>`,
       (sec) => {
-        let S,
+        let story: OpStory | undefined,
           tok = 0;
-        const $ = (s) => sec.querySelector(s);
-        function make(first) {
+        const $ = (s: string) => M.$(s, sec)!;
+        function make(first: boolean): OpStory {
           const [e, noun] = pick(OBJ);
           const p = person(),
             q = person(p);
-          let a, b, txt, ans, eqTxt;
+          let a: number, b: number, txt: string, ans: number, eqTxt: string;
           if (kind === 'ajout') {
             a = first ? 5 : rnd(2, 9);
             b = first ? 3 : rnd(2, 9);
@@ -564,12 +598,13 @@
             ans = a - b;
             eqTxt = `${a} − ${b} = `;
           }
-          S = { e, a, b, p, q, txt, ans, eqTxt, done: false };
+          return { e, a, b, p, q, txt, ans, eqTxt, done: false };
         }
-        const item = (k, cls = '') => `<span class="op-l-it k${k} ${cls}">${S.e}</span>`;
-        function stage(phase) {
+        const cur = (): OpStory => (story ??= make(true));
+        const item = (k: string, cls = '') => `<span class="op-l-it k${k} ${cls}">${cur().e}</span>`;
+        function stage(phase: number) {
           // phase 0 = avant, 1 = après (sans animation)
-          const { a, b } = S;
+          const { a, b } = cur();
           if (kind === 'ajout') return `<div class="op-l-grp boxed">${item('A').repeat(a)}${phase ? item('B').repeat(b) : ''}</div>`;
           if (kind === 'retrait')
             return `<div class="op-l-grp boxed">${item('A').repeat(a - b)}${item('A', phase ? 'gone' : '').repeat(b)}</div>`;
@@ -577,10 +612,10 @@
             return phase
               ? `<div class="op-l-grp boxed">${item('A').repeat(a)}${item('B').repeat(b)}</div>`
               : `<div class="op-l-grp boxed">${item('A').repeat(a)}</div><div class="op-l-grp boxed">${item('B').repeat(b)}</div>`;
-          return cmpHtml(phase ? a : 0, phase);
+          return cmpHtml(phase ? a : 0, !!phase);
         }
-        function cmpHtml(pairs, extra) {
-          const { a, b, p, q } = S;
+        function cmpHtml(pairs: number, extra: boolean) {
+          const { a, b, p, q } = cur();
           let h = `<div class="op-l-cmp" style="grid-template-columns:auto repeat(${a}, auto)"><span class="nm">${p.n}</span>`;
           for (let i = 0; i < a; i++) h += item('A', i < Math.min(pairs, b) ? 'pair' : extra && i >= b ? 'extra' : '');
           h += `<span class="nm">${q.n}</span>`;
@@ -588,6 +623,7 @@
           return h + '</div>';
         }
         function show() {
+          const S = cur();
           $('.op-l-story').innerHTML = `${S.e} ${S.txt}`;
           $('.op-l-stage').innerHTML = stage(0);
           $('.op-l-eq').innerHTML = `${S.eqTxt}<span class="op-l-q">?</span>`;
@@ -606,9 +642,9 @@
           st.innerHTML = stage(0);
           await M.sleep(500);
           if (!ok()) return;
-          const { a, b } = S;
+          const { a, b } = cur();
           if (kind === 'ajout') {
-            const g = st.querySelector('.op-l-grp');
+            const g = M.$('.op-l-grp', st)!;
             for (let i = 0; i < b; i++) {
               await M.sleep(380);
               if (!ok()) return;
@@ -616,7 +652,7 @@
               M.sfx.pop();
             }
           } else if (kind === 'retrait') {
-            const its = st.querySelectorAll('.op-l-it');
+            const its = M.$$('.op-l-it', st);
             for (let i = a - 1; i >= a - b; i--) {
               await M.sleep(380);
               if (!ok()) return;
@@ -635,7 +671,7 @@
             await M.sleep(500);
             if (!ok()) return;
             st.innerHTML = `<div class="op-l-grp boxed">${item('A').repeat(a)}</div>`;
-            const g = st.querySelector('.op-l-grp');
+            const g = M.$('.op-l-grp', st)!;
             for (let i = 0; i < b; i++) {
               await M.sleep(160);
               if (!ok()) return;
@@ -658,6 +694,7 @@
           reveal();
         }
         function reveal() {
+          const S = cur();
           S.done = true;
           $('.op-l-eq').innerHTML = `${S.eqTxt}<span class="op-l-g">${S.ans}</span>`;
           let msg = '';
@@ -672,12 +709,12 @@
         sec.addEventListener(
           'click',
           fireClick((e) => {
-            const b = e.target.closest('.op-l-ans [data-v]');
+            const b = M.closest<HTMLButtonElement>(e, '.op-l-ans [data-v]');
             if (!b || !sec.contains(b) || b.disabled) return;
-            if (+b.dataset.v === S.ans) {
+            if (Number(b.dataset.v) === cur().ans) {
               b.classList.add('right');
               M.sfx.good();
-              sec.querySelectorAll('.op-l-ans [data-v]').forEach((x) => (x.disabled = true));
+              M.$$<HTMLButtonElement>('.op-l-ans [data-v]', sec).forEach((x) => (x.disabled = true));
               play();
             } else {
               b.classList.add('wrong');
@@ -690,11 +727,11 @@
         $('.op-l-play').onclick = () => play();
         $('.op-l-new').onclick = () => {
           tok++;
-          make(false);
+          story = make(false);
           M.sfx.tap();
           show();
         };
-        make(true);
+        story = make(true);
         show();
       },
     );
@@ -709,7 +746,7 @@
     intro:
       "Une addition ou une soustraction, c'est une petite histoire ! On peut ajouter, enlever, réunir ou comparer. Regarde chaque histoire, puis essaie de répondre.",
     render(el) {
-      ['ajout', 'retrait', 'reunion', 'comparaison'].forEach((k) => storySection(el, k));
+      (['ajout', 'retrait', 'reunion', 'comparaison'] as const).forEach((k) => storySection(el, k));
       el.insertAdjacentHTML(
         'beforeend',
         `<section class="l-sec">${castor('Ajouter et réunir, ce sont des <b>additions</b> (+). Enlever et comparer, ce sont des <b>soustractions</b> (−). Pour comparer, on peut aussi faire une addition à trou : 6 + ? = 9.')}</section>`,
@@ -727,7 +764,7 @@
         (sec) => {
           const st = { a: 4, b: 5, c: 3, d: 6 };
           const mount = () => {
-            const host = sec.querySelector('.op-l-bal');
+            const host = M.$('.op-l-bal', sec)!;
             if (!M.opViz) {
               host.textContent = `${st.a} + ${st.b} = ${st.a + st.b} ; ${st.c} + ${st.d} = ${st.c + st.d}`;
               return;
@@ -745,12 +782,12 @@
   /* ==================================================================
      Page 3 — La droite numérique
      ================================================================== */
-  const RANGES = {
+  const RANGES: Record<number, OpRange> = {
     20: { lo: 0, hi: 20, buttons: [-5, -1, 1, 5], label: '0 à 20' },
     100: { lo: 0, hi: 100, buttons: [-10, -1, 1, 10], label: '0 à 100' },
     1000: { lo: 0, hi: 1000, buttons: [-100, -10, 10, 100], labelEvery: 100, label: '0 à 1000' },
   };
-  function challenge(r) {
+  function challenge(r: number): { start: number; d: number } {
     if (r === 20) {
       const k = rnd(0, 2);
       if (k === 0) {
@@ -796,8 +833,8 @@
     return { start: a, d: pick([30, 50, 120, 250]) };
   }
   /** Bonds pour aller de a à a+d avec les boutons disponibles. */
-  function plan(a, d, buttons) {
-    const out = [];
+  function plan(a: number, d: number, buttons: readonly number[]) {
+    const out: number[] = [];
     let pos = a,
       rest = Math.abs(d);
     const sg = Math.sign(d);
@@ -828,17 +865,17 @@
         '🐸 Joue avec la grenouille',
         `<p>Choisis ta droite, puis touche un nombre ou les boutons pour faire sauter la grenouille.</p>
         <div class="op-l-chips op-l-rng">${Object.keys(RANGES)
-          .map((k) => `<span class="chip ${k === '20' ? 'on' : ''}" data-r="${k}">${RANGES[k].label}</span>`)
+          .map((k) => `<span class="chip ${k === '20' ? 'on' : ''}" data-r="${k}">${RANGES[Number(k)].label}</span>`)
           .join('')}</div>
         <div class="op-l-box"><div class="op-l-nl"></div></div>
         <div class="row"><button class="btn op-l-reset">↺ Recommencer</button></div>
         ${castor('Avec un bond de +10, regarde le chiffre des unités : il ne change pas ! 7, 17, 27, 37…')}`,
         (sec) => {
           let r = 20,
-            api;
+            api: NumberLineCtl | null = null;
           const mount = () => {
             const R = RANGES[r];
-            const host = sec.querySelector('.op-l-nl');
+            const host = M.$('.op-l-nl', sec)!;
             host.onclick = null;
             api = M.viz.numberLine(host, {
               lo: R.lo,
@@ -849,15 +886,15 @@
               hint: 'Touche un nombre sur la droite ou un bouton.',
             });
           };
-          sec.querySelector('.op-l-rng').addEventListener('click', (e) => {
-            const c = e.target.closest('.chip');
+          M.$('.op-l-rng', sec)!.addEventListener('click', (e) => {
+            const c = M.closest(e, '.chip');
             if (!c) return;
-            r = +c.dataset.r;
+            r = Number(c.dataset.r);
             sec.querySelectorAll('.op-l-rng .chip').forEach((x) => x.classList.toggle('on', x === c));
             M.sfx.tap();
             mount();
           });
-          sec.querySelector('.op-l-reset').onclick = () => {
+          M.$('.op-l-reset', sec)!.onclick = () => {
             if (api) api.reset();
           };
           mount();
@@ -869,7 +906,7 @@
         el,
         '🎯 Défis de la grenouille',
         `<div class="op-l-chips op-l-rng">${Object.keys(RANGES)
-          .map((k) => `<span class="chip ${k === '100' ? 'on' : ''}" data-r="${k}">${RANGES[k].label}</span>`)
+          .map((k) => `<span class="chip ${k === '100' ? 'on' : ''}" data-r="${k}">${RANGES[Number(k)].label}</span>`)
           .join('')}</div>
         <div class="op-l-eq op-l-top"></div>
         <div class="op-l-box"><div class="op-l-nl"></div></div>
@@ -878,12 +915,12 @@
         <div class="row"><button class="btn primary op-l-new">🎲 Nouveau défi</button><button class="btn yellow op-l-show">👀 Montre-moi</button><button class="btn op-l-again">↺ Recommencer</button></div>`,
         (sec) => {
           let r = 100,
-            C,
-            pos,
-            api,
+            C = challenge(r),
+            pos = 0,
+            api: NumberLineCtl | null = null,
             tok = 0,
             won = false;
-          const $ = (s) => sec.querySelector(s);
+          const $ = (s: string) => M.$(s, sec)!;
           const target = () => C.start + C.d;
           const mount = () => {
             const R = RANGES[r];
@@ -923,24 +960,24 @@
           sec.addEventListener(
             'click',
             fireClick((e) => {
-              const j = e.target.closest('[data-jump]');
+              const j = M.closest(e, '[data-jump]');
               if (j && sec.contains(j)) {
                 const R = RANGES[r],
-                  to = pos + +j.dataset.jump;
+                  to = pos + Number(j.dataset.jump);
                 if (to < R.lo || to > R.hi) {
                   M.sfx.bad();
                   return;
                 }
                 tok++;
                 pos = to;
-                api.hop(to).then(() => {
+                api?.hop(to).then(() => {
                   if (sec.isConnected) check();
                 });
                 return;
               }
-              const c = e.target.closest('.op-l-rng .chip');
+              const c = M.closest(e, '.op-l-rng .chip');
               if (c && sec.contains(c)) {
-                r = +c.dataset.r;
+                r = Number(c.dataset.r);
                 sec.querySelectorAll('.op-l-rng .chip').forEach((x) => x.classList.toggle('on', x === c));
                 M.sfx.tap();
                 newC();
@@ -962,11 +999,10 @@
               await M.sleep(200);
               if (!alive(sec, t, () => tok)) return;
               pos = v;
-              await api.hop(v);
+              await api?.hop(v);
             }
             if (alive(sec, t, () => tok)) check();
           };
-          C = challenge(r);
           mount();
         },
       );
@@ -1010,10 +1046,10 @@
         (sec) => {
           const st = { r: 3, c: 4 };
           let emo = 0,
-            hl = {};
+            hl: Record<number, boolean> = {};
           const draw = () => {
             const { r, c } = st;
-            const arr = sec.querySelector('.op-l-arr');
+            const arr = M.$('.op-l-arr', sec)!;
             arr.style.gridTemplateColumns = `repeat(${c}, auto) auto`;
             let h = '';
             for (let i = 0; i < r; i++) {
@@ -1021,10 +1057,10 @@
               h += `<span class="rs">${hl[i] ? '→ ' + c : ''}</span>`;
             }
             arr.innerHTML = h;
-            const n = Object.keys(hl).filter((k) => hl[k] && +k < r).length;
-            sec.querySelector('.op-l-sum').innerHTML =
+            const n = Object.keys(hl).filter((k) => hl[Number(k)] && Number(k) < r).length;
+            M.$('.op-l-sum', sec)!.innerHTML =
               `${r} ${M.plural(r, 'rangée')} de ${c} : ${Array(r).fill(c).join(' + ')} = <span class="op-l-g">${r * c}</span>`;
-            sec.querySelector('.op-l-status').innerHTML = n
+            M.$('.op-l-status', sec)!.innerHTML = n
               ? `Rangées comptées : ${n} → ${Array(n).fill(c).join(' + ')} = <b>${n * c}</b>`
               : `<span class="muted">On peut aussi écrire : ${r} × ${c} = ${r * c}</span>`;
           };
@@ -1032,26 +1068,26 @@
             hl = {};
             draw();
           });
-          sec.querySelector('.op-l-arr').addEventListener('click', (e) => {
-            const it = e.target.closest('[data-row]');
+          M.$('.op-l-arr', sec)!.addEventListener('click', (e) => {
+            const it = M.closest(e, '[data-row]');
             if (!it) return;
-            const i = +it.dataset.row;
+            const i = Number(it.dataset.row);
             hl[i] = !hl[i];
             M.sfx.tap();
             draw();
           });
-          sec.querySelector('.op-l-emo').onclick = () => {
+          M.$('.op-l-emo', sec)!.onclick = () => {
             emo = (emo + 1) % ARR_EMO.length;
             M.sfx.tap();
             draw();
           };
-          sec.querySelector('.op-l-turn').onclick = () => {
+          M.$('.op-l-turn', sec)!.onclick = () => {
             if (st.r > 6 || st.c > 6) {
               [st.r, st.c] = [Math.min(6, st.c), st.r];
             } else [st.r, st.c] = [st.c, st.r];
-            const bs = sec.querySelectorAll('.op-l-stp b');
-            bs[0].textContent = st.r;
-            bs[1].textContent = st.c;
+            const bs = M.$$('.op-l-stp b', sec);
+            bs[0].textContent = String(st.r);
+            bs[1].textContent = String(st.c);
             hl = {};
             M.sfx.hop();
             draw();
@@ -1070,16 +1106,16 @@
         <div class="op-l-eq op-l-sum"></div>`,
         (sec) => {
           const st = { g: 3, k: 4 };
-          let api = null;
+          let api: ShowMeCtl | null = null;
           const draw = () => {
-            const host = sec.querySelector('.op-l-grps');
+            const host = M.$('.op-l-grps', sec)!;
             host.onclick = null;
             api = M.opViz ? M.opViz.groups(host, { g: st.g, k: st.k, emoji: '🍪', layout: 'groups' }) : null;
-            sec.querySelector('.op-l-sum').innerHTML =
+            M.$('.op-l-sum', sec)!.innerHTML =
               `${st.g} ${M.plural(st.g, 'groupe')} de ${st.k} : ${Array(st.g).fill(st.k).join(' + ')} = <span class="op-l-g">${st.g * st.k}</span>`;
           };
           wireSteppers(sec, st, { g: [1, 6], k: [1, 6] }, draw);
-          sec.querySelector('.op-l-go').onclick = () => {
+          M.$('.op-l-go', sec)!.onclick = () => {
             if (api) api.showMe();
           };
           draw();
@@ -1097,10 +1133,10 @@
         ${castor("Partager 12 biscuits entre 3 amis : chacun en reçoit 4, parce que 4 + 4 + 4 = 12. S'il en reste quelques-uns et qu'il n'y en a pas assez pour tout le monde, on dit : « il en reste ».")}`,
         (sec) => {
           const st = { t: 12, n: 3, k: 4 };
-          let mode = 'share',
-            api = null;
+          let mode: 'share' | 'boxes' = 'share',
+            api: ShowMeCtl | null = null;
           const mount = () => {
-            const host = sec.querySelector('.op-l-share');
+            const host = M.$('.op-l-share', sec)!;
             host.onclick = null;
             if (!M.opViz) {
               host.textContent = `${st.t} ÷ ${st.n}`;
@@ -1108,21 +1144,23 @@
             }
             api = M.opViz.share(
               host,
-              mode === 'share' ? { total: st.t, n: st.n, emoji: '🍪', mode } : { total: st.t, k: st.k, emoji: '🍪', mode },
+              mode === 'share'
+                ? { total: st.t, n: st.n, emoji: '🍪', mode: 'share' }
+                : { total: st.t, k: st.k, emoji: '🍪', mode: 'boxes' },
             );
           };
           wireSteppers(sec, st, { t: [1, 30], n: [1, 6], k: [2, 6] }, mount);
-          sec.querySelector('.op-l-mode').addEventListener('click', (e) => {
-            const c = e.target.closest('.chip');
+          M.$('.op-l-mode', sec)!.addEventListener('click', (e) => {
+            const c = M.closest(e, '.chip');
             if (!c) return;
-            mode = c.dataset.m;
+            mode = c.dataset.m === 'boxes' ? 'boxes' : 'share';
             sec.querySelectorAll('.op-l-mode .chip').forEach((x) => x.classList.toggle('on', x === c));
-            sec.querySelector('.op-l-k1').hidden = mode !== 'share';
-            sec.querySelector('.op-l-k2').hidden = mode === 'share';
+            M.$('.op-l-k1', sec)!.hidden = mode !== 'share';
+            M.$('.op-l-k2', sec)!.hidden = mode === 'share';
             M.sfx.tap();
             mount();
           });
-          sec.querySelector('.op-l-go').onclick = () => {
+          M.$('.op-l-go', sec)!.onclick = () => {
             if (api) api.showMe();
           };
           mount();
@@ -1135,7 +1173,7 @@
      Page 5 — Les régularités
      ================================================================== */
   const PAL = ['🔴', '🔵', '🟡', '🟢', '⭐', '🍁', '❄️', '🐟'];
-  const sgn = (d) => (d >= 0 ? '+' + d : MINUS + Math.abs(d));
+  const sgn = (d: number) => (d >= 0 ? '+' + d : MINUS + Math.abs(d));
   M.registerLearn({
     id: 'regularites',
     domain: D,
@@ -1157,14 +1195,12 @@
           let motif = ['🔴', '🔵', '🔵'],
             tok = 0;
           const drawSlots = () => {
-            sec.querySelector('.op-l-slots').innerHTML = [0, 1, 2, 3]
-              .map((i) => `<span class="op-l-slot">${motif[i] || ''}</span>`)
-              .join('');
+            M.$('.op-l-slots', sec)!.innerHTML = [0, 1, 2, 3].map((i) => `<span class="op-l-slot">${motif[i] || ''}</span>`).join('');
           };
           async function repeat() {
             const t = ++tok;
-            const strip = sec.querySelector('.op-l-strip'),
-              st = sec.querySelector('.op-l-status');
+            const strip = M.$('.op-l-strip', sec)!,
+              st = M.$('.op-l-status', sec)!;
             strip.innerHTML = '';
             st.textContent = '';
             if (!motif.length) {
@@ -1182,21 +1218,21 @@
             }
             st.textContent = `Le motif de ${motif.length} ${M.plural(motif.length, 'élément')} se répète ${reps} fois.`;
           }
-          sec.querySelector('.op-l-pal').addEventListener('click', (e) => {
-            const b = e.target.closest('[data-p]');
+          M.$('.op-l-pal', sec)!.addEventListener('click', (e) => {
+            const b = M.closest(e, '[data-p]');
             if (!b) return;
             if (motif.length >= 4) motif = [];
-            motif.push(b.dataset.p);
+            motif.push(b.dataset.p ?? '');
             M.sfx.tap();
             drawSlots();
           });
-          sec.querySelector('.op-l-clear').onclick = () => {
+          M.$('.op-l-clear', sec)!.onclick = () => {
             tok++;
             motif = [];
             drawSlots();
-            sec.querySelector('.op-l-strip').innerHTML = '';
+            M.$('.op-l-strip', sec)!.innerHTML = '';
           };
-          sec.querySelector('.op-l-go').onclick = () => repeat();
+          M.$('.op-l-go', sec)!.onclick = () => repeat();
           drawSlots();
         },
       );
@@ -1208,34 +1244,34 @@
         `<div class="op-seq op-l-quiz"></div><div class="op-l-ans"></div><div class="op-l-status"></div>
         <div class="row"><button class="btn primary op-l-new">🎲 Un autre</button></div>`,
         (sec) => {
-          let ans;
+          let ans = '';
           const make = () => {
             const unit = pick(['AB', 'ABC', 'AAB', 'ABB', 'AABB']);
             const letters = [...new Set(unit.split(''))];
             const syms = M.shuffle(PAL).slice(0, letters.length + 1);
-            const map = {};
+            const map: Record<string, string> = {};
             letters.forEach((l, i) => (map[l] = syms[i]));
             const len = unit.length * 2 + rnd(1, unit.length);
             const seq = M.range(0, len - 1).map((i) => map[unit[i % unit.length]]);
             ans = map[unit[len % unit.length]];
-            sec.querySelector('.op-l-quiz').innerHTML =
+            M.$('.op-l-quiz', sec)!.innerHTML =
               seq.map((x) => `<span class="op-term e">${x}</span>`).join('') + '<span class="op-term e q">?</span>';
-            sec.querySelector('.op-l-ans').innerHTML = M.shuffle(syms)
+            M.$('.op-l-ans', sec)!.innerHTML = M.shuffle(syms)
               .map((s) => `<button class="btn" data-v="${s}">${s}</button>`)
               .join('');
-            const st = sec.querySelector('.op-l-status');
+            const st = M.$('.op-l-status', sec)!;
             st.textContent = '';
             st.className = 'op-l-status';
           };
-          sec.querySelector('.op-l-ans').addEventListener('click', (e) => {
-            const b = e.target.closest('[data-v]');
+          M.$('.op-l-ans', sec)!.addEventListener('click', (e) => {
+            const b = M.closest<HTMLButtonElement>(e, '[data-v]');
             if (!b || b.disabled) return;
-            const st = sec.querySelector('.op-l-status');
+            const st = M.$('.op-l-status', sec)!;
             if (b.dataset.v === ans) {
               b.classList.add('right');
               M.sfx.good();
-              sec.querySelectorAll('.op-l-ans [data-v]').forEach((x) => (x.disabled = true));
-              const q = sec.querySelector('.op-l-quiz .q');
+              M.$$<HTMLButtonElement>('.op-l-ans [data-v]', sec).forEach((x) => (x.disabled = true));
+              const q = M.$('.op-l-quiz .q', sec);
               if (q) {
                 q.textContent = ans;
                 q.classList.remove('q');
@@ -1249,7 +1285,7 @@
               st.textContent = 'Cherche le petit bout qui se répète…';
             }
           });
-          sec.querySelector('.op-l-new').onclick = () => {
+          M.$('.op-l-new', sec)!.onclick = () => {
             M.sfx.tap();
             make();
           };
@@ -1282,9 +1318,9 @@
           };
           async function build() {
             const t = ++tok;
-            const strip = sec.querySelector('.op-l-strip');
+            const strip = M.$('.op-l-strip', sec)!;
             strip.innerHTML = '';
-            sec.querySelector('.op-l-out').innerHTML = '';
+            M.$('.op-l-out', sec)!.innerHTML = '';
             let v = st.s,
               stopped = false;
             for (let i = 0; i < 8; i++) {
@@ -1302,15 +1338,13 @@
               v += d;
             }
             if (!alive(sec, t, () => tok)) return;
-            sec.querySelector('.op-l-out').innerHTML = castor(
-              (stopped ? "<b>On s'arrête : on ne peut pas aller plus loin !</b> " : '') + tip(),
-            );
+            M.$('.op-l-out', sec)!.innerHTML = castor((stopped ? "<b>On s'arrête : on ne peut pas aller plus loin !</b> " : '') + tip());
           }
           wireSteppers(sec, st, { s: [0, 100] }, build);
-          sec.querySelector('.op-l-steps').addEventListener('click', (e) => {
-            const c = e.target.closest('.chip');
+          M.$('.op-l-steps', sec)!.addEventListener('click', (e) => {
+            const c = M.closest(e, '.chip');
             if (!c) return;
-            d = +c.dataset.d;
+            d = Number(c.dataset.d);
             sec.querySelectorAll('.op-l-steps .chip').forEach((x) => x.classList.toggle('on', x === c));
             M.sfx.tap();
             build();
@@ -1326,33 +1360,33 @@
         `<p>Quelle règle fait cette suite ?</p><div class="op-seq op-l-quiz"></div><div class="op-l-ans"></div><div class="op-l-status"></div>
         <div class="row"><button class="btn primary op-l-new">🎲 Une autre</button></div>`,
         (sec) => {
-          let d;
+          let d = 0;
           const RULES = [1, 2, 5, 10, -1, -2, -10, 3];
           const make = () => {
             d = pick(RULES);
             const start = d < 0 ? rnd(Math.abs(d) * 4 + 1, Math.abs(d) * 4 + 40) : rnd(0, 40);
-            sec.querySelector('.op-l-quiz').innerHTML = M.range(0, 4)
+            M.$('.op-l-quiz', sec)!.innerHTML = M.range(0, 4)
               .map((i) => `<span class="op-term">${start + i * d}</span>`)
               .join('');
             const opts = new Set([d]);
             M.shuffle(RULES).forEach((r) => {
               if (opts.size < 4) opts.add(r);
             });
-            sec.querySelector('.op-l-ans').innerHTML = M.shuffle([...opts])
+            M.$('.op-l-ans', sec)!.innerHTML = M.shuffle([...opts])
               .map((r) => `<button class="btn" data-v="${r}">${sgn(r)}</button>`)
               .join('');
-            const st = sec.querySelector('.op-l-status');
+            const st = M.$('.op-l-status', sec)!;
             st.textContent = '';
             st.className = 'op-l-status';
           };
-          sec.querySelector('.op-l-ans').addEventListener('click', (e) => {
-            const b = e.target.closest('[data-v]');
+          M.$('.op-l-ans', sec)!.addEventListener('click', (e) => {
+            const b = M.closest<HTMLButtonElement>(e, '[data-v]');
             if (!b || b.disabled) return;
-            const st = sec.querySelector('.op-l-status');
-            if (+b.dataset.v === d) {
+            const st = M.$('.op-l-status', sec)!;
+            if (Number(b.dataset.v) === d) {
               b.classList.add('right');
               M.sfx.good();
-              sec.querySelectorAll('.op-l-ans [data-v]').forEach((x) => (x.disabled = true));
+              M.$$<HTMLButtonElement>('.op-l-ans [data-v]', sec).forEach((x) => (x.disabled = true));
               st.textContent = `Oui ! La règle est ${sgn(d)}.`;
               st.className = 'op-l-status good';
             } else {
@@ -1362,7 +1396,7 @@
               st.textContent = 'Regarde de combien on change entre deux nombres voisins.';
             }
           });
-          sec.querySelector('.op-l-new').onclick = () => {
+          M.$('.op-l-new', sec)!.onclick = () => {
             M.sfx.tap();
             make();
           };

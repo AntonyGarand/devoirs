@@ -1,9 +1,39 @@
 /* Univers social — avant (il y a environ 100 ans, quand les arrière-grands-parents étaient enfants) et maintenant.
    GHEC — Changement : objets d'usage courant, transports, activités. Pas de dates précises. */
+
+/** Objet illustré : emoji, ou dessin de M.art (art). */
+interface UsObjet {
+  nom: string;
+  emoji?: string;
+  art?: string;
+  /** Sans ambiguïté pour le tri « autrefois / aujourd'hui » (niveau 0). */
+  tri?: boolean;
+}
+interface UsPaireAutrefois {
+  domaine: string;
+  avant: UsObjet;
+  maintenant: UsObjet;
+}
+/** Question à choix : q, bonne réponse ok, distracteurs d. */
+interface UsQcm {
+  q: string;
+  ok: string;
+  d: string[];
+}
+interface UsAutrefois {
+  paires: UsPaireAutrefois[];
+  /** rang : ordre d'apparition (du plus ancien au plus récent). */
+  transports: { nom: string; emoji: string; rang: number }[];
+  questions: UsQcm[];
+}
+interface DataRegistry {
+  'us-autrefois': UsAutrefois;
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  const sv = (inner) => `<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">${inner}</svg>`;
+  const sv = (inner: string) => `<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">${inner}</svg>`;
   M.art.register(
     'us-planche',
     () =>

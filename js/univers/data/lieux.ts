@@ -1,5 +1,29 @@
 /* Univers social — lieux et métiers du quartier (GHEC 2.3, 2.4).
    Métiers sans stéréotype : genres variés. besoin = à quoi sert le lieu. */
+
+interface UsLieu {
+  id: string;
+  /** Avec l'article. */
+  nom: string;
+  court: string;
+  emoji: string;
+  /** À quoi sert le lieu. */
+  besoin: string;
+  pour: string;
+  metier: string;
+  outil: string;
+}
+interface UsLieux {
+  lieux: UsLieu[];
+  /** Biens (choses qu'on achète) et services (travail fait pour nous). */
+  biens: string[];
+  services: string[];
+  municipal: UsQcm[];
+}
+interface DataRegistry {
+  'us-lieux': UsLieux;
+}
+
 (function () {
   'use strict';
   const M = window.M;

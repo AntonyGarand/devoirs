@@ -10,7 +10,8 @@
   const Q = SC.Q;
 
   /* ================================================================ 14 */
-  const arbreCh = (moment, side, cap) => `${SC.svg.arbre({ moment, shadowSide: side })}${cap ? `<span class="sc-cap">${cap}</span>` : ''}`;
+  const arbreCh = (moment: string, side?: number, cap?: string): string =>
+    `${SC.svg.arbre({ moment, shadowSide: side })}${cap ? `<span class="sc-cap">${cap}</span>` : ''}`;
   M.registerSkill({
     id: 'sc-soleil-terre-lune',
     domain: 'sc-terre',
@@ -116,7 +117,7 @@
           answer: String(right),
           cols: 3,
           choices: opts.map((s) => {
-            const c = { label: arbreCh(moment, s), value: String(s) };
+            const c: Choice = { label: arbreCh(moment, s), value: String(s) };
             if (s === -right) c.why = "Ici, l'ombre est du même côté que le Soleil : c'est impossible !";
             if (s === 0) c.why = "Quand le Soleil brille, l'arbre a toujours une ombre.";
             return c;
@@ -151,15 +152,16 @@
       };
     },
     check(q) {
-      if (q._sc === 'jn')
+      const sc = q._sc;
+      if (sc === 'jn')
         return Q.checkSort(q, (k) => (SC.JOUR_NUIT.jour.includes(k) ? 'jour' : SC.JOUR_NUIT.nuit.includes(k) ? 'nuit' : '?'));
-      if (q._sc && q._sc.kind === 'midi') return Q.checkOne(q, (v) => v === 'midi');
-      if (q._sc && q._sc.kind === 'cote') return Q.checkOne(q, (v) => v === String(q._sc.right));
+      if (typeof sc === 'object' && sc.kind === 'midi') return Q.checkOne(q, (v) => v === 'midi');
+      if (typeof sc === 'object' && sc.kind === 'cote') return Q.checkOne(q, (v) => v === String(sc.right));
     },
   });
 
   /* ================================================================ 15 */
-  const S = (id) => SC.saison(id);
+  const S = (id: string): ScSaison => SC.must(SC.saison(id), 'saison ' + id);
   M.registerSkill({
     id: 'sc-saisons-meteo',
     domain: 'sc-terre',
@@ -174,7 +176,7 @@
       const t = lvl === 0 ? 'sort2' : lvl === 1 ? M.pick(['sort4', 'ordre', 'precip']) : M.pick(['q', 'q', 'precip', 'sort4']);
       if (t === 'sort2' || t === 'sort4') {
         const ids = t === 'sort2' ? ['hiver', 'ete'] : ['hiver', 'printemps', 'ete', 'automne'];
-        const items = [];
+        const items: ScItem[] = [];
         ids.forEach((id) =>
           Q.pickN(S(id).activites, t === 'sort2' ? 2 : M.pick([1, 2])).forEach((l) => items.push({ label: l, bin: id, key: l })),
         );
@@ -221,7 +223,8 @@
       };
     },
     check(q) {
-      if (q._sc === 'saison')
+      const sc = q._sc;
+      if (sc === 'saison')
         return Q.checkSort(q, (k) => {
           const s = SC.SAISONS.filter((x) => x.activites.includes(k));
           return s.length === 1 ? s[0].id : 'ambigu';

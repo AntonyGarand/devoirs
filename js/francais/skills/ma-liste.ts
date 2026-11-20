@@ -6,6 +6,36 @@
      { v: 1, active: id, listes: [{ id, titre, creee, archivee, mots: [{ t, det?, phrase?, nomPropre? }] }] }
    Progression par mot : M.progress.item('fr-ma-liste', '<id liste>:<mot>').
    ===================================================================== */
+
+/** Mot d'une liste du parent. */
+interface FrListeMot {
+  t: string;
+  det?: string;
+  phrase?: string;
+  nomPropre?: boolean;
+}
+interface FrListe {
+  id: string;
+  titre: string;
+  /** AAAA-MM-JJ */
+  creee: string;
+  archivee: boolean;
+  mots: FrListeMot[];
+}
+/** M.userData('francais', 'listes'). */
+interface FrListesStore {
+  v: 1;
+  active: string | null;
+  listes: FrListe[];
+}
+interface FrancaisApi {
+  /** Liste active (non archivée, non vide), sinon null. */
+  listeActive(): FrListe | null;
+  /** Une ligne saisie par le parent → mot, erreur, ou null (ligne vide). */
+  parseLigne(line: string): FrListeMot | { err: string; t: string } | null;
+  parseListe(text: string): { mots: FrListeMot[]; errs: string[] };
+}
+
 (function () {
   'use strict';
   const M = window.M;
@@ -13,11 +43,10 @@
   const NS = 'francais',
     KEY = 'listes',
     SK = 'fr-ma-liste';
-  const DETS = ['un', 'une', 'le', 'la', "l'", 'les', 'des'];
   const PRONS = ['je', "j'", 'tu', 'il', 'elle', 'on', 'nous', 'vous', 'ils', 'elles'];
 
   /* ---------------- Données ---------------- */
-  const DEMO = {
+  const DEMO: FrListesStore = {
     v: 1,
     active: 'demo',
     listes: [
@@ -42,11 +71,36 @@
     ],
   };
   M.userData.fixture(NS, KEY, DEMO);
-  const store = () => {
-    const d = M.userData.get(NS, KEY, null);
-    return d && d.v === 1 ? d : { v: 1, active: null, listes: [] };
+  /* Données enregistrées : JSON non vérifié (autre version, fichier importé…) → validées champ par champ. */
+  const isRec = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
+  const asMot = (x: unknown): FrListeMot | null => {
+    if (!isRec(x) || typeof x.t !== 'string' || !x.t) return null;
+    const o: FrListeMot = { t: x.t };
+    if (typeof x.det === 'string') o.det = x.det;
+    if (typeof x.phrase === 'string') o.phrase = x.phrase;
+    if (x.nomPropre === true) o.nomPropre = true;
+    return o;
   };
-  const save = (d) => M.userData.set(NS, KEY, d);
+  const asListe = (x: unknown): FrListe | null => {
+    if (!isRec(x) || typeof x.id !== 'string' || !Array.isArray(x.mots)) return null;
+    return {
+      id: x.id,
+      titre: typeof x.titre === 'string' ? x.titre : '',
+      creee: typeof x.creee === 'string' ? x.creee : '',
+      archivee: x.archivee === true,
+      mots: x.mots.map(asMot).filter((o): o is FrListeMot => !!o),
+    };
+  };
+  const store = (): FrListesStore => {
+    const d = M.userData.get(NS, KEY, null);
+    if (!isRec(d) || d.v !== 1 || !Array.isArray(d.listes)) return { v: 1, active: null, listes: [] };
+    return {
+      v: 1,
+      active: typeof d.active === 'string' ? d.active : null,
+      listes: d.listes.map(asListe).filter((l): l is FrListe => !!l),
+    };
+  };
+  const save = (d: FrListesStore) => M.userData.set(NS, KEY, d);
   FR.listeActive = () => {
     const d = store();
     return d.listes.find((l) => l.id === d.active && !l.archivee && l.mots.length) || null;
@@ -60,7 +114,7 @@
     if (!w) return null;
     if (w.length > 40) return { err: 'trop long (40 caractères au plus)', t: w };
     if (!/^[A-Za-zÀ-ÖØ-öø-ÿŒœÆæ' -]+$/.test(w)) return { err: "seulement des lettres, espace, apostrophe ou trait d'union", t: w };
-    const o = {};
+    const o: FrListeMot = { t: w };
     const m = /^(un|une|le|la|les|des) (.+)$/i.exec(w) || /^(l') ?(.+)$/i.exec(w);
     if (m && !PRONS.includes(m[1].toLowerCase())) {
       o.det = m[1].toLowerCase();
@@ -72,15 +126,15 @@
     return o;
   };
   FR.parseListe = (text) => {
-    const out = [],
-      errs = [],
+    const out: FrListeMot[] = [],
+      errs: string[] = [],
       seen = new Set();
     String(text)
       .split(/\n/)
       .forEach((line, i) => {
         const o = FR.parseLigne(line);
         if (!o) return;
-        if (o.err) {
+        if ('err' in o) {
           errs.push(`Ligne ${i + 1} (${M.esc(o.t)}) : ${o.err}`);
           return;
         }
@@ -92,8 +146,8 @@
     if (out.length > 30) errs.push('30 mots au plus par liste.');
     return { mots: out.slice(0, 30), errs };
   };
-  const flags = (o) => {
-    const f = [];
+  const flags = (o: FrListeMot) => {
+    const f: string[] = [];
     const known = FR.mot(o.t);
     if (FR.isHomophone(o.t) && !phraseOf(o))
       f.push(
@@ -107,10 +161,10 @@
       f.push('ℹ️ forme conjuguée : dictée du groupe de mots, clavier complet.');
     return f;
   };
-  const motLabel = (o) => (o.det ? (o.det === "l'" ? "l'" : o.det + ' ') : '') + o.t;
-  const keyOf = (l, o) => l.id + ':' + o.t;
+  const motLabel = (o: FrListeMot) => (o.det ? (o.det === "l'" ? "l'" : o.det + ' ') : '') + o.t;
+  const keyOf = (l: FrListe, o: FrListeMot) => l.id + ':' + o.t;
   /** Phrase de dictée : celle du parent, sinon celle de la banque, sinon aucune. */
-  const phraseOf = (o) => o.phrase || (FR.mot(o.t) && FR.mot(o.t).phrase) || null;
+  const phraseOf = (o: FrListeMot) => o.phrase || FR.mot(o.t)?.phrase || null;
 
   /* ---------------- Habileté ---------------- */
   M.registerSkill({
@@ -124,13 +178,13 @@
     needs: ['speech:fr'],
     sayTexts: () => {
       const l = FR.listeActive();
-      return l ? l.mots.flatMap((o) => [o.t, phraseOf(o)].filter(Boolean)) : [];
+      return l ? l.mots.flatMap((o) => [o.t, phraseOf(o)].filter((x): x is string => !!x)) : [];
     },
     available: () => (FR.listeActive() ? true : "Demande à un adulte d'ajouter ta liste de mots (page Parents)."),
     parentNote:
       'Tapez la liste de mots de la semaine dans la section « 📝 Ma liste de mots de la semaine » ci-dessous. Les mots les plus souvent ratés reviennent plus souvent.',
     gen({ lvl }) {
-      const l = FR.listeActive() || DEMO.listes[0];
+      const l = FR.listeActive() || DEMO.listes[0]!;
       const o = FR.pickMot(SK, l.mots, (x) => keyOf(l, x));
       const ph = phraseOf(o);
       const cs = o.nomPropre ? 'first' : undefined;
@@ -196,11 +250,11 @@
       });
     },
     check(q) {
-      const l = FR.listeActive() || DEMO.listes[0];
-      const w = q.format === 'text' ? q.answer : q.format === 'build' ? q.answer.join('') : q.answer;
-      if (!l.mots.some((o) => o.t === w || (FR.mot(o.t) && FR.mot(o.t).pl === w))) return 'mot absent de la liste : ' + w;
+      const l = FR.listeActive() || DEMO.listes[0]!;
+      const w = q.format === 'text' ? q.answer : q.format === 'build' ? q.answer.join('') : 'answer' in q ? q.answer : undefined;
+      if (!l.mots.some((o) => o.t === w || FR.mot(o.t)?.pl === w)) return 'mot absent de la liste : ' + w;
       if (q.format === 'choice' && q.choices.some((c) => c.value !== q.answer && FR.isReal(c.value))) return 'distracteur = vrai mot';
-      if (q.audio && q.audio.seq && q.audio.seq[0] !== w) return 'audio ≠ mot';
+      if (typeof q.audio === 'object' && q.audio.seq && q.audio.seq[0] !== w) return 'audio ≠ mot';
     },
   });
 
@@ -226,15 +280,15 @@
     d.setDate(d.getDate() - day + 1);
     return `Semaine du ${d.getDate()} ${['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'][d.getMonth()]}`;
   };
-  const toText = (l) => l.mots.map((o) => motLabel(o) + (o.phrase ? ' | ' + o.phrase : '')).join('\n');
-  const bilan = (l) =>
+  const toText = (l: FrListe) => l.mots.map((o) => motLabel(o) + (o.phrase ? ' | ' + o.phrase : '')).join('\n');
+  const bilan = (l: FrListe) =>
     `<table><tr><th>Mot</th><th>Du premier coup</th><th></th></tr>${l.mots
       .map((o) => {
         const st = M.progress.item(SK, keyOf(l, o)).stats();
         const d = M.progress.data().items || {};
-        const h = ((d[SK + '|' + keyOf(l, o)] || {}).h || []).slice(-5);
+        const h = (d[SK + '|' + keyOf(l, o)]?.h || []).slice(-5);
         const revoir = h.length && h.filter((x) => !x).length >= 2;
-        return `<tr><td><b>${M.esc(motLabel(o))}</b> ${M.ui.speak(o.t)}</td><td>${st.n ? `${Math.round(st.acc * 100)} % (${st.n} essai${st.n > 1 ? 's' : ''})` : '<span class="muted">pas encore pratiqué</span>'}</td><td>${revoir ? '<span class="rv">à revoir</span>' : ''}</td></tr>`;
+        return `<tr><td><b>${M.esc(motLabel(o))}</b> ${M.ui.speak(o.t)}</td><td>${st.n ? `${Math.round((st.acc ?? 0) * 100)} % (${st.n} essai${st.n > 1 ? 's' : ''})` : '<span class="muted">pas encore pratiqué</span>'}</td><td>${revoir ? '<span class="rv">à revoir</span>' : ''}</td></tr>`;
       })
       .join('')}</table>`;
 
@@ -245,41 +299,42 @@
     icon: '📝',
     render(el) {
       el.classList.add('fr-lt');
-      let draft = null; // { titre, text, editing }
+      let draft: { titre: string; text: string; editing?: string } | null = null;
       const draw = () => {
         const d = store();
         const act = d.listes.find((l) => l.id === d.active && !l.archivee);
         const old = d.listes.filter((l) => l !== act);
-        if (draft) {
+        const dr = draft;
+        if (dr) {
           el.innerHTML = `<p>Un mot par ligne. Facultatif : une phrase après une barre verticale, p. ex. <code>vert | Mon chandail est vert.</code> Le déterminant peut précéder le nom (<code>une fleur</code>).</p>
-            <p><label>Titre : <input type="text" class="t" value="${M.esc(draft.titre)}"></label></p>
-            <textarea class="x" spellcheck="false" placeholder="une tuque&#10;vert | Mon chandail est vert.&#10;je suis">${M.esc(draft.text)}</textarea>
+            <p><label>Titre : <input type="text" class="t" value="${M.esc(dr.titre)}"></label></p>
+            <textarea class="x" spellcheck="false" placeholder="une tuque&#10;vert | Mon chandail est vert.&#10;je suis">${M.esc(dr.text)}</textarea>
             <div class="row"><button class="btn blue chk">🔎 Vérifier la liste</button><button class="btn ghost cancel">Annuler</button></div><div class="prev"></div>`;
-          const T = M.$('.t', el),
-            X = M.$('.x', el);
-          M.$('.cancel', el).onclick = () => {
+          const T = M.$<HTMLInputElement>('.t', el)!,
+            X = M.$<HTMLTextAreaElement>('.x', el)!;
+          M.$('.cancel', el)!.onclick = () => {
             draft = null;
             draw();
           };
-          M.$('.chk', el).onclick = () => {
-            draft.titre = T.value.trim() || defaultTitle();
-            draft.text = X.value;
+          M.$('.chk', el)!.onclick = () => {
+            dr.titre = T.value.trim() || defaultTitle();
+            dr.text = X.value;
             const { mots, errs } = FR.parseListe(X.value);
-            const prev = M.$('.prev', el);
+            const prev = M.$('.prev', el)!;
             if (!mots.length) {
               prev.innerHTML = M.ui.callout('Ajoutez au moins un mot.', { tone: 'warn', who: '' });
               return;
             }
             prev.innerHTML =
               (errs.length ? M.ui.callout(errs.join('<br>'), { tone: 'warn', who: '' }) : '') +
-              `<table><tr><th>Mot</th><th>Phrase de dictée</th><th>Remarques</th></tr>${mots.map((o) => `<tr><td><b>${M.esc(motLabel(o))}</b> ${M.ui.speak(o.t)} ${FR.mot(o.t) && FR.mot(o.t).em ? FR.mot(o.t).em : ''}</td><td>${phraseOf(o) ? M.esc(phraseOf(o)) + ' ' + M.ui.speak(phraseOf(o)) : '<span class="muted">—</span>'}</td><td class="fl">${flags(o).join('<br>')}</td></tr>`).join('')}</table>
+              `<table><tr><th>Mot</th><th>Phrase de dictée</th><th>Remarques</th></tr>${mots.map((o) => `<tr><td><b>${M.esc(motLabel(o))}</b> ${M.ui.speak(o.t)} ${FR.mot(o.t)?.em || ''}</td><td>${((ph) => (ph ? M.esc(ph) + ' ' + M.ui.speak(ph) : '<span class="muted">—</span>'))(phraseOf(o))}</td><td class="fl">${flags(o).join('<br>')}</td></tr>`).join('')}</table>
               <div class="row"><button class="btn primary save">✔ Enregistrer et activer (${mots.length} mot${mots.length > 1 ? 's' : ''})</button></div>`;
-            M.$('.save', prev).onclick = () => {
+            M.$('.save', prev)!.onclick = () => {
               const dd = store();
-              if (draft.editing) {
-                const l = dd.listes.find((x) => x.id === draft.editing);
+              if (dr.editing) {
+                const l = dd.listes.find((x) => x.id === dr.editing);
                 if (l) {
-                  l.titre = draft.titre;
+                  l.titre = dr.titre;
                   l.mots = mots;
                 }
               } else {
@@ -287,7 +342,7 @@
                   if (l.id === dd.active) l.archivee = true;
                 });
                 const id = 'l' + Date.now().toString(36);
-                dd.listes.unshift({ id, titre: draft.titre, creee: today(), archivee: false, mots });
+                dd.listes.unshift({ id, titre: dr.titre, creee: today(), archivee: false, mots });
                 dd.active = id;
                 // garder 10 listes (les plus anciennes archivées sont retirées)
                 while (dd.listes.length > 10) {
@@ -314,7 +369,7 @@
           ${old.length ? `<h3>Listes archivées</h3><ul>${old.map((l) => `<li>${M.esc(l.titre)} <small class="muted">(${l.mots.length} mots, ${l.creee})</small> <button class="btn react" data-id="${l.id}">↩️ Réactiver</button> <button class="btn rm" data-id="${l.id}">🗑️</button></li>`).join('')}</ul>` : ''}
           ${d.listes.length ? '<div class="row"><button class="btn wipe">🧹 Effacer mes listes</button></div>' : ''}
           <div class="out"></div>`;
-        const on = (sel, fn) => {
+        const on = (sel: string, fn: () => void) => {
           const b = M.$(sel, el);
           if (b) b.onclick = fn;
         };
@@ -325,9 +380,10 @@
         on('.paste', () => {
           draft = { titre: defaultTitle(), text: '' };
           draw();
-          M.$('.x', el).focus();
+          M.$('.x', el)?.focus();
         });
         on('.edit', () => {
+          if (!act) return;
           draft = { titre: act.titre, text: toText(act), editing: act.id };
           draw();
         });
@@ -349,8 +405,9 @@
           draw();
         });
         on('.copy', () => {
+          if (!act) return;
           const txt = toText(act);
-          M.$('.out', el).innerHTML =
+          M.$('.out', el)!.innerHTML =
             `<p>Texte de la liste (à copier pour un autre appareil) :</p><textarea readonly>${M.esc(txt)}</textarea>`;
           try {
             navigator.clipboard.writeText(txt);
@@ -370,6 +427,7 @@
                 if (l.id === dd.active) l.archivee = true;
               });
               const l = dd.listes.find((x) => x.id === b.dataset.id);
+              if (!l) return;
               l.archivee = false;
               dd.active = l.id;
               save(dd);

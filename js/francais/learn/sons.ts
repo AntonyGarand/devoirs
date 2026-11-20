@@ -3,7 +3,7 @@
   'use strict';
   const M = window.M;
   const FR = M.FR;
-  const gen = (id, lvl) => () => M.skillById[id].gen({ lvl });
+  const gen = (id: string, lvl: number) => () => M.skillById[id].gen({ lvl });
 
   M.registerLearn({
     id: 'fr-carte-sons',
@@ -23,8 +23,10 @@
         ['y', '🦢', 'cygne'],
       ];
       const SONS_TABS = ['o', 'an', 'in', 'è', 'é', 's', 'k', 'ou', 'on', 'oi', 'ch', 'gn'];
-      const wordsOf = (id) => FR.mots((m) => m.gr && m.em && FR.hasSon(m, id)).slice(0, 8);
-      const sylWords = ['chocolat', 'papillon', 'kangourou', 'lapin', 'ordinateur', 'éléphant'].map(FR.mot).filter(Boolean);
+      const wordsOf = (id: string) => FR.mots((m): m is FrMotWith<'gr' | 'em'> => !!(m.gr && m.em && FR.hasSon(m, id))).slice(0, 8);
+      const sylWords = ['chocolat', 'papillon', 'kangourou', 'lapin', 'ordinateur', 'éléphant']
+        .map(FR.mot)
+        .filter((m): m is FrMotWith<'syl'> => !!m?.syl);
       el.innerHTML =
         M.ui.section({
           icon: '🅰️',
@@ -59,9 +61,9 @@
         }) +
         M.ui.section({ icon: '✅', title: 'Vérifie ta compréhension', body: '<div class="fr-mq"></div>' });
       M.ui.tabs(
-        M.$('.fr-tabs-sons', el),
+        M.$('.fr-tabs-sons', el)!,
         SONS_TABS.map((id) => {
-          const s = FR.son(id);
+          const s = FR.getSon(id);
           return {
             id,
             label: `${s.em} ${s.label}`,
@@ -75,7 +77,7 @@
           };
         }),
       );
-      M.ui.miniQuiz(M.$('.fr-mq', el), [gen('fr-entendre-son', 0), gen('fr-sons-ecrits', 1), gen('fr-rimes', 0)]);
+      M.ui.miniQuiz(M.$('.fr-mq', el)!, [gen('fr-entendre-son', 0), gen('fr-sons-ecrits', 1), gen('fr-rimes', 0)]);
     },
   });
 })();

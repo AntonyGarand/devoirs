@@ -10,21 +10,37 @@
      SC.svg.erable(saison)                           L'érable en hiver / printemps / été / automne,
          avec neige ou feuilles qui tombent.
    ===================================================================== */
+
+interface ScSvg {
+  /** angle : position de la maison du Québec (180 = face au Soleil à gauche); null : sans rotation. */
+  terre(opts?: { sunLeft?: boolean; hot?: boolean; angle?: number | null; houses?: boolean; cls?: string }): string;
+  /** h : heure de 6 à 18; side : côté forcé de l'ombre (+1 droite, −1 gauche, 0 aucune). */
+  ombre(opts?: { h?: number; side?: number | null; arc?: boolean; labels?: boolean; cls?: string; W?: number; H?: number }): string;
+  arbre(opts?: { moment?: string; shadowSide?: number | null; cls?: string }): string;
+  /** saison : hiver | printemps | ete | automne. */
+  erable(saison: string, opts?: { cls?: string }): string;
+}
+interface ScApi {
+  /** Tourne la Terre déjà dessinée dans root (sans la redessiner). */
+  earthAngle(root: ParentNode, angle: number, smooth?: boolean): void;
+}
+
 (function () {
   'use strict';
   const M = window.M;
   const SC = M.SC;
   if (!SC || !SC.svg) return;
   let uid = 0;
-  const f1 = (v) => Math.round(v * 10) / 10;
-  const V = (w, h, inner, cls, label) =>
+  const f1 = (v: number): number => Math.round(v * 10) / 10;
+  const V = (w: number, h: number, inner: string, cls: string, label?: string): string =>
     `<svg class="${cls}" viewBox="0 0 ${w} ${h}" role="img"${label ? ` aria-label="${M.esc(label)}"` : ''} xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
   /** Bruit déterministe doux (somme de sinus). */
-  const wob = (a, k) => Math.sin(a * 3 + k) * 0.5 + Math.sin(a * 7 + k * 2.3) * 0.3 + Math.sin(a * 13 + k * 0.7) * 0.2;
+  const wob = (a: number, k: number): number =>
+    Math.sin(a * 3 + k) * 0.5 + Math.sin(a * 7 + k * 2.3) * 0.3 + Math.sin(a * 13 + k * 0.7) * 0.2;
   /** Tache en coordonnées polaires autour de (cx, cy) : de l'angle a0 à a1 (degrés), du rayon r0 à r1. */
-  const polarBlob = (cx, cy, a0, a1, r0, r1, k) => {
+  const polarBlob = (cx: number, cy: number, a0: number, a1: number, r0: number, r1: number, k: number): string => {
     const N = 26,
-      pts = [];
+      pts: [number, number][] = [];
     for (let i = 0; i <= N; i++) {
       const a = a0 + ((a1 - a0) * i) / N,
         t = (a * Math.PI) / 180,
@@ -41,7 +57,7 @@
     }
     return 'M' + pts.map((p) => `${f1(p[0])} ${f1(p[1])}`).join(' L') + ' Z';
   };
-  const stars = (W, H, n, seed) => {
+  const stars = (W: number, H: number, n: number, seed: number): string => {
     let s = '',
       x = seed;
     const r = () => (x = (x * 9301 + 49297) % 233280) / 233280;
@@ -51,7 +67,12 @@
     }
     return s;
   };
-  const sunBody = (id, x, y, r) => `<circle cx="${x}" cy="${y}" r="${r * 2.6}" fill="url(#${id}-glow)"/>
+  const sunBody = (
+    id: string,
+    x: number,
+    y: number,
+    r: number,
+  ): string => `<circle cx="${x}" cy="${y}" r="${r * 2.6}" fill="url(#${id}-glow)"/>
     <g class="art-spin" style="transform-origin:${x}px ${y}px">${M.range(0, 11)
       .map(
         (i) =>
@@ -60,24 +81,24 @@
       .join('')}</g>
     <circle cx="${x}" cy="${y}" r="${r}" fill="url(#${id}-sun)"/><circle cx="${x - r * 0.3}" cy="${y - r * 0.3}" r="${r * 0.3}" fill="#fff" opacity=".4"/>`;
   const sunDefs = (
-    id,
-  ) => `<radialGradient id="${id}-sun" cx="40%" cy="38%" r="65%"><stop offset="0" stop-color="#fff7c2"/><stop offset=".55" stop-color="#ffd166"/><stop offset="1" stop-color="#f7941d"/></radialGradient>
+    id: string,
+  ): string => `<radialGradient id="${id}-sun" cx="40%" cy="38%" r="65%"><stop offset="0" stop-color="#fff7c2"/><stop offset=".55" stop-color="#ffd166"/><stop offset="1" stop-color="#f7941d"/></radialGradient>
     <radialGradient id="${id}-glow"><stop offset=".3" stop-color="#ffe08a" stop-opacity=".75"/><stop offset="1" stop-color="#ffd166" stop-opacity="0"/></radialGradient>`;
-  const houseArt = (x, y, s) =>
+  const houseArt = (x: number, y: number, s: number): string =>
     M.art.has('pl-maison')
       ? M.art.svg('pl-maison', { x: x - s / 2, y: y - s / 2, w: s, h: s })
       : `<text x="${x}" y="${y + s * 0.3}" text-anchor="middle" font-size="${s * 0.8}">🏠</text>`;
 
   /* ---------------- La Terre vue du pôle Nord ---------------- */
   // Continents (angles dans le repère de la Terre; la maison du Québec est à 180°).
-  const LANDS = [
+  const LANDS: [number, number, number, number, number][] = [
     [150, 215, 34, 96, 1],
     [222, 246, 40, 70, 2],
     [262, 352, 36, 98, 3],
     [-10, 40, 44, 96, 4],
     [60, 110, 50, 88, 5],
   ];
-  const LIGHTS = (cx, cy) => {
+  const LIGHTS = (cx: number, cy: number): string => {
     let s = '',
       k = 7;
     LANDS.forEach(([a0, a1, r0, r1]) => {
@@ -129,7 +150,7 @@
     // Maisons touchables (habileté « jour ou nuit ? »)
     const dayA = sunLeft ? [150, 180, 210] : [-30, 0, 30],
       nightA = sunLeft ? [-30, 0, 30] : [150, 180, 210];
-    const house = (a, kind) => {
+    const house = (a: number, kind: 'jour' | 'nuit'): string => {
       const t = (a * Math.PI) / 180,
         x = f1(cx + 64 * Math.cos(t)),
         y = f1(cy + 64 * Math.sin(t)),
@@ -185,8 +206,8 @@
   };
 
   /* ---------------- Paysage, Soleil et ombre de l'arbre ---------------- */
-  const mix = (a, b, t) => {
-    const p = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
+  const mix = (a: string, b: string, t: number): string => {
+    const p = (c: string): number[] => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
     const A = p(a),
       B = p(b);
     return (
@@ -222,7 +243,7 @@
       dir === 0
         ? `<ellipse cx="${TX}" cy="${GY + 4}" rx="26" ry="6" fill="#1d2a1a" opacity=".38" filter="url(#${id}-blur)"/>`
         : `<g opacity=".55" filter="url(#${id}-blur)"><path d="M${TX - 5} ${GY + 3} L${TX + dir * L * 0.62} ${GY + 2} L${TX + dir * L * 0.62} ${GY + 7} L${TX + 5} ${GY + 7} Z" fill="#1d2a1a"/><ellipse cx="${TX + dir * L * 0.8}" cy="${GY + 5}" rx="${Math.max(14, L * 0.25)}" ry="7" fill="#1d2a1a"/></g>`;
-    const cloud = (x, y, s, d, dl) =>
+    const cloud = (x: number, y: number, s: number, d: number, dl: number): string =>
       `<g class="plan-cloud" style="--from:${-60}px;--to:${W + 40}px;animation-duration:${d}s;animation-delay:${dl}s"><g opacity=".85" fill="#fff"><circle cx="${x}" cy="${y}" r="${8 * s}"/><circle cx="${x + 10 * s}" cy="${y - 5 * s}" r="${10 * s}"/><circle cx="${x + 22 * s}" cy="${y}" r="${8 * s}"/><rect x="${x}" y="${y}" width="${22 * s}" height="${8 * s}" rx="${4 * s}"/></g></g>`;
     return V(
       W,
@@ -260,16 +281,18 @@
   const LEAF = 'M10 0 L12 5 L16 3 L15 8 L20 8 L16 12 L17 14 L11 13 L11 20 L9 20 L9 13 L3 14 L4 12 L0 8 L5 8 L4 3 L8 5 Z';
   SC.svg.erable = function (saison, { cls = 'sc-choice-fig' } = {}) {
     const id = 'er' + ++uid;
-    const sky = {
+    const SKY: Record<string, [string, string]> = {
       hiver: ['#b9cde6', '#eef4fb'],
       printemps: ['#8fd0f5', '#e6f7ff'],
       ete: ['#5fb4f5', '#cdeeff'],
       automne: ['#86b7e0', '#fde8c8'],
-    }[saison];
-    const ground = { hiver: '#fbfdff', printemps: '#8fd06a', ete: '#6cc04f', automne: '#c9a25a' }[saison];
+    };
+    const GROUND: Record<string, string> = { hiver: '#fbfdff', printemps: '#8fd06a', ete: '#6cc04f', automne: '#c9a25a' };
+    const sky = SKY[saison],
+      ground = GROUND[saison];
     const trunk = `<path d="M94 126 Q96 96 92 70 L108 70 Q104 96 106 126 Z" fill="url(#${id}-bark)" stroke="#5b3a1e" stroke-width="1.5"/>`;
     const branches = `<path d="M100 92 Q86 78 72 66 M100 84 Q116 70 130 60 M99 74 Q90 56 86 44 M101 74 Q110 54 116 42 M76 70 Q66 64 60 56 M126 62 Q136 58 142 50 M100 70 V36" stroke="#6b4425" stroke-width="4.5" fill="none" stroke-linecap="round"/>`;
-    const canopy = (cols) =>
+    const canopy = (cols: string[]): string =>
       `<g class="sc-sway" style="transform-origin:100px 126px">${[
         [72, 60, 24],
         [128, 58, 25],

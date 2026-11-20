@@ -3,17 +3,26 @@
      fr-dictee, fr-bonne-orthographe, fr-lettres-muettes, fr-majuscule-apostrophe
    Les mots viennent de la Liste orthographique (data/mots.js, lo 1–2).
    ===================================================================== */
+
+interface QuestionExtras {
+  /** fr-lettres-muettes : le mot sans sa lettre muette (check : aucun autre choix ne forme un vrai mot). */
+  stem?: string;
+}
+
 (function () {
   'use strict';
   const M = window.M;
   const FR = M.FR;
   const D = 'fr-orthographe';
-  const LO = (pred = () => true) => FR.mots((m) => m.lo >= 1 && pred(m));
-  const simple = (w) => /^[a-zàâçéèêëîïôûùœ]+$/.test(w);
+  const LO = (pred: (m: FrMot) => unknown = () => true) => FR.mots((m) => m.lo >= 1 && pred(m));
+  const simple = (w: string) => /^[a-zàâçéèêëîïôûùœ]+$/.test(w);
   /** Phrase-repère pour une forme fléchie. */
-  const formeCtx = (m, kind) => {
-    if (kind === 'fem')
-      return m.cls === 'adj' ? { w: m.fem, phrase: `Il est ${m.w}. Elle est ${m.fem}.` } : { w: m.fem, phrase: `Un ${m.w}, une ${m.fem}.` };
+  const formeCtx = (m: FrMot, kind: 'fem' | 'pl') => {
+    if (kind === 'fem') {
+      const fem = m.fem;
+      if (!fem) throw new Error('pas de féminin : ' + m.w);
+      return m.cls === 'adj' ? { w: fem, phrase: `Il est ${m.w}. Elle est ${fem}.` } : { w: fem, phrase: `Un ${m.w}, une ${fem}.` };
+    }
     const pl = FR.plur(m);
     return m.cls === 'adj' ? { w: pl, phrase: `Un chat ${m.w}, des chats ${pl}.` } : { w: pl, phrase: `Un ${m.w}, des ${pl}.` };
   };
@@ -64,7 +73,7 @@
           hint:
             kind === 'fem'
               ? `Pense à <b>${m.w}</b> : pour le féminin, on ajoute souvent un <b>e</b>.`
-              : `Pense à <b>${m.w}</b>. ${/eau$|eu$/.test(m.w) ? 'Après <b>eau</b> ou <b>eu</b>, le pluriel prend un <b>x</b>.' : /al$/.test(m.w) ? '<b>al</b> devient <b>aux</b> au pluriel.' : 'Au pluriel, on ajoute souvent un <b>s</b>.'}`,
+              : `Pense à <b>${m.w}</b>. ${/eau$|eu$/.test(m.w) ? 'Après <b>eau</b> ou <b>eu</b>, le pluriel prend un <b>x</b>.' : m.w.endsWith('al') ? '<b>al</b> devient <b>aux</b> au pluriel.' : 'Au pluriel, on ajoute souvent un <b>s</b>.'}`,
           explain: kind === 'fem' ? `<b>${m.w}</b> → <b>${f.w}</b> (féminin).` : `<b>${m.w}</b> → <b>${f.w}</b> (pluriel).`,
         });
       }
@@ -77,10 +86,10 @@
       });
     },
     check(q) {
-      const seq = q.audio && q.audio.seq;
+      const seq = typeof q.audio === 'object' ? q.audio.seq : undefined;
       if (!seq || seq.length < 2) return 'dictée sans séquence audio';
-      const w = q.format === 'text' ? q.answer : q.answer.join('');
-      if (seq[0] !== w) return "l'audio ne dit pas le mot";
+      const w = q.format === 'text' ? q.answer : q.format === 'build' ? q.answer.join('') : undefined;
+      if (typeof w !== 'string' || seq[0] !== w) return "l'audio ne dit pas le mot";
       if (FR.isHomophone(w) && seq.length < 3) return 'homophone sans phrase';
       if (seq.length === 3 && !FR.norm(seq[1]).includes(FR.norm(w).split(' ')[0])) return 'la phrase ne contient pas le mot : ' + seq[1];
     },
@@ -150,7 +159,7 @@
         if (real.length) return 'distracteur = vrai mot : ' + real[0].value;
       }
       if (q.format === 'tapwords') {
-        const w = q.words[q.answer[0]].replace(/[.,!?;:]/g, '').replace(/^[a-z]+'/i, '');
+        const w = (q.words?.[q.answer[0]] ?? '').replace(/[.,!?;:]/g, '').replace(/^[a-z]+'/i, '');
         if (FR.isReal(w)) return 'faute = vrai mot : ' + w;
       }
     },
@@ -168,8 +177,8 @@
     pda: "Orthographe d'usage C.2 a, b.i–ii — lettres muettes justifiées par le féminin ou la famille (→ 1re, → 2e)",
     gen({ lvl }) {
       if (lvl === 0) {
-        const m = M.pick(FR.mots((x) => x.gr && x.em && x.gr.some((p) => p.s === '' && p.g !== 'h')));
-        const idx = [];
+        const m = M.pick(FR.mots((x): x is FrMotWith<'gr' | 'em'> => !!(x.gr && x.em && x.gr.some((p) => p.s === '' && p.g !== 'h'))));
+        const idx: number[] = [];
         let i = 0;
         m.gr.forEach((p) => {
           [...p.g].forEach(() => {
@@ -189,7 +198,7 @@
           explain: `<b>${FR.motHtml(m)}</b> : on n'entend pas ${idx.map((k) => `le <b>${m.w[k]}</b>`).join(' ni ')}.${m.why ? ` On l'entend dans ${FR.q(m.why)} !` : ''}`,
         };
       }
-      const cand = FR.mots((x) => x.mu && x.why && x.w.endsWith(x.mu) && FINALES.includes(x.mu));
+      const cand = FR.mots((x): x is FrMotWith<'mu' | 'why'> => !!(x.mu && x.why && x.w.endsWith(x.mu) && FINALES.includes(x.mu)));
       const m = M.pick(cand);
       const stem = m.w.slice(0, -1);
       if (lvl === 2 && Math.random() < 0.4 && m.cls === 'nom') {
@@ -232,7 +241,7 @@
       };
     },
     check(q) {
-      if (q.format === 'choice' && q.choices.some((c) => c.value !== q.answer && FR.isReal(q.stem + c.value)))
+      if (q.format === 'choice' && q.choices.some((c) => c.value !== q.answer && FR.isReal(String(q.stem) + c.value)))
         return 'un autre choix forme un vrai mot';
     },
   });
@@ -275,7 +284,7 @@
               label: `<span style="font-size:1.4rem">${x}</span>`,
               value: x,
             })),
-            hint: `<b>${m.w}</b> commence par ${/^h/.test(m.w) ? 'un <b>h</b> muet' : 'une voyelle'}. Le <b>e</b> ou le <b>a</b> disparaît : on met une apostrophe.`,
+            hint: `<b>${m.w}</b> commence par ${m.w.startsWith('h') ? 'un <b>h</b> muet' : 'une voyelle'}. Le <b>e</b> ou le <b>a</b> disparaît : on met une apostrophe.`,
             explain: `Devant une voyelle, <b>${bad}</b> devient <b>l'</b> : <b>l'${m.w}</b>.`,
           };
         }
@@ -318,22 +327,22 @@
         p2 = M.people.pick({ not: [p1.n] });
       const T =
         lvl < 2
-          ? M.pick([
+          ? M.pick<[string, number[]]>([
               [`${p1.n} joue avec ${p2.n} .`, [0, 3]],
               [`hier , ${p1.n} a vu ${p2.n} .`, [0, 2, 5]],
               [`mon chat s'appelle ${M.pick(PETS)} .`, [0, 3]],
               [`${p1.n} et ${p2.n} glissent .`, [0, 2]],
               [`le chien de ${p1.n} s'appelle ${M.pick(PETS)} .`, [0, 3, 5]],
             ])
-          : M.pick([
+          : M.pick<[string, number[]]>([
               [`${p1.n} habite à ${M.pick(LIEUX)} .`, [0, 3]],
               [`samedi , ${p1.n} va à ${M.pick(LIEUX)} .`, [0, 2, 5]],
               [`${p1.n} et ${p2.n} visitent ${M.pick(LIEUX)} .`, [0, 2, 4]],
               [`mon ami ${p1.n} vient de ${M.pick(LIEUX)} .`, [0, 2, 5]],
             ]);
       // la ponctuation reste collée au mot précédent; indices recalculés
-      const raw = [],
-        map = [];
+      const raw: string[] = [],
+        map: number[] = [];
       T[0].split(' ').forEach((x, i) => {
         if (x === '.' || x === ',') raw[raw.length - 1] += x;
         else {

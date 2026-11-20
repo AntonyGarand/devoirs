@@ -5,6 +5,23 @@
                      (tempo, nuance, registre) — compétence 3 « Apprécier ». On compare deux
                      musiques très contrastées; le ressenti personnel passe par une carte de réflexion (jamais notée).
    ===================================================================== */
+
+/** MU.phrase : rythme 'egal' (croches régulières) ou 'saute' (long-court); notes : écarts en demi-tons depuis root. */
+interface MuPhraseOpts {
+  inst?: string;
+  root?: number;
+  scale?: readonly number[];
+  rhythm?: 'egal' | 'saute';
+  spb?: number;
+  notes?: readonly number[];
+}
+interface MusiqueApi {
+  /** Une phrase de 8 notes. */
+  phrase(opts?: MuPhraseOpts): MuTimedEvent[];
+  /** Petite musique au caractère donné. */
+  piece(mood: MuMood): MuEvent[];
+}
+
 (function () {
   'use strict';
   const M = window.M;
@@ -15,7 +32,7 @@
     MIN = [0, 2, 3, 5, 7, 8, 12];
 
   /** Une phrase de 8 notes; rythme : 'egal' (croches régulières) ou 'saute' (long-court). */
-  function phrase({ inst = 'xylo', root = 67, scale = MAJ, rhythm = 'egal', spb = 0.3, notes } = {}) {
+  function phrase({ inst = 'xylo', root = 67, scale = MAJ, rhythm = 'egal', spb = 0.3, notes }: MuPhraseOpts = {}): MuTimedEvent[] {
     const ns = notes || MU.seq(8).map((i) => (i === 7 ? 0 : pick(scale)));
     const durs = rhythm === 'egal' ? MU.seq(8).map(() => spb) : MU.seq(8).map((i) => (i % 2 ? spb * 0.5 : spb * 1.5));
     let t = 0;
@@ -25,9 +42,9 @@
       return e;
     });
   }
-  const shift = (evs, dt) => evs.map((e) => ({ ...e, t: e.t + dt }));
-  const LET_COL = { A: '#3a86ff', B: '#f78c40' };
-  const blocks = (letters) =>
+  const shift = (evs: MuTimedEvent[], dt: number) => evs.map((e) => ({ ...e, t: e.t + dt }));
+  const LET_COL: Record<string, string> = { A: '#3a86ff', B: '#f78c40' };
+  const blocks = (letters: string[]) =>
     `<div class="mu-blocks">${letters.map((l) => `<span style="background:${LET_COL[l]}22;border-color:${LET_COL[l]}">${l}</span>`).join('')}</div>`;
 
   M.registerSkill({
@@ -84,7 +101,7 @@
       }
       const form = pick(['AB', 'ABA', 'AA']);
       const L = form.split('');
-      const dur = (p) => p[p.length - 1].t + p[p.length - 1].dur + 0.5;
+      const dur = (p: MuTimedEvent[]) => p[p.length - 1].t + p[p.length - 1].dur + 0.5;
       let t = 0;
       const evs = L.flatMap((l) => {
         const p = shift(l === 'A' ? A : B, t);
@@ -111,7 +128,7 @@
   });
 
   /* ---------------------------------------------------------------- caractère */
-  function piece(mood) {
+  function piece(mood: MuMood): MuEvent[] {
     if (mood === 'joyeuse')
       return phrase({ inst: 'xylo', root: 72, scale: MAJ, rhythm: 'saute', spb: 0.22 }).concat(
         phrase({ inst: 'xylo', root: 72, scale: MAJ, rhythm: 'egal', spb: 0.18 }).map((e) => ({ ...e, t: e.t + 1.9 })),
@@ -129,7 +146,7 @@
         dur: 0.9,
       }));
     // agitée : fort, rapide, grave, avec tambour
-    const ev = [];
+    const ev: MuEvent[] = [];
     for (let i = 0; i < 16; i++) {
       ev.push({ t: i * 0.16, inst: 'tambour', vel: 1 });
       if (i % 2 === 0) ev.push({ t: i * 0.16, inst: 'piano', midi: 40 + pick([0, 1, 6]), vel: 1, dur: 0.2 });
@@ -138,7 +155,7 @@
   }
   MU.phrase = phrase;
   MU.piece = piece;
-  const PAIRS = [
+  const PAIRS: MuMood[][] = [
     ['joyeuse', 'triste'],
     ['calme', 'agitee'],
     ['joyeuse', 'calme'],
@@ -155,8 +172,9 @@
     gen({ lvl }) {
       const t = lvl === 0 ? 'paire' : lvl === 1 ? pick(['paire', 'paire', 'senti']) : pick(['pourquoi', 'pourquoi', 'paire']);
       const D = MU.MOODS;
+      const moods = Object.keys(D) as MuMood[]; // Object.keys est typé string[]
       if (t === 'senti') {
-        const mood = pick(Object.keys(D));
+        const mood = pick(moods);
         const evs = piece(mood);
         return {
           prompt:
@@ -188,11 +206,11 @@
           viz: (el) => MU.player(el, items),
         };
       }
-      const mood = pick(Object.keys(D));
+      const mood = pick(moods);
       const evs = piece(mood);
       // triste et calme sont toutes deux lentes et douces : jamais l'une comme distracteur de l'autre
-      const near = { triste: 'calme', calme: 'triste' };
-      const others = shuffle(Object.keys(D).filter((k) => k !== mood && k !== near[mood])).slice(0, 2);
+      const near: Partial<Record<MuMood, MuMood>> = { triste: 'calme', calme: 'triste' };
+      const others = shuffle(moods.filter((k) => k !== mood && k !== near[mood])).slice(0, 2);
       return {
         prompt: `Cette musique semble <b>${D[mood].label}</b> ${D[mood].icon}. Pourquoi ?`,
         format: 'choice',

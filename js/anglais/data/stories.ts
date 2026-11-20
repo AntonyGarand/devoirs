@@ -8,12 +8,54 @@
    answer (tf), line (phrase qui donne la réponse), hint? }
    Présent simple, répétitions, contextes québécois, prénoms variés.
    ===================================================================== */
+
+/** Phrase d'histoire : texte, image(s) (emoji ou 'art:<nom>:<couleur>', séparées par « | »), sens. */
+interface EnStoryLine {
+  en: string;
+  pic: string;
+  fr: string;
+}
+interface EnStoryQuestionBase {
+  lvl: number;
+  /** Consigne (français). */
+  fr: string;
+  /** Question anglaise entendue. */
+  audio?: string;
+  /** Phrase qui donne la réponse. */
+  line: number;
+  hint?: string;
+}
+/** Question d'histoire : choices (1er = bonne réponse) en images (pic) ou en phrases anglaises (say), ou vrai/faux (tf). */
+type EnStoryQuestion =
+  | (EnStoryQuestionBase & { type: 'pic' | 'say'; choices: string[] })
+  | (EnStoryQuestionBase & { type: 'tf'; answer: boolean });
+interface EnStory {
+  id: string;
+  title: string;
+  fr: string;
+  lvl: number;
+  lines: EnStoryLine[];
+  questions: EnStoryQuestion[];
+}
+
+interface EnglishApi {
+  STORIES: EnStory[];
+  /** id → histoire. */
+  story: Record<string, EnStory>;
+  /** Image d'une phrase (« 🦫 », « art:en-tuque:red|art:en-mittens:blue »). */
+  picStr(s: string, size?: number): string;
+  /** Texte complet d'une histoire. */
+  storyText(st: EnStory): string;
+  /** Histoire illustrée (fr : sens; text : texte anglais). */
+  storyHtml(st: EnStory, opts?: { fr?: boolean; text?: boolean }): string;
+}
+
 (function () {
   'use strict';
   const M = window.M;
   const EN = M.EN;
-  const L = (en, pic, fr) => ({ en, pic, fr });
-  const SW = (c) => 'art:en-swatch:' + c;
+  const L = (en: string, pic: string, fr: string): EnStoryLine => ({ en, pic, fr });
+  const SW = (c: string): string => 'art:en-swatch:' + c;
 
   EN.STORIES = [
     {

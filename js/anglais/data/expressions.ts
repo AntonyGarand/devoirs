@@ -5,11 +5,48 @@
    group : expressions équivalentes (jamais deux du même groupe dans un choix),
    lvl.
    ===================================================================== */
+
+/** Expression du langage fonctionnel (M.EN.EXPR). */
+interface EnExpr {
+  id: string;
+  /** Affiché. */
+  en: string;
+  /** Lu. */
+  say: string;
+  kind: 'greeting' | 'courtesy' | 'needs' | 'classroom' | 'cheer' | 'feelings' | 'pairwork';
+  emoji: string;
+  /** Situation (français). */
+  situation: string;
+  /** Sens (français). */
+  fr: string;
+  /** Expressions équivalentes : jamais deux du même groupe dans un choix. */
+  group: string;
+  lvl: number;
+}
+
+interface EnglishApi {
+  EXPR: EnExpr[];
+  /** id → expression. */
+  expr: Record<string, EnExpr>;
+  /** Expressions que l'enfant dit (sans les consignes de classe). */
+  SAYABLE: EnExpr[];
+}
+
 (function () {
   'use strict';
   const M = window.M;
   const EN = M.EN;
-  const E = (id, en, kind, emoji, situation, fr, group, lvl = 0, say) => ({
+  const E = (
+    id: string,
+    en: string,
+    kind: EnExpr['kind'],
+    emoji: string,
+    situation: string,
+    fr: string,
+    group?: string,
+    lvl = 0,
+    say?: string,
+  ): EnExpr => ({
     id,
     en,
     say: say || en,

@@ -14,13 +14,31 @@ import os from 'node:os';
 import vm from 'node:vm';
 import { spawnSync } from 'node:child_process';
 
+/** Élément de tools/tts/phrases.json (voir tts-collect.ts). */
+interface Phrase {
+  t: string;
+  lang: string;
+  kind: 'full' | 'piece' | 'num';
+  n: number;
+}
+/** Phrase à synthétiser : id du clip (même hachage que le site); parts = nombre de requêtes (texte long découpé). */
+interface Item extends Phrase {
+  id: string;
+  parts?: number;
+}
+/** M.clips de js/clips.js (seul script chargé). */
+interface ClipsHash {
+  key(t: unknown, lang?: string): string;
+  id(key: string): string;
+}
+
 const root = path.join(import.meta.dirname, '..');
 const web = path.join(root, 'dist'); // site compilé (npm run build)
-const arg = (k, d) => {
+const arg = <D>(k: string, d: D): string | D => {
   const i = process.argv.indexOf(k);
   return i > 0 ? process.argv[i + 1] : d;
 };
-const flag = (k) => process.argv.includes(k);
+const flag = (k: string): boolean => process.argv.includes(k);
 const AC = path.resolve(process.env.AUDIOCPP_DIR || path.join(root, '..', 'audiocpp'));
 const VOICE_FR = process.env.VOICE_FR || 'antony_bws';
 const EN_VOICE = process.env.EN_VOICE || 'af_heart';
@@ -32,19 +50,20 @@ const OUT = path.join(root, 'audio');
 const WORK = path.join(os.tmpdir(), 'devoirs-tts-work');
 
 // même nettoyage / hachage que le site
-const ctx = { window: {} };
+const ctx: { window: { M?: { clips?: ClipsHash } } } = { window: {} };
 ctx.window.M = {};
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(web, 'js', 'clips.js'), 'utf8'), ctx);
 const C = ctx.window.M.clips;
+if (!C) throw new Error('M.clips absent : dist/js/clips.js est-il compilé ?');
 
-const phrases = JSON.parse(fs.readFileSync(arg('--in', path.join(import.meta.dirname, 'tts', 'phrases.json')), 'utf8'));
+const phrases = JSON.parse(fs.readFileSync(arg('--in', path.join(import.meta.dirname, 'tts', 'phrases.json')), 'utf8')) as Phrase[];
 fs.mkdirSync(OUT, { recursive: true });
 fs.mkdirSync(WORK, { recursive: true });
-const items = phrases.map((p) => ({ ...p, id: C.id(C.key(p.t, p.lang)) }));
+const items = phrases.map((p): Item => ({ ...p, id: C.id(C.key(p.t, p.lang)) }));
 const wanted = new Set(items.map((x) => x.id));
 
-function writeIndex() {
+function writeIndex(): number {
   const have = fs
     .readdirSync(OUT)
     .filter((f) => f.endsWith('.mp3'))
@@ -77,13 +96,14 @@ const refText = (() => {
 const voiceRef = path.join(AC, 'voices', VOICE_FR + '.wav');
 
 /** Ce qu'on envoie à la synthèse : un nombre seul se lit mieux suivi d'un point. */
-const ttsText = (x) => ((x.kind === 'num' || x.kind === 'piece') && !/[.!?]$/.test(x.t) ? x.t + (x.kind === 'num' ? '.' : '') : x.t);
+const ttsText = (x: Item): string =>
+  (x.kind === 'num' || x.kind === 'piece') && !/[.!?]$/.test(x.t) ? x.t + (x.kind === 'num' ? '.' : '') : x.t;
 
 /** Texte long (lecture) : une requête par groupe de phrases (~180 caractères), recollées ensuite. */
-const chunks = (t) => {
+const chunks = (t: string): string[] => {
   if (t.length <= 220) return [t];
   const sents = t.match(/[^.!?…]+[.!?…]+[»"]?s*|[^.!?…]+$/g) || [t];
-  const out = [];
+  const out: string[] = [];
   for (const s0 of sents) {
     const s1 = s0.trim();
     if (out.length && (out[out.length - 1] + ' ' + s1).length <= 180) out[out.length - 1] += ' ' + s1;
@@ -91,12 +111,12 @@ const chunks = (t) => {
   }
   return out;
 };
-function synth(batch, lang) {
-  const one = (id, text) =>
+function synth(batch: Item[], lang: string): number {
+  const one = (id: string, text: string): object =>
     lang === 'en'
       ? { id, text, language: 'en-us', voice_id: EN_VOICE }
       : { id, text, language: 'fr', voice_ref: voiceRef, reference_text: refText, seed: 42, options: { num_inference_steps: STEPS } };
-  const req = [];
+  const req: object[] = [];
   for (const x of batch) {
     const cs = chunks(ttsText(x));
     x.parts = cs.length;
@@ -107,7 +127,7 @@ function synth(batch, lang) {
   fs.writeFileSync(reqPath, JSON.stringify(req));
   try {
     fs.unlinkSync(manPath);
-  } catch (e) {}
+  } catch {}
   const fam = lang === 'en' ? ['kokoro_tts', 'Kokoro-82M-GGUF/kokoro-82m-q8_0.gguf'] : ['omnivoice', 'OmniVoice-GGUF/omnivoice-q8_0.gguf'];
   const r = spawnSync(
     path.join(AC, 'audiocpp_cli.exe'),
@@ -143,8 +163,8 @@ function synth(batch, lang) {
   let ok = 0;
   for (const x of batch) {
     const wav = path.join(WORK, x.id + '.wav');
-    if (x.parts > 1) {
-      const ps = [...Array(x.parts)].map((_, i) => path.join(WORK, x.id + '__' + i + '.wav'));
+    if (x.parts && x.parts > 1) {
+      const ps = [...Array<unknown>(x.parts)].map((_, i) => path.join(WORK, x.id + '__' + i + '.wav'));
       if (!ps.every((p) => fs.existsSync(p))) continue;
       const inputs = ps.flatMap((p) => ['-i', p]);
       const fc =
@@ -188,7 +208,7 @@ function synth(batch, lang) {
 const todo = items.filter((x) => !fs.existsSync(path.join(OUT, x.id + '.mp3')) && (!ONLY || x.lang === ONLY));
 // d'abord les phrases les plus entendues, l'anglais (rapide) en premier
 // les nombres servent à toutes les phrases recollées : en tête (0 à 100 d'abord)
-const prio = (x) => (x.kind === 'num' ? (+x.t <= 100 ? 1e6 : 1e4) : x.n);
+const prio = (x: Item): number => (x.kind === 'num' ? (+x.t <= 100 ? 1e6 : 1e4) : x.n);
 todo.sort((a, b) => (a.lang === b.lang ? prio(b) - prio(a) : a.lang === 'en' ? -1 : 1));
 const run = todo.slice(0, LIMIT);
 console.log(

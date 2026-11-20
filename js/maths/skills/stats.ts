@@ -5,11 +5,195 @@
    resultsTable, pLine…
    Les générateurs gen() ne touchent jamais au DOM (seulement viz/showMe).
    ===================================================================== */
+
+/* ---------- types de M.stats (scripts globaux : fusion avec MApi) ---------- */
+interface MApi {
+  stats: StatsApi;
+}
+/** Clé de couleur de M.stats.COL ('rouge', 'bleu'…). */
+type StColorKey = string;
+/** Résultat d'un appareil du hasard : clé de couleur (roulette, sac) ou valeur d'une face (dé). */
+type StKey = string | number;
+/** Surlignage d'un appareil : un résultat, ou plusieurs. */
+type StHighlight = StKey | StKey[];
+type StLikelihood = 'certain' | 'possible' | 'impossible';
+/** Couleur : m = adjectif masculin, f = féminin, fp = féminin pluriel, nom = « le rouge ». */
+interface StColorInfo {
+  hex: string;
+  emo: string;
+  lbl: string;
+  m: string;
+  f: string;
+  fp: string;
+  nom: string;
+}
+/** Catégorie d'un contexte d'enquête. */
+interface StCat {
+  label: string;
+  icon: string;
+  /** « la pomme » (votes). */
+  the?: string;
+  /** « jours de soleil » (météo). */
+  de?: string;
+  /** « rouges » (tuques). */
+  fp?: string;
+  color?: string;
+  /** 1 : fille (accord « elle »). */
+  f?: number;
+}
+/** Catégorie choisie pour une question (couleur et valeur fixées). */
+interface StDataCat extends StCat {
+  color: string;
+  value: number;
+}
+/** Contexte d'enquête (diagrammes à bandes, pictogrammes, tableaux). */
+interface StCtx {
+  id: string;
+  kind: 'vote' | 'people' | 'weather' | 'tuque';
+  title: string;
+  axis: string;
+  unit: [string, string];
+  cats: StCat[];
+  /** Image du pictogramme. */
+  sym?: string;
+  /** Question d'enquête (votes). */
+  q?: string;
+  which?: string;
+  how(c: StCat): string;
+  more(a: StCat, b: StCat): string;
+  most: string;
+  least: string;
+  total: string;
+}
+/** Catégorie d'un diagramme. */
+interface StChartCat {
+  label: string;
+  icon?: string;
+  value: number;
+  color?: string;
+}
+interface StBarChartOpts {
+  cats: StChartCat[];
+  title?: string;
+  axis?: string;
+  max?: number;
+  step?: number;
+  horizontal?: boolean;
+  small?: boolean;
+  /** Index d'une bande : ligne pointillée jusqu'aux nombres. */
+  guide?: number;
+  /** Index des bandes à montrer (ligne + nombre). */
+  reveal?: number[];
+}
+interface StPictoOpts {
+  title?: string;
+  cats: StChartCat[];
+  sym: string;
+  /** Valeur d'une image (1 ou 2). */
+  per?: number;
+  unit: [string, string];
+  reveal?: number[];
+  hl?: number;
+}
+interface StTallyOpts {
+  h?: number;
+  labels?: boolean;
+  color?: string;
+  diag?: string;
+}
+interface StTableOpts {
+  head: string[];
+  /** Cellules (html). */
+  rows: string[][];
+  hl?: number;
+  caption?: string;
+  mini?: boolean;
+}
+/** Appareil du hasard. */
+type StDeviceSpec = { type: 'spinner'; sectors: StColorKey[] } | { type: 'bag'; marbles: StColorKey[] } | { type: 'die'; faces?: number[] };
+/** Résultat possible d'un appareil. */
+interface StOutcomeCat {
+  key: StKey;
+  label: string;
+  /** Html (pastille de couleur ou face de dé). */
+  icon: string;
+}
+interface StDeviceState {
+  angle: number;
+  face: number;
+  picked: StColorKey | null;
+}
+/** Appareil monté par M.stats.device. */
+interface StDevice {
+  root: HTMLDivElement;
+  cats: StOutcomeCat[];
+  render(o?: { hl?: StHighlight }): void;
+  play(key: StKey, ms?: number): Promise<void>;
+  state: StDeviceState;
+}
+interface StExperimentOpts {
+  spec: StDeviceSpec;
+  /** Résultats tirés d'avance (rejoués à l'identique). */
+  outcomes: StKey[];
+  /** Colonne « Nombre » du tableau. */
+  nums?: boolean;
+  /** Joue tout de suite (showMe). */
+  auto?: boolean;
+  /** Rangée surlignée à la fin. */
+  hl?: StKey;
+  /** Surlignage de l'appareil. */
+  devHl?: StKey;
+}
+/** M.stats : dessins et données de statistique et probabilité (aussi utilisés par learn/stats.ts). */
+interface StatsApi {
+  COL: Record<StColorKey, StColorInfo>;
+  COLOR_KEYS: StColorKey[];
+  PAL: string[];
+  /** Texte brut (sans balises ni émojis) pour la lecture à voix haute. */
+  plain(html: string): string;
+  /** Pastille de couleur (html). */
+  dot(key: StKey): string;
+  /** n valeurs distinctes entre lo et hi (pas = step). */
+  distinct(n: number, lo: number, hi: number, step?: number): number[];
+  /** Index de l'unique maximum (dir 1) ou minimum (dir -1), -1 s'il y a égalité. */
+  uniqueExt(vals: number[], dir?: number): number;
+  CTX: StCtx[];
+  VOTES: StCtx[];
+  pickCats(ctx: StCtx, n: number): StDataCat[];
+  barChart(o: StBarChartOpts): string;
+  picto(o: StPictoOpts): string;
+  tally(n: number, o?: StTallyOpts): string;
+  table(o: StTableOpts): string;
+  spinner(sectors: StColorKey[], o?: { angle?: number; hl?: StHighlight }): string;
+  marble(key: StColorKey, size?: number): string;
+  BAG_MAX: number;
+  bag(marbles: StColorKey[], o?: { hl?: StHighlight }): string;
+  dieFace(v: number, o?: { size?: number; hl?: boolean; dim?: boolean }): string;
+  dieRow(faces: number[], o?: { hl?: StKey[]; size?: number }): string;
+  pLine(hl?: StLikelihood): string;
+  catsOf(spec: StDeviceSpec): StOutcomeCat[];
+  /** Un résultat au hasard (sans DOM). */
+  drawOutcome(spec: StDeviceSpec): StKey;
+  countOf(spec: StDeviceSpec, key: StKey): number;
+  device(host: HTMLElement, spec: StDeviceSpec): StDevice;
+  resultsTable(cats: StOutcomeCat[], counts: Record<string, number>, o?: { caption?: string; nums?: boolean; hl?: StKey }): string;
+  /** Monte un visuel dans el (nouveau conteneur .st-wrap). */
+  mount(el: HTMLElement, html: string): HTMLElement;
+  tallyTxt(n: number): string;
+  /** Événements de tous les jours : [émoji, phrase]. */
+  EVENTS: Record<StLikelihood, [string, string][]>;
+  experiment(el: HTMLElement, o: StExperimentOpts): HTMLElement;
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  const S = (M.stats = {});
+  const S = (M.stats = {} as StatsApi);
   const INK = '#2b2d42';
+  /** Réponse d'une question à nombre ou à choix. */
+  type StAnswer = { input: 'number'; answer: number } | { input: 'choice'; answer: Value; choices: Choice[] };
+  const answerOf = (a: StAnswer): StAnswer =>
+    a.input === 'number' ? { input: 'number', answer: a.answer } : { input: 'choice', answer: a.answer, choices: a.choices };
 
   /* ------------------------------------------------------------------
      Styles du domaine (préfixe st-)
@@ -78,7 +262,7 @@
   .st-instr { display: block; font-size: 1.05rem; color: var(--pur); font-weight: 800; margin-bottom: 4px }
   .st-res { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100% }
   `);
-  } catch (e) {
+  } catch {
     /* hors navigateur (tools/check-skills.js) */
   }
 
@@ -86,7 +270,7 @@
      Données de base
      ------------------------------------------------------------------ */
   // Couleurs : m = adjectif masculin, f = féminin, fp = féminin pluriel, nom = « le rouge »
-  const COL = {
+  const COL: Record<StColorKey, StColorInfo> = {
     rouge: { hex: '#ef476f', emo: '🔴', lbl: 'Rouge', m: 'rouge', f: 'rouge', fp: 'rouges', nom: 'le rouge' },
     bleu: { hex: '#118ab2', emo: '🔵', lbl: 'Bleu', m: 'bleu', f: 'bleue', fp: 'bleues', nom: 'le bleu' },
     vert: { hex: '#06a77d', emo: '🟢', lbl: 'Vert', m: 'vert', f: 'verte', fp: 'vertes', nom: 'le vert' },
@@ -99,34 +283,34 @@
   const PAL = ['#118ab2', '#ef476f', '#06a77d', '#f78c40', '#9b5de5'];
   S.PAL = PAL;
 
-  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   /** Texte brut (sans balises ni émojis) pour la lecture à voix haute — sans DOM. */
-  const plain = (html) =>
+  const plain = (html: string) =>
     String(html)
       .replace(/<[^>]*>/g, ' ')
       .replace(/&nbsp;/g, ' ')
       .replace(/ avec ▶/g, '')
       .replace(
-        /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}\u{2300}-\u{23FF}\u{25A0}-\u{25FF}\u{FE0F}\u{200D}]/gu,
+        /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}\u{2300}-\u{23FF}\u{25A0}-\u{25FF}]|\u{FE0F}|\u{200D}/gu,
         '',
       )
       .replace(/\s+/g, ' ')
       .trim();
   S.plain = plain;
-  const dot = (key) => `<span class="st-dot" style="background:${COL[key].hex}"></span>`;
+  const dot = (key: StKey) => `<span class="st-dot" style="background:${COL[key].hex}"></span>`;
   S.dot = dot;
   /** n valeurs distinctes entre lo et hi (pas = step). */
-  function distinct(n, lo, hi, step = 1) {
-    const pool = [];
+  function distinct(n: number, lo: number, hi: number, step = 1) {
+    const pool: number[] = [];
     for (let v = lo; v <= hi; v += step) pool.push(v);
     return M.shuffle(pool).slice(0, n);
   }
   S.distinct = distinct;
-  const sum = (a) => a.reduce((x, y) => x + y, 0);
+  const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
   /** Index de l'unique maximum (ou minimum), -1 s'il y a égalité. */
-  function uniqueExt(vals, dir = 1) {
+  function uniqueExt(vals: number[], dir = 1) {
     let best = -1,
-      bv = null,
+      bv: number | null = null,
       tie = false;
     vals.forEach((v, i) => {
       if (bv === null || v * dir > bv * dir) {
@@ -140,34 +324,35 @@
   S.uniqueExt = uniqueExt;
 
   /* Contextes d'enquête (diagrammes à bandes, pictogrammes, tableaux) */
-  const vote = (o) => ({
+  const vote = (o: Pick<StCtx, 'id' | 'q' | 'title' | 'cats'> & { which: string }): StCtx => ({
     kind: 'vote',
     unit: ['élève', 'élèves'],
     axis: "Nombre d'élèves",
     sym: '🙂',
-    how: (c) => `Combien d'élèves ont choisi <b>${c.icon} ${c.the}</b> ?`,
-    more: (a, b) => `Combien de votes de plus pour <b>${a.icon} ${a.the}</b> que pour <b>${b.icon} ${b.the}</b> ?`,
+    how: (c: StCat) => `Combien d'élèves ont choisi <b>${c.icon} ${c.the}</b> ?`,
+    more: (a: StCat, b: StCat) => `Combien de votes de plus pour <b>${a.icon} ${a.the}</b> que pour <b>${b.icon} ${b.the}</b> ?`,
     most: `${o.which} a reçu <b>le plus</b> de votes ?`,
     least: `${o.which} a reçu <b>le moins</b> de votes ?`,
     total: "Combien d'élèves ont voté <b>en tout</b> ?",
     ...o,
   });
-  const people = (o) => ({
+  const people = (o: Omit<StCtx, 'kind' | 'cats'>): StCtx => ({
     kind: 'people',
-    axis: o.axis,
-    cats: [
-      ['Léa', 1],
-      ['Samuel', 0],
-      ['Jade', 1],
-      ['Félix', 0],
-      ['Florence', 1],
-      ['Thomas', 0],
-      ['Zoé', 1],
-      ['Noah', 0],
-    ].map(([n, f]) => ({ label: n, icon: f ? '👧' : '👦', f })),
+    cats: (
+      [
+        ['Léa', 1],
+        ['Samuel', 0],
+        ['Jade', 1],
+        ['Félix', 0],
+        ['Florence', 1],
+        ['Thomas', 0],
+        ['Zoé', 1],
+        ['Noah', 0],
+      ] satisfies [string, number][]
+    ).map(([n, f]): StCat => ({ label: n, icon: f ? '👧' : '👦', f })),
     ...o,
   });
-  const pr = (c) => (c.f ? 'elle' : 'il');
+  const pr = (c: StCat) => (c.f ? 'elle' : 'il');
   S.CTX = [
     vote({
       id: 'collation',
@@ -282,17 +467,18 @@
     }),
   ];
   S.VOTES = S.CTX.filter((c) => c.kind === 'vote');
-  function pickCats(ctx, n) {
+  function pickCats(ctx: StCtx, n: number): StDataCat[] {
+    // value : fixée par l'appelant
     return M.shuffle(ctx.cats)
       .slice(0, n)
-      .map((c, i) => ({ ...c, color: c.color || PAL[i % PAL.length] }));
+      .map((c, i) => ({ ...c, color: c.color || PAL[i % PAL.length], value: 0 }));
   }
   S.pickCats = pickCats;
 
   /* ------------------------------------------------------------------
      Dessins
      ------------------------------------------------------------------ */
-  const f1 = (x) => Math.round(x * 10) / 10;
+  const f1 = (x: number) => Math.round(x * 10) / 10;
 
   /**
    * Diagramme à bandes (SVG).
@@ -310,10 +496,10 @@
     const sm = !!o.small;
     const grid = '#d9d3c3';
     let s = '',
-      W,
-      H;
+      W: number,
+      H: number;
     const title = o.title && !sm;
-    const bubble = (x, y, v) =>
+    const bubble = (x: number, y: number, v: number) =>
       `<g data-part="val"><circle cx="${f1(x)}" cy="${f1(y)}" r="${sm ? 13 : 18}" fill="#fff" stroke="${INK}" stroke-width="3"/><text x="${f1(x)}" y="${f1(y + (sm ? 5 : 7))}" text-anchor="middle" font-size="${sm ? 15 : 20}" font-weight="900" fill="${INK}">${v}</text></g>`;
     if (!o.horizontal) {
       const L = sm ? 34 : 78,
@@ -324,7 +510,7 @@
         B = sm ? 40 : 82;
       W = L + n * BW + 14;
       H = T + PH + B;
-      const y = (v) => T + PH - (v / max) * PH;
+      const y = (v: number) => T + PH - (v / max) * PH;
       if (title)
         s += `<text data-part="title" x="${W / 2}" y="36" text-anchor="middle" font-size="23" font-weight="900" fill="${INK}">${o.title}</text>`;
       s += '<g data-part="axis">';
@@ -361,7 +547,7 @@
         B = sm ? 28 : 66;
       W = L + PW + 34;
       H = T + n * RH + B;
-      const x = (v) => L + (v / max) * PW,
+      const x = (v: number) => L + (v / max) * PW,
         bot = T + n * RH;
       if (title)
         s += `<text data-part="title" x="${W / 2}" y="36" text-anchor="middle" font-size="23" font-weight="900" fill="${INK}">${o.title}</text>`;
@@ -458,8 +644,8 @@
       cx = 120,
       cy = 120,
       r = 104;
-    const pt = (a) => [f1(cx + r * Math.sin((a * Math.PI) / 180)), f1(cy - r * Math.cos((a * Math.PI) / 180))];
-    const runs = [];
+    const pt = (a: number) => [f1(cx + r * Math.sin((a * Math.PI) / 180)), f1(cy - r * Math.cos((a * Math.PI) / 180))];
+    const runs: { c: StColorKey; s: number; e: number }[] = [];
     sectors.forEach((c, i) => {
       const last = runs[runs.length - 1];
       if (last && last.c === c) last.e = i + 1;
@@ -469,7 +655,7 @@
       runs[0].s = runs[runs.length - 1].s - n;
       runs.pop();
     }
-    const op = (c) => (o.hl && o.hl !== c ? ' opacity=".28"' : '');
+    const op = (c: StColorKey) => (o.hl && o.hl !== c ? ' opacity=".28"' : '');
     let s = '';
     if (runs.length === 1) s += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${COL[runs[0].c].hex}"${op(runs[0].c)}/>`;
     else
@@ -491,13 +677,15 @@
     `<svg width="${size}" height="${size}" viewBox="0 0 40 40" class="st-die"><circle cx="20" cy="20" r="17" fill="${COL[key].hex}" stroke="rgba(0,0,0,.28)" stroke-width="2.5"/><circle cx="14" cy="13" r="5" fill="#fff" opacity=".6"/></svg>`;
 
   /** Sac de billes (SVG). marbles = [clé couleur, ...] (max 15). o = { hl } */
-  const BAG_POS = [];
-  [
-    [130, [83, 117, 151, 185]],
-    [165, [83, 117, 151, 185]],
-    [200, [88, 122, 156, 190]],
-    [232, [100, 134, 168]],
-  ].forEach(([y, xs]) => xs.forEach((x) => BAG_POS.push([x, y])));
+  const BAG_POS: [number, number][] = [];
+  (
+    [
+      [130, [83, 117, 151, 185]],
+      [165, [83, 117, 151, 185]],
+      [200, [88, 122, 156, 190]],
+      [232, [100, 134, 168]],
+    ] satisfies [number, number[]][]
+  ).forEach(([y, xs]) => xs.forEach((x) => BAG_POS.push([x, y])));
   S.BAG_MAX = BAG_POS.length;
   S.bag = function (marbles, o = {}) {
     let s = `<path d="M78,92 C18,122 16,258 134,258 C252,258 250,122 190,92 Z" fill="#d9b48a" stroke="#8a6440" stroke-width="5"/>
@@ -514,7 +702,7 @@
   };
 
   /** Face de dé (SVG). o = { size, hl, dim } */
-  const PIPS = {
+  const PIPS: Record<number, [number, number][]> = {
     1: [[50, 50]],
     2: [
       [28, 28],
@@ -565,7 +753,7 @@
   /* ------------------------------------------------------------------
      Appareils du hasard : spec = { type:'spinner', sectors } | { type:'bag', marbles } | { type:'die', faces? }
      ------------------------------------------------------------------ */
-  const facesOf = (spec) => spec.faces || [1, 2, 3, 4, 5, 6];
+  const facesOf = (spec: StDeviceSpec) => (spec.type === 'die' && spec.faces) || [1, 2, 3, 4, 5, 6];
   /** Catégories de résultats possibles : [{ key, label, icon }] */
   S.catsOf = function (spec) {
     if (spec.type === 'die') {
@@ -582,10 +770,10 @@
   S.countOf = (spec, key) =>
     (spec.type === 'die' ? facesOf(spec) : spec.type === 'spinner' ? spec.sectors : spec.marbles).filter((k) => k === key).length;
 
-  function anim(ms, fn, alive) {
-    return new Promise((res) => {
+  function anim(ms: number, fn: (t: number) => void, alive: Element) {
+    return new Promise<void>((res) => {
       const t0 = performance.now();
-      const tick = (now) => {
+      const tick = (now: number) => {
         if (!alive.isConnected) return res();
         const t = Math.min(1, (now - t0) / ms);
         fn(t);
@@ -604,17 +792,17 @@
     const root = document.createElement('div');
     root.className = 'st-dev';
     host.appendChild(root);
-    const st = { angle: 0, face: facesOf(spec)[0], picked: null };
-    function render(o = {}) {
+    const st: StDeviceState = { angle: 0, face: facesOf(spec)[0], picked: null };
+    function render(o: { hl?: StHighlight } = {}) {
       if (spec.type === 'spinner') root.innerHTML = S.spinner(spec.sectors, { angle: st.angle, hl: o.hl });
       else if (spec.type === 'bag') {
         root.innerHTML = `<div class="st-bagbox">${S.bag(spec.marbles, { hl: o.hl })}<div class="st-hand">${st.picked ? S.marble(st.picked, 46) + `<span>${COL[st.picked].lbl}</span>` : '<span class="muted">✋</span>'}</div></div>`;
       } else {
         root.innerHTML = `<div class="st-diebox"><div class="st-dieface">${S.dieFace(st.face, { size: 104 })}</div>
-          <div class="st-faces">Les faces du dé : ${S.dieRow(facesOf(spec), { hl: o.hl })}</div></div>`;
+          <div class="st-faces">Les faces du dé : ${S.dieRow(facesOf(spec), { hl: Array.isArray(o.hl) ? o.hl : undefined })}</div></div>`;
       }
     }
-    async function play(key, ms = 900) {
+    async function play(key: StKey, ms = 900) {
       if (!root.isConnected) return;
       if (spec.type === 'spinner') {
         const n = spec.sectors.length;
@@ -652,22 +840,24 @@
         if (hand) hand.innerHTML = '<span class="muted">✋</span>';
         await M.sleep(ms * 0.55);
         if (!root.isConnected) return;
-        st.picked = key;
+        st.picked = String(key); // sac : clé de couleur
         M.sfx.pop();
-        if (hand) hand.innerHTML = S.marble(key, 46) + `<span>${COL[key].lbl}</span>`;
+        if (hand) hand.innerHTML = S.marble(st.picked, 46) + `<span>${COL[key].lbl}</span>`;
         await M.sleep(ms * 0.45);
       } else {
         const face = root.querySelector('.st-dieface');
         const t0 = Date.now(),
           faces = facesOf(spec);
-        while (face && Date.now() - t0 < ms * 0.75) {
-          face.innerHTML = S.dieFace(M.pick(faces), { size: 104 });
-          await M.sleep(Math.max(50, ms / 12));
-          if (!root.isConnected) return;
+        if (face) {
+          while (Date.now() - t0 < ms * 0.75) {
+            face.innerHTML = S.dieFace(M.pick(faces), { size: 104 });
+            await M.sleep(Math.max(50, ms / 12));
+            if (!root.isConnected) return;
+          }
         }
-        st.face = key;
+        st.face = Number(key); // dé : valeur d'une face
         M.sfx.pop();
-        if (face) face.innerHTML = S.dieFace(key, { size: 104 });
+        if (face) face.innerHTML = S.dieFace(st.face, { size: 104 });
         await M.sleep(ms * 0.25);
       }
     }
@@ -690,39 +880,47 @@
   };
 
   /** Monte un visuel dans el (nouveau conteneur à chaque fois). */
-  function mount(el, html) {
+  function mount(el: HTMLElement, html: string) {
     el.onclick = null; // évite un gestionnaire laissé par un autre visuel
     el.innerHTML = `<div class="st-wrap">${html}</div>`;
-    return el.firstElementChild;
+    return el.firstElementChild as HTMLDivElement;
   }
   S.mount = mount;
 
   /* ------------------------------------------------------------------
      Questions sur un ensemble de catégories (bandes, pictogrammes)
      ------------------------------------------------------------------ */
-  function catChoices(cats) {
+  function catChoices(cats: StDataCat[]): Choice[] {
     return cats.map((c) => ({ label: `<span style="font-size:1.6rem">${c.icon}</span>${c.label}`, value: c.label }));
   }
+  type DataType = 'how' | 'most' | 'least' | 'more' | 'total';
+  /** Question construite par dataQuestion (t = son type). */
+  type DataQ = { i: number[]; prompt: string } & (
+    | { t: 'how'; input: 'number'; answer: number; c: StDataCat }
+    | { t: 'most' | 'least'; input: 'choice'; answer: string; choices: Choice[]; c: StDataCat }
+    | { t: 'more'; input: 'number'; answer: number; a: StDataCat; b: StDataCat }
+    | { t: 'total'; input: 'number'; answer: number }
+  );
   /** Construit la question (sans visuel) : type = how | most | least | more | total */
-  function dataQuestion(ctx, cats, type) {
+  function dataQuestion(ctx: StCtx, cats: StDataCat[], type: DataType): DataQ {
     const vals = cats.map((c) => c.value);
     if (type === 'how') {
       const i = M.rnd(0, cats.length - 1),
         c = cats[i];
-      return { i: [i], prompt: ctx.how(c), input: 'number', answer: c.value, c };
+      return { t: type, i: [i], prompt: ctx.how(c), input: 'number', answer: c.value, c };
     }
     if (type === 'most' || type === 'least') {
       const i = uniqueExt(vals, type === 'most' ? 1 : -1),
         c = cats[i];
-      return { i: [i], prompt: ctx[type], input: 'choice', answer: c.label, choices: catChoices(cats), c };
+      return { t: type, i: [i], prompt: ctx[type], input: 'choice', answer: c.label, choices: catChoices(cats), c };
     }
     if (type === 'more') {
       const [a, b] = M.shuffle(cats.map((_, k) => k))
         .slice(0, 2)
         .sort((p, q) => vals[q] - vals[p]);
-      return { i: [a, b], prompt: ctx.more(cats[a], cats[b]), input: 'number', answer: vals[a] - vals[b], a: cats[a], b: cats[b] };
+      return { t: type, i: [a, b], prompt: ctx.more(cats[a], cats[b]), input: 'number', answer: vals[a] - vals[b], a: cats[a], b: cats[b] };
     }
-    return { i: cats.map((_, k) => k), prompt: ctx.total, input: 'number', answer: sum(vals) };
+    return { t: 'total', i: cats.map((_, k) => k), prompt: ctx.total, input: 'number', answer: sum(vals) };
   }
 
   /* ==================================================================
@@ -745,7 +943,7 @@
       cats.forEach((c, k) => (c.value = values[k]));
       const max = lvl === 2 ? 20 : 10;
       const horizontal = lvl > 0 && Math.random() < 0.4;
-      const type = M.pick(
+      const type = M.pick<DataType>(
         lvl === 0
           ? ['how', 'how', 'most', 'least']
           : lvl === 1
@@ -756,39 +954,37 @@
       const base = { cats, title: ctx.title, axis: ctx.axis, max, horizontal };
       const far = horizontal ? 'en bas' : 'à gauche';
       const end = horizontal ? 'le bout' : 'le haut';
-      const hints = {
-        how: `Trouve la bande ${d.c ? d.c.icon : ''}. Suis ${end} de la bande jusqu'aux nombres, ${far}.`,
+      const hints: Record<DataType, string> = {
+        how: `Trouve la bande ${'c' in d ? d.c.icon : ''}. Suis ${end} de la bande jusqu'aux nombres, ${far}.`,
         most: horizontal ? 'Cherche la bande la plus longue.' : 'Cherche la bande la plus haute.',
         least: horizontal ? 'Cherche la bande la plus courte.' : 'Cherche la bande la plus basse.',
         more: 'Lis les deux nombres, puis enlève le plus petit du plus grand.',
         total: 'Lis le nombre de chaque bande, puis additionne-les tous.',
       };
-      let explain;
-      if (type === 'how') explain = `La bande ${d.c.icon} ${d.c.label} s'arrête à la ligne du <b>${d.c.value}</b>.`;
-      else if (type === 'most' || type === 'least')
+      let explain: string;
+      if (d.t === 'how') explain = `La bande ${d.c.icon} ${d.c.label} s'arrête à la ligne du <b>${d.c.value}</b>.`;
+      else if (d.t === 'most' || d.t === 'least')
         explain = `La bande ${d.c.icon} ${d.c.label} est la plus ${type === 'most' ? (horizontal ? 'longue' : 'haute') : horizontal ? 'courte' : 'basse'} : elle arrive à <b>${d.c.value}</b>.`;
-      else if (type === 'more')
+      else if (d.t === 'more')
         explain = `${d.a.icon} ${d.a.label} : ${d.a.value}. ${d.b.icon} ${d.b.label} : ${d.b.value}. ${d.a.value} − ${d.b.value} = <b>${d.answer}</b>.`;
       else explain = `On additionne toutes les bandes : ${values.join(' + ')} = <b>${d.answer}</b>.`;
       return {
         prompt: d.prompt,
         say: plain(d.prompt),
-        input: d.input,
-        answer: d.answer,
-        choices: d.choices,
+        ...answerOf(d),
         hint: hints[type],
         explain,
         viz(el) {
-          const draw = (guide) => {
+          const draw = (guide?: number) => {
             const w = mount(
               el,
               `<div class="viz-hint">👆 Touche une bande pour tracer sa ligne jusqu'aux nombres.</div>${S.barChart({ ...base, guide })}`,
             );
             w.onclick = (e) => {
-              const g = e.target.closest && e.target.closest('[data-i]');
+              const g = M.closest<Element>(e, '[data-i]');
               if (!g || !w.contains(g)) return;
               M.sfx.tap();
-              draw(+g.getAttribute('data-i'));
+              draw(Number(g.getAttribute('data-i')));
             };
           };
           draw();
@@ -813,13 +1009,13 @@
     pda: "Statistique 3a — interpréter des données à l'aide d'un diagramme à pictogrammes",
     learn: 'diagrammes',
     gen({ lvl }) {
-      const ctx = M.pick(S.CTX.filter((c) => c.sym));
+      const ctx = M.pick(S.CTX.filter((c): c is StCtx & { sym: string } => !!c.sym));
       const per = lvl === 0 ? 1 : 2;
       const n = lvl === 0 ? 3 : M.pick([3, 4]);
       const cats = pickCats(ctx, n);
       const values = lvl === 0 ? distinct(n, 1, 8) : distinct(n, 2, lvl === 1 ? 14 : 20, 2);
       cats.forEach((c, k) => (c.value = values[k]));
-      const type = M.pick(
+      const type = M.pick<DataType | 'draw'>(
         lvl === 0
           ? ['how', 'how', 'most', 'least']
           : lvl === 1
@@ -828,7 +1024,7 @@
       );
       const unitP = ctx.unit[1];
       const base = { title: ctx.title, cats, sym: ctx.sym, per, unit: ctx.unit };
-      let q;
+      let q: { prompt: string; hint: string; explain: string; idx: number[] } & StAnswer;
       if (type === 'draw') {
         const v = M.pick([4, 6, 8, 10, 12, 14, 16].filter((x) => !values.includes(x)));
         const prompt = `Légende : ${ctx.sym} = 2 ${unitP}.<br>Pour montrer <b>${v} ${unitP}</b>, combien d'images ${ctx.sym} faut-il dessiner ?`;
@@ -842,20 +1038,18 @@
         };
       } else {
         const d = dataQuestion(ctx, cats, type);
-        const valTxt = (c) =>
+        const valTxt = (c: StDataCat) =>
           per === 1 ? `${c.value} ${ctx.sym}` : `${c.value / 2} ${ctx.sym}, et on compte par 2 : ${M.range(2, c.value, 2).join(', ')}`;
-        let explain;
-        if (type === 'how') explain = `${d.c.icon} ${d.c.label} : ${valTxt(d.c)}. Ça fait <b>${d.c.value}</b>.`;
-        else if (type === 'more')
+        let explain: string;
+        if (d.t === 'how') explain = `${d.c.icon} ${d.c.label} : ${valTxt(d.c)}. Ça fait <b>${d.c.value}</b>.`;
+        else if (d.t === 'more')
           explain = `${d.a.label} : ${d.a.value}. ${d.b.label} : ${d.b.value}. ${d.a.value} − ${d.b.value} = <b>${d.answer}</b>.`;
-        else if (type === 'total') explain = `${values.join(' + ')} = <b>${d.answer}</b>.`;
+        else if (d.t === 'total') explain = `${values.join(' + ')} = <b>${d.answer}</b>.`;
         else
           explain = `La rangée ${d.c.icon} ${d.c.label} a ${type === 'most' ? 'le plus' : 'le moins'} d'images (${d.c.value / per} ${M.plural(d.c.value / per, 'image')}).`;
         q = {
           prompt: d.prompt,
-          input: d.input,
-          answer: d.answer,
-          choices: d.choices,
+          ...answerOf(d),
           idx: d.i,
           explain,
           hint:
@@ -873,22 +1067,20 @@
       return {
         prompt: q.prompt,
         say: plain(q.prompt),
-        input: q.input,
-        answer: q.answer,
-        choices: q.choices,
+        ...answerOf(q),
         hint: q.hint,
         explain: q.explain,
         viz(el) {
-          const draw = (hl) => {
+          const draw = (hl?: number) => {
             const w = mount(
               el,
               `<div class="viz-hint">👆 Touche une rangée pour la surligner. Regarde bien la légende !</div>${S.picto({ ...base, hl })}`,
             );
             w.onclick = (e) => {
-              const r = e.target.closest && e.target.closest('.st-prow');
+              const r = M.closest(e, '.st-prow');
               if (!r || !w.contains(r)) return;
               M.sfx.tap();
-              draw(+r.getAttribute('data-i'));
+              draw(Number(r.getAttribute('data-i')));
             };
           };
           draw();
@@ -899,7 +1091,7 @@
               el,
               `<div class="viz-hint">👀 Chaque ${ctx.sym} vaut 2 : on compte par bonds de 2.</div><div class="st-picto" style="text-align:center">${M.range(
                 2,
-                q.answer * 2,
+                Number(q.answer) * 2,
                 2,
               )
                 .map((v) => `<span class="st-pp">${ctx.sym}<i>${v}</i></span>`)
@@ -958,7 +1150,7 @@
     },
   ];
   /** « 2 paquets de 5 et 3 traits » */
-  function tallyTxt(n) {
+  function tallyTxt(n: number) {
     const g = Math.floor(n / 5),
       r = n % 5;
     const a = g ? `${g} ${M.plural(g, 'paquet')} de 5` : '',
@@ -1028,12 +1220,12 @@
         const n = lvl === 0 ? 3 : 4;
         const cats = M.shuffle(set.cats)
           .slice(0, n)
-          .map(([icon, p]) => ({ icon, p }));
+          .map(([icon, p]) => ({ icon, p, value: 0 })); // value : fixée juste après
         const vals = distinct(n, 2, lvl === 0 ? 6 : lvl === 1 ? 8 : 10);
         cats.forEach((c, k) => (c.value = vals[k]));
         const ask = M.rnd(0, n - 1),
           c = cats[ask];
-        const items = M.shuffle(cats.flatMap((cc, k) => Array(cc.value).fill(k)));
+        const items = M.shuffle(cats.flatMap((cc, k) => Array<number>(cc.value).fill(k)));
         const tableHtml = () =>
           S.table({
             caption: set.title,
@@ -1041,7 +1233,7 @@
             hl: ask,
             rows: cats.map((cc, k) => [`${cc.icon} ${cap(cc.p)}`, k === ask ? '<span class="q">?</span>' : String(cc.value)]),
           });
-        const itemsHtml = (show) =>
+        const itemsHtml = (show: boolean) =>
           `<div class="st-items">${items
             .map((k, i) => {
               const nth = show ? items.slice(0, i + 1).filter((x) => x === ask).length : 0;
@@ -1058,7 +1250,7 @@
           viz(el) {
             const w = mount(el, `<div class="viz-hint">👆 Touche les objets pour les cocher.</div>${itemsHtml(false)}${tableHtml()}`);
             w.onclick = (e) => {
-              const b = e.target.closest && e.target.closest('.st-item');
+              const b = M.closest(e, '.st-item');
               if (!b || !w.contains(b)) return;
               b.classList.toggle('on');
               M.sfx.tap();
@@ -1078,7 +1270,7 @@
         cats.forEach((c, k) => (c.value = vals[k]));
         const ask = M.rnd(0, n - 1),
           c = cats[ask];
-        const tbl = (show) =>
+        const tbl = (show: boolean) =>
           S.table({
             caption: ctx.q,
             head: ['Réponse', 'Votes', 'Nombre'],
@@ -1109,7 +1301,7 @@
       const cats = pickCats(ctx, 3);
       const vals = distinct(3, 1, 9);
       const opts = [vals.slice()];
-      const key = (a) => a.join(',');
+      const key = (a: number[]) => a.join(',');
       const sw = vals.slice();
       const [p, r] = M.shuffle([0, 1, 2]).slice(0, 2);
       [sw[p], sw[r]] = [sw[r], sw[p]];
@@ -1123,10 +1315,10 @@
       }
       const order = M.shuffle(opts.map((_, k) => k));
       const letters = ['A', 'B', 'C'];
-      const withVals = (arr) => cats.map((c, k) => ({ ...c, value: arr[k] }));
+      const withVals = (arr: number[]) => cats.map((c, k) => ({ ...c, value: arr[k] }));
       const reverse = Math.random() < 0.5;
       const answer = letters[order.indexOf(0)];
-      const tableOf = (arr, mini) =>
+      const tableOf = (arr: number[], mini: boolean) =>
         S.table({
           mini,
           caption: mini ? '' : ctx.title,
@@ -1164,7 +1356,16 @@
   /* ==================================================================
      4. Mon enquête
      ================================================================== */
-  const TOPICS = [
+  /** Sujet d'enquête (grp : jamais deux sujets du même groupe ensemble). */
+  interface StTopic {
+    grp?: string;
+    goal: string;
+    good: string;
+    yesno: string;
+    silly: string;
+    cats: string[][];
+  }
+  const TOPICS: StTopic[] = [
     {
       grp: 'food',
       goal: 'le <b>fruit préféré</b> des élèves de ta classe',
@@ -1346,14 +1547,14 @@
     },
   ];
   /** n sujets différents (jamais deux sujets « nourriture » ensemble). */
-  function pickTopics(n) {
-    const out = [];
+  function pickTopics(n: number) {
+    const out: StTopic[] = [];
     M.shuffle(TOPICS).forEach((t) => {
       if (out.length < n && !out.some((o) => o.grp && o.grp === t.grp)) out.push(t);
     });
     return out;
   }
-  const tilesHtml = (list, hlIdx) =>
+  const tilesHtml = (list: string[][], hlIdx?: number) =>
     `<div class="st-tiles">${list.map(([e, l], i) => `<div class="st-tile${i === hlIdx ? ' hl' : ''}">${e}<small>${l}</small></div>`).join('')}</div>`;
   M.registerSkill({
     id: 'enquete',
@@ -1405,7 +1606,7 @@
 
       if (type === 'answers') {
         const [t, o1, o2] = pickTopics(3);
-        const fmt = (list) => list.map(([e, l]) => `${e} ${l}`).join(', ');
+        const fmt = (list: string[][]) => list.map(([e, l]) => `${e} ${l}`).join(', ');
         const mixed = [t.cats[0], o1.cats[1], o2.cats[2]];
         const choices = M.shuffle([
           { label: fmt(t.cats.slice(0, 3)), value: 'good' },
@@ -1525,7 +1726,7 @@
   /* ==================================================================
      5. Certain, possible ou impossible
      ================================================================== */
-  const EVENTS = {
+  const EVENTS: Record<StLikelihood, [string, string][]> = {
     certain: [
       ['📅', 'Après lundi, ce sera mardi.'],
       ['🌅', 'Demain matin, le soleil va se lever.'],
@@ -1549,26 +1750,26 @@
     ],
   };
   S.EVENTS = EVENTS;
-  const CPI = [
+  const CPI: Choice[] = [
     { label: '❌ Impossible', value: 'impossible' },
     { label: '🤔 Possible', value: 'possible' },
     { label: '✅ Certain', value: 'certain' },
   ];
-  const WHY = {
+  const WHY: Record<StLikelihood, string> = {
     certain: 'ça va arriver à coup sûr',
     possible: "ça peut arriver, mais on n'en est pas sûr",
     impossible: 'ça ne peut pas arriver',
   };
   /** Petit visuel « appareil + bouton Essayer » (essais au hasard pour explorer). */
-  function tryViz(el, spec, hintTxt, hl, line) {
+  function tryViz(el: HTMLElement, spec: StDeviceSpec, hintTxt: string, hl?: StHighlight, line?: StLikelihood) {
     const w = mount(
       el,
       `<div class="viz-hint">${hintTxt}</div><div class="st-devhost"></div>
       <div class="row" style="justify-content:center"><button class="btn blue st-try">🎲 Essayer une fois</button></div><div class="viz-status"></div>`,
     );
-    const dev = S.device(M.$('.st-devhost', w), spec);
+    const dev = S.device(M.$('.st-devhost', w)!, spec);
     let busy = false;
-    M.$('.st-try', w).onclick = async () => {
+    M.$('.st-try', w)!.onclick = async () => {
       if (busy) return;
       busy = true;
       const k = S.drawOutcome(spec);
@@ -1576,7 +1777,8 @@
       busy = false;
       if (!w.isConnected) return;
       const c = dev.cats.find((x) => x.key === k);
-      M.$('.viz-status', w).innerHTML = `Résultat : ${c.icon} <b>${c.label}</b>. Essaie encore !`;
+      if (!c) return; // k vient toujours de l'appareil
+      M.$('.viz-status', w)!.innerHTML = `Résultat : ${c.icon} <b>${c.label}</b>. Essaie encore !`;
     };
     if (hl != null) dev.render({ hl });
     if (line) w.insertAdjacentHTML('beforeend', S.pLine(line));
@@ -1594,8 +1796,8 @@
       const kind = M.pick(
         lvl === 0 ? ['bag', 'bag', 'event'] : lvl === 1 ? ['bag', 'spinner', 'die', 'event'] : ['bag', 'bagOr', 'spinner', 'die', 'event'],
       );
-      const target = M.pick(['certain', 'possible', 'impossible']);
-      const base = { input: 'choice', answer: target, choices: CPI, cols: 1 };
+      const target = M.pick<StLikelihood>(['certain', 'possible', 'impossible']);
+      const base = { input: 'choice' as const, answer: target, choices: CPI, cols: 1 };
 
       if (kind === 'event') {
         const [icon, txt] = M.pick(EVENTS[target]);
@@ -1617,7 +1819,7 @@
       const keys = M.shuffle(S.COLOR_KEYS);
       const ask = keys[0];
       if (kind === 'bag' || kind === 'bagOr') {
-        let marbles, prompt, hl, why;
+        let marbles: StColorKey[], prompt: string, hl: StHighlight, why: string;
         const n = M.rnd(lvl === 0 ? 3 : 5, lvl === 0 ? 6 : 10);
         if (kind === 'bagOr') {
           // « rouge ou bleue »
@@ -1625,9 +1827,10 @@
           const na = M.rnd(1, 4),
             nb = M.rnd(1, 4),
             nc = M.rnd(1, 3);
-          if (target === 'certain') marbles = [...Array(na).fill(a), ...Array(nb).fill(b)];
-          else if (target === 'possible') marbles = [...Array(na).fill(a), ...Array(nb).fill(b), ...Array(nc).fill(c)];
-          else marbles = [...Array(nc + 1).fill(c), ...Array(M.rnd(1, 3)).fill(keys[3])];
+          if (target === 'certain') marbles = [...Array<string>(na).fill(a), ...Array<string>(nb).fill(b)];
+          else if (target === 'possible')
+            marbles = [...Array<string>(na).fill(a), ...Array<string>(nb).fill(b), ...Array<string>(nc).fill(c)];
+          else marbles = [...Array<string>(nc + 1).fill(c), ...Array<string>(M.rnd(1, 3)).fill(keys[3])];
           prompt = `Je pige une bille dans ce sac, sans regarder.<br>Piger une bille <b>${COL[a].f}</b> ${dot(a)} <b>ou ${COL[b].f}</b> ${dot(b)}, c'est…`;
           hl = [a, b];
           const k = marbles.filter((m) => m === a || m === b).length;
@@ -1638,7 +1841,7 @@
                 ? `${k} billes sur ${marbles.length} sont ${COL[a].fp} ou ${COL[b].fp}, mais pas toutes : c'est <b>possible</b>.`
                 : `Il n'y a aucune bille ${COL[a].f} ni ${COL[b].f} : c'est <b>impossible</b>.`;
         } else {
-          if (target === 'certain') marbles = Array(n).fill(ask);
+          if (target === 'certain') marbles = Array<string>(n).fill(ask);
           else if (target === 'possible') {
             const k = M.rnd(1, n - 1);
             marbles = [...Array(k).fill(ask), ...M.range(1, n - k).map(() => M.pick(keys.slice(1, 3)))];
@@ -1654,7 +1857,7 @@
                 ? `Il y a ${k} ${M.plural(k, 'bille')} ${k > 1 ? COL[ask].fp : COL[ask].f}, mais aussi d'autres couleurs : c'est <b>possible</b>.`
                 : `Il n'y a aucune bille ${COL[ask].f} dans le sac : c'est <b>impossible</b>.`;
         }
-        const spec = { type: 'bag', marbles };
+        const spec: StDeviceSpec = { type: 'bag', marbles };
         return {
           ...base,
           prompt,
@@ -1672,12 +1875,12 @@
 
       if (kind === 'spinner') {
         const n = M.pick([3, 4, 6]);
-        let sectors;
-        if (target === 'certain') sectors = Array(n).fill(ask);
+        let sectors: StColorKey[];
+        if (target === 'certain') sectors = Array<string>(n).fill(ask);
         else if (target === 'possible') {
           sectors = M.range(1, n).map((_, i) => keys[i % 3]);
         } else sectors = M.range(1, n).map((_, i) => keys[1 + (i % 2)]);
-        const spec = { type: 'spinner', sectors };
+        const spec: StDeviceSpec = { type: 'spinner', sectors };
         const k = sectors.filter((s) => s === ask).length;
         const prompt = `Je fais tourner la roulette.<br>La flèche va s'arrêter sur <b>${COL[ask].nom}</b> ${dot(ask)}. C'est…`;
         return {
@@ -1702,14 +1905,14 @@
 
       // dé
       let faces = [1, 2, 3, 4, 5, 6],
-        txt,
-        hlv;
+        txt: string,
+        hlv: number[];
       const special = lvl === 2 && Math.random() < 0.5;
       if (special) {
         const pool = M.shuffle([1, 2, 3, 4, 5, 6]);
         const [a, b] = pool;
         if (target === 'certain') {
-          faces = Array(6).fill(a);
+          faces = Array<number>(6).fill(a);
           txt = `obtenir un <b>${a}</b>`;
           hlv = [a];
         } else if (target === 'possible') {
@@ -1727,7 +1930,7 @@
         hlv = faces;
       } else if (target === 'possible') {
         const v = M.rnd(1, 6);
-        const opts = [[`obtenir un <b>${v}</b>`, [v]]];
+        const opts: [string, number[]][] = [[`obtenir un <b>${v}</b>`, [v]]];
         if (lvl === 2) opts.push(['obtenir un nombre <b>pair</b>', [2, 4, 6]], ['obtenir un nombre <b>plus grand que 4</b>', [5, 6]]);
         [txt, hlv] = M.pick(opts);
       } else {
@@ -1735,7 +1938,7 @@
         txt = `obtenir un <b>${v}</b>`;
         hlv = [];
       }
-      const spec = { type: 'die', faces };
+      const spec: StDeviceSpec = { type: 'die', faces };
       const prompt = `Je lance ${special ? 'ce dé spécial' : 'un dé'}. ${cap(txt)}, c'est…`;
       return {
         ...base,
@@ -1762,8 +1965,19 @@
      6. Expérience de hasard : prédiction et résultats
      ================================================================== */
   const NAMES = ['Léa', 'Samuel', 'Jade', 'Félix', 'Florence', 'Thomas', 'Zoé', 'Noah'];
+  /** Textes d'une expérience, selon l'appareil. */
+  interface StDevText {
+    todo(n: number): string;
+    count(k: StKey): string;
+    most: string;
+    least: string;
+    more(a: StKey, b: StKey): string;
+    name(k: StKey): string;
+    one: string;
+    verb: string;
+  }
   /** Textes selon l'appareil. */
-  function devText(spec) {
+  function devText(spec: StDeviceSpec): StDevText {
     if (spec.type === 'spinner')
       return {
         todo: (n) => `Tourne la roulette ${n} fois avec ▶.`,
@@ -1814,17 +2028,17 @@
         <div class="viz-status st-status"></div><div class="st-res"></div>
       </div></div>`,
     );
-    const dev = S.device(M.$('.st-devhost', w), o.spec);
+    const dev = S.device(M.$('.st-devhost', w)!, o.spec);
     if (o.devHl != null) dev.render({ hl: o.devHl });
-    const counts = {};
+    const counts: Record<string, number> = {};
     let done = 0,
       busy = false;
-    const draw = (hl) => {
-      M.$('.st-status', w).innerHTML = done === N ? `✔️ Expérience terminée : ${N} ${T.verb}.` : `Essai ${done} sur ${N}`;
-      M.$('.st-res', w).innerHTML = S.resultsTable(dev.cats, counts, { nums: o.nums, hl });
-      M.$$('button', M.$('.st-exp-side', w)).forEach((b) => (b.disabled = done === N));
+    const draw = (hl?: StKey) => {
+      M.$('.st-status', w)!.innerHTML = done === N ? `✔️ Expérience terminée : ${N} ${T.verb}.` : `Essai ${done} sur ${N}`;
+      M.$('.st-res', w)!.innerHTML = S.resultsTable(dev.cats, counts, { nums: o.nums, hl });
+      M.$$('button', M.$('.st-exp-side', w)!).forEach((b) => (b.disabled = done === N));
     };
-    async function step(ms) {
+    async function step(ms: number) {
       const k = o.outcomes[done];
       await dev.play(k, ms);
       if (!w.isConnected) return false;
@@ -1833,23 +2047,24 @@
       draw();
       return true;
     }
-    async function run(all, ms) {
+    async function run(all: boolean, ms: number) {
       if (busy || done >= N) return;
       busy = true;
-      do {
+      for (;;) {
         if (!(await step(ms))) return;
-      } while (all && done < N);
+        if (!all || done >= N) break;
+      }
       busy = false;
       if (done === N && o.hl != null) draw(o.hl);
     }
-    M.$('.st-one', w).onclick = () => run(false, 900);
-    M.$('.st-all', w).onclick = () => run(true, 380);
+    M.$('.st-one', w)!.onclick = () => run(false, 900);
+    M.$('.st-all', w)!.onclick = () => run(true, 380);
     draw();
     if (o.auto) run(true, 160);
     return w;
   };
-  function countOutcomes(outcomes) {
-    const c = {};
+  function countOutcomes(outcomes: StKey[]) {
+    const c: Record<string, number> = {};
     outcomes.forEach((k) => (c[k] = (c[k] || 0) + 1));
     return c;
   }
@@ -1863,7 +2078,7 @@
     learn: 'hasard',
     gen({ lvl }) {
       const N = 10;
-      let type = M.pick(
+      let type = M.pick<'count' | 'most' | 'least' | 'predict' | 'vary' | 'chances' | 'more'>(
         lvl === 0
           ? ['count', 'count', 'most']
           : lvl === 1
@@ -1871,7 +2086,7 @@
             : ['chances', 'chances', 'more', 'predict', 'count'],
       );
       const keys = M.shuffle(S.COLOR_KEYS);
-      let spec;
+      let spec: StDeviceSpec;
       if (type === 'chances') {
         const pat = M.pick([
           [4, 1, 1],
@@ -1881,7 +2096,7 @@
           [5, 1, 2],
         ]);
         const cols = keys.slice(0, pat.length);
-        const list = cols.flatMap((k, i) => Array(pat[i]).fill(k));
+        const list = cols.flatMap((k, i) => Array<string>(pat[i]).fill(k));
         spec = Math.random() < 0.5 ? { type: 'spinner', sectors: list } : { type: 'bag', marbles: list };
       } else {
         const r = Math.random();
@@ -1892,15 +2107,15 @@
           spec = { type: 'spinner', sectors: keys.slice(0, nc) };
         } else {
           const nc = M.pick([2, 3]);
-          const list = keys.slice(0, nc).flatMap((k) => Array(M.rnd(2, 4)).fill(k));
+          const list = keys.slice(0, nc).flatMap((k) => Array<string>(M.rnd(2, 4)).fill(k));
           spec = { type: 'bag', marbles: list };
         }
       }
       const cats = S.catsOf(spec);
       const T = devText(spec);
       // résultats tirés d'avance (rejoués à l'identique par le visuel)
-      let outcomes,
-        counts,
+      let outcomes: StKey[] = [],
+        counts: Record<string, number> = {},
         guard = 0;
       const ok = () => {
         const v = cats.map((c) => counts[c.key] || 0);
@@ -1919,7 +2134,7 @@
       const todo = `<span class="st-instr">🧪 ${T.todo(N)}</span>`;
       const choicesCats = cats.map((c) => ({ label: `${c.icon} ${c.label}`, value: String(c.key) }));
       const listRes = cats.map((c) => `${c.icon} ${c.label} : ${counts[c.key] || 0}`).join(', ');
-      let q;
+      let q: { prompt: string; hint: string; explain: string; hl?: StKey } & StAnswer;
       if (type === 'count') {
         const c = M.pick(cats);
         q = {
@@ -1944,7 +2159,7 @@
         };
       } else if (type === 'more') {
         // deux catégories avec des nombres différents (le plus grand en premier)
-        const pairs = [];
+        const pairs: [number, number][] = [];
         vals.forEach((x, p) =>
           vals.forEach((y, r) => {
             if (x > y) pairs.push([p, r]);
@@ -2014,10 +2229,9 @@
       return {
         prompt: q.prompt,
         say: plain(q.prompt),
-        input: q.input,
-        answer: q.answer,
-        choices: q.choices,
-        cols: q.choices && q.choices.length === 2 ? 1 : undefined,
+        ...(q.input === 'choice'
+          ? { input: q.input, answer: q.answer, choices: q.choices, cols: q.choices.length === 2 ? 1 : undefined }
+          : { input: q.input, answer: q.answer }),
         hint: q.hint,
         explain: q.explain,
         viz(el) {

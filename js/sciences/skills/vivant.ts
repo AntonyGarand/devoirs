@@ -4,6 +4,43 @@
    Règle 1 : une seule vérité par question (faits multivalués → multi ou drapeaux *Q).
    Chaque question porte _sc (métadonnées) que les hooks check() revérifient contre les données.
    ===================================================================== */
+
+/** Élément d'un classement (sort) avec sa clé (id de la fiche ou libellé). */
+interface ScItem {
+  label: string;
+  bin: string;
+  key: string;
+}
+/** Aides de questions partagées (M.SC.Q). */
+interface ScQ {
+  pickN<T>(arr: readonly T[], n: number): T[];
+  /** Choix mélangés : bonne réponse + distracteurs (whyFn : message du distracteur). */
+  choicesFrom<T>(
+    right: T,
+    wrongs: readonly T[],
+    labelFn?: (x: T) => string,
+    valFn?: (x: T) => Value,
+    whyFn?: ((x: T) => string | null | undefined) | null,
+  ): Choice[];
+  /** check : chaque élément de sort est dans la bonne boîte selon binOf(item.key). */
+  checkSort(q: Question, binOf: (k: string) => unknown): CheckResult;
+  /** check : exactement un choix vrai selon ok(value), et c'est answer. */
+  checkOne(q: Question, ok: (v: string) => unknown): CheckResult;
+  /** check : multi — answer = exactement les choix vrais selon ok(value) (null = ambigu). */
+  checkMulti(q: Question, ok: (v: string) => boolean | null | undefined): CheckResult;
+  /** Réponse d'une question (undefined si le format n'en a pas). */
+  answerOf(q: Question): unknown;
+  /** Erreurs des données (une seule vérification). */
+  dataOnce(): string | undefined;
+}
+interface ScApi {
+  Q: ScQ;
+  /** Image d'un stade de cycle. */
+  stagePic(st: ScStade, size?: number): string;
+  /** Monte un M.ui.cycle dans el et y insère les dessins des stades. */
+  mountCycle(el: HTMLElement, stages: readonly ScCycleStage[], opts?: { hide?: number[] }): void;
+}
+
 (function () {
   'use strict';
   const M = window.M;
@@ -11,11 +48,11 @@
   const cap = SC.cap;
 
   /* ------------------------------------------------------------ aides */
-  const Q = (SC.Q = {});
+  const Q = (SC.Q = {} as ScQ);
   Q.pickN = (arr, n) => M.shuffle(arr.slice()).slice(0, n);
-  Q.choicesFrom = (right, wrongs, labelFn = (x) => x, valFn = (x) => x, whyFn = null) =>
+  Q.choicesFrom = (right, wrongs, labelFn = (x) => String(x), valFn = (x) => String(x), whyFn = null) =>
     M.shuffle([right, ...wrongs]).map((x) => {
-      const c = { label: labelFn(x), value: valFn(x) };
+      const c: Choice = { label: labelFn(x), value: valFn(x) };
       const w = whyFn && x !== right ? whyFn(x) : null;
       if (w) c.why = w;
       return c;
@@ -23,28 +60,31 @@
   /** check : chaque élément de sort est dans la bonne boîte selon binOf(item.key). */
   Q.checkSort = (q, binOf) => {
     if (q.format !== 'sort') return;
-    const bad = q.items.find((it) => binOf(it.key) !== it.bin);
-    if (bad) return `élément ${bad.key} : boîte ${bad.bin}, attendu ${binOf(bad.key)}`;
+    const bad = q.items.find((it) => binOf(it.key ?? '') !== it.bin);
+    if (bad) return `élément ${bad.key} : boîte ${bad.bin}, attendu ${binOf(bad.key ?? '')}`;
     const empty = q.bins.find((b) => !q.items.some((it) => it.bin === b.id));
     if (empty) return `boîte vide : ${empty.id}`;
   };
   /** check : exactement un choix vrai selon ok(value), et c'est answer. */
   Q.checkOne = (q, ok) => {
-    const hits = q.choices.filter((c) => ok(c.value));
+    if (!('choices' in q)) return 'pas de choix';
+    const hits = q.choices.filter((c) => ok(String(c.value)));
     if (hits.length !== 1) return `${hits.length} choix vrais selon les données`;
     if (String(hits[0].value) !== String(q.answer)) return 'answer ≠ le seul choix vrai';
   };
   /** check : multi — answer = exactement les choix vrais selon ok(value). */
   Q.checkMulti = (q, ok) => {
+    if (q.format !== 'multi') return 'format multi attendu';
     const want = q.choices
-      .filter((c) => ok(c.value))
+      .filter((c) => ok(String(c.value)))
       .map((c) => String(c.value))
       .sort()
       .join('|');
     if (want !== q.answer.map(String).sort().join('|')) return 'answer ≠ choix vrais selon les données';
-    if (q.choices.some((c) => ok(c.value) === null)) return 'choix ambigu (null) proposé';
+    if (q.choices.some((c) => ok(String(c.value)) === null)) return 'choix ambigu (null) proposé';
   };
-  let dataErr = null;
+  Q.answerOf = (q) => ('answer' in q ? q.answer : undefined);
+  let dataErr: string | null = null;
   Q.dataOnce = () => {
     if (dataErr === null) dataErr = [SC.checkAnimals && SC.checkAnimals(), SC.checkObjets && SC.checkObjets()].filter(Boolean).join(' · ');
     return dataErr || undefined;
@@ -56,7 +96,8 @@
   };
   /** Monte un M.ui.cycle et y insère les dessins des stades (el : conteneur). */
   SC.mountCycle = (el, stages, { hide = [] } = {}) => {
-    const useArt = (st) => st.art && (!st.recent || !SC.emojiOk(st.emoji)) && M.art.has(st.art);
+    const useArt = (st: ScCycleStage): st is ScCycleStage & { art: string } =>
+      !!st.art && (!st.recent || !SC.emojiOk(st.emoji)) && M.art.has(st.art);
     el.classList.add('sc-cycbox');
     el.innerHTML = M.ui.cycle({ stages: stages.map((st) => ({ emoji: useArt(st) ? '' : st.emoji, label: st.label })), hide });
     stages.forEach((st, i) => {
@@ -64,8 +105,8 @@
       const g = M.$(`[data-hot="c${i}"]`, el),
         c = g && M.$('circle', g);
       if (!c) return;
-      const x = +c.getAttribute('cx'),
-        y = +c.getAttribute('cy');
+      const x = Number(c.getAttribute('cx')),
+        y = Number(c.getAttribute('cy'));
       const raw = M.art
         .html(st.art)
         .replace(/^<span[^>]*>/, '')
@@ -76,7 +117,9 @@
   };
 
   const A = () => SC.ANIMAUX;
-  const lbl = (a) => SC.lbl(a);
+  const lbl = (a: ScPic & { nom: string }): string => SC.lbl(a);
+  /** Fiche d'un animal (erreur si l'id est inconnu). */
+  const bete = (id: string): ScBete => SC.must(SC.animal(id), 'animal ' + id);
 
   /* ================================================================ 1 */
   M.registerSkill({
@@ -117,7 +160,7 @@
       if (t === 'match') {
         const n = lvl === 1 ? M.pick([3, 4]) : 4;
         const pool = M.shuffle(SC.PRODUITS.slice()),
-          pick = [];
+          pick: ScApi['PRODUITS'] = [];
         pool.forEach((p) => {
           if (pick.length < n && !pick.some((x) => x.origine === p.origine)) pick.push(p);
         });
@@ -192,21 +235,36 @@
       };
     },
     check(q) {
+      const sc = q._sc;
       const d = Q.dataOnce();
       if (d) return d;
-      if (q._sc === 'natfab') return Q.checkSort(q, (k) => (SC.NATUREL.includes(k) ? 'nat' : SC.FABRIQUE.includes(k) ? 'fab' : '?'));
-      if (q._sc && q._sc.kind === 'vivant') return Q.checkOne(q, (v) => SC.VIVANT.some((x) => x.l === v));
-      if (q._sc && q._sc.kind === 'nonvivant') return Q.checkOne(q, (v) => SC.NON_VIVANT.some((x) => x.l === v));
-      if (q._sc && q._sc.kind === 'besoin') return Q.checkOne(q, (v) => SC.OBJETS_BESOIN.find((x) => x.o === q._sc.o).b === v);
-      if (q._sc && q._sc.kind === 'produits') {
-        const o = q._sc.ids.map((id) => SC.PRODUITS.find((p) => p.id === id).origine);
+      if (sc === 'natfab') return Q.checkSort(q, (k) => (SC.NATUREL.includes(k) ? 'nat' : SC.FABRIQUE.includes(k) ? 'fab' : '?'));
+      if (typeof sc === 'object' && sc.kind === 'vivant') return Q.checkOne(q, (v) => SC.VIVANT.some((x) => x.l === v));
+      if (typeof sc === 'object' && sc.kind === 'nonvivant') return Q.checkOne(q, (v) => SC.NON_VIVANT.some((x) => x.l === v));
+      if (typeof sc === 'object' && sc.kind === 'besoin')
+        return Q.checkOne(
+          q,
+          (v) =>
+            SC.must(
+              SC.OBJETS_BESOIN.find((x) => x.o === sc.o),
+              sc.o,
+            ).b === v,
+        );
+      if (typeof sc === 'object' && sc.kind === 'produits') {
+        const o = sc.ids.map(
+          (id) =>
+            SC.must(
+              SC.PRODUITS.find((p) => p.id === id),
+              id,
+            ).origine,
+        );
         if (new Set(o).size !== o.length) return 'deux produits avec la même origine';
       }
     },
   });
 
   /* ================================================================ 2 */
-  const potLabel = (p) => `${SC.svg.pot({ eau: p.eau, lum: p.lum })}<span class="sc-cap">${p.texte}</span>`;
+  const potLabel = (p: ScPot): string => `${SC.svg.pot({ eau: p.eau, lum: p.lum })}<span class="sc-cap">${p.texte}</span>`;
   M.registerSkill({
     id: 'sc-besoins',
     domain: 'sc-vivant',
@@ -279,16 +337,26 @@
       };
     },
     check(q) {
+      const sc = q._sc;
       const d = Q.dataOnce();
       if (d) return d;
-      if (q._sc && (q._sc.kind === 'multiPlante' || q._sc.kind === 'multiAnimal')) return Q.checkMulti(q, (v) => q._sc.oui.includes(v));
-      if (q._sc && q._sc.kind === 'pots') return Q.checkOne(q, (v) => SC.POTS.find((p) => p.id === v).best === true);
+      if (typeof sc === 'object' && (sc.kind === 'multiPlante' || sc.kind === 'multiAnimal'))
+        return Q.checkMulti(q, (v) => sc.oui.includes(v));
+      if (typeof sc === 'object' && sc.kind === 'pots')
+        return Q.checkOne(
+          q,
+          (v) =>
+            SC.must(
+              SC.POTS.find((p) => p.id === v),
+              v,
+            ).best === true,
+        );
     },
   });
 
   /* ================================================================ 3 (enrichissement) */
   const P4 = () => SC.PARTIES_PLANTE.filter((p) => !p.extra);
-  const MANGE_PART = {
+  const MANGE_PART: Record<string, string> = {
     racines: 'la racine',
     tige: 'la tige',
     feuille: 'les feuilles',
@@ -312,7 +380,11 @@
           : lvl === 1
             ? M.pick(['label', 'mange', 'mange', 'vf'])
             : M.pick(['roles', 'roles', 'trier', 'mange']);
-      const PART = (id) => SC.PARTIES_PLANTE.find((p) => p.id === id);
+      const PART = (id: string): ScPartiePlante =>
+        SC.must(
+          SC.PARTIES_PLANTE.find((p) => p.id === id),
+          id,
+        );
       if (t === 'mange') {
         const v = M.pick(SC.LEGUMES_PARTIE.filter((x) => lvl > 0 || x.facile));
         const ids = lvl === 2 ? SC.PARTIES_PLANTE.map((p) => p.id) : ['racines', 'tige', 'feuille', 'fleur', 'fruit'];
@@ -343,7 +415,7 @@
       }
       if (t === 'trier') {
         const bins = Q.pickN(['racines', 'tige', 'feuille', 'fleur', 'fruit', 'graine'], 3);
-        const items = [];
+        const items: ScItem[] = [];
         bins.forEach((b) =>
           Q.pickN(
             SC.LEGUMES_PARTIE.filter((x) => x.p === b),
@@ -398,17 +470,34 @@
       };
     },
     check(q) {
+      const sc = q._sc;
       const d = Q.dataOnce();
       if (d) return d;
-      if (q._sc && q._sc.kind === 'mange') return Q.checkOne(q, (v) => SC.LEGUMES_PARTIE.find((x) => x.id === q._sc.id).p === v);
-      if (q._sc === 'trier') return Q.checkSort(q, (k) => SC.LEGUMES_PARTIE.find((x) => x.id === k).p);
+      if (typeof sc === 'object' && sc.kind === 'mange')
+        return Q.checkOne(
+          q,
+          (v) =>
+            SC.must(
+              SC.LEGUMES_PARTIE.find((x) => x.id === sc.id),
+              sc.id,
+            ).p === v,
+        );
+      if (sc === 'trier')
+        return Q.checkSort(
+          q,
+          (k) =>
+            SC.must(
+              SC.LEGUMES_PARTIE.find((x) => x.id === k),
+              k,
+            ).p,
+        );
     },
   });
 
   /* ================================================================ 4 (enrichissement) */
-  const cyc = (k) => SC.CYCLES[k];
-  const stageChoice = (st) => `<span class="sc-lbl">${SC.stagePic(st, 44)}<span>${st.label}</span></span>`;
-  const stageTile = (st) => `<span class="sc-lblv">${SC.stagePic(st, 38)}<span>${st.label}</span></span>`;
+  const cyc = (k: string): ScCycle => SC.CYCLES[k];
+  const stageChoice = (st: ScStade): string => `<span class="sc-lbl">${SC.stagePic(st, 44)}<span>${st.label}</span></span>`;
+  const stageTile = (st: ScStade): string => `<span class="sc-lblv">${SC.stagePic(st, 38)}<span>${st.label}</span></span>`;
   M.registerSkill({
     id: 'sc-cycles-vie',
     domain: 'sc-vivant',
@@ -424,7 +513,7 @@
         const C = cyc(k),
           h = M.rnd(1, C.stades.length - 1),
           st = C.stades[h];
-        const others = [];
+        const others: (ScStade & { k: string })[] = [];
         M.shuffle(Object.keys(SC.CYCLES).filter((x) => x !== k)).forEach((x) => {
           const cand = cyc(x).stades.filter((s) => s.label !== st.label && !others.some((o) => o.label === s.label));
           if (others.length < 2 && cand.length) others.push({ ...M.pick(cand), k: x });
@@ -501,7 +590,7 @@
             : M.pick(['monarque', 'grenouille', 'haricot', 'poule']);
       const C = cyc(k);
       // Niveau 0 : trois étapes faciles seulement
-      const SIMPLE = {
+      const SIMPLE: Record<string, string[]> = {
         poule: ['oeuf', 'poussin', 'poule'],
         grenouille: ['oeufs', 'tetard', 'grenouille'],
         haricot: ['graine', 'germe', 'plant'],
@@ -523,18 +612,23 @@
       };
     },
     check(q) {
-      if (q._sc && q._sc.kind === 'missing') {
-        const labels = q.choices.map((c) => SC.plain(c.label));
+      const sc = q._sc;
+      if (typeof sc === 'object' && sc.kind === 'missing') {
+        const labels = 'choices' in q ? q.choices.map((c) => SC.plain(c.label)) : [];
         if (new Set(labels).size !== labels.length) return 'deux choix avec le même nom';
-        return Q.checkOne(q, (v) => v === q._sc.k + ':' + q._sc.id);
+        return Q.checkOne(q, (v) => v === sc.k + ':' + sc.id);
       }
-      if (q._sc && q._sc.kind === 'bebe') return Q.checkOne(q, (v) => v === q._sc.b);
+      if (typeof sc === 'object' && sc.kind === 'bebe') return Q.checkOne(q, (v) => v === sc.b);
       if (q.format === 'order' && (!q.fixed || q.fixed[0] !== 0)) return 'un cycle : la première étape doit être donnée (fixed)';
     },
   });
 
   /* ================================================================ 5 */
-  const mangeTxt = { plantes: 'seulement des plantes', animaux: "d'autres animaux", deux: 'des plantes et des animaux' };
+  const mangeTxt: Record<string, string> = {
+    plantes: 'seulement des plantes',
+    animaux: "d'autres animaux",
+    deux: 'des plantes et des animaux',
+  };
   M.registerSkill({
     id: 'sc-animaux-alimentation',
     domain: 'sc-vivant',
@@ -569,7 +663,7 @@
       }
       if (t === 'nourri') {
         const pool = M.shuffle(SC.DOMESTIQUES.slice()),
-          pick = [];
+          pick: ScDomestique[] = [];
         pool.forEach((a) => {
           if (pick.length < 3 && !pick.some((x) => x.cat === a.cat)) pick.push(a);
         });
@@ -585,7 +679,7 @@
       const pool = A().filter((a) => a.foodQ);
       if (t === 'mange') {
         const per = lvl === 2 ? 2 : M.pick([1, 2]);
-        const items = [];
+        const items: ScItem[] = [];
         ['plantes', 'animaux', 'deux'].forEach((m) =>
           Q.pickN(
             pool.filter((a) => a.mange === m),
@@ -600,8 +694,8 @@
           hint: "Pense à ce que tu as vu l'animal manger, ou à ses dents : des dents pointues pour la viande, des dents plates pour les plantes.",
           explain: items
             .map((it) => {
-              const a = SC.animal(it.key);
-              return `${cap(a.nom)} mange ${mangeTxt[a.mange]}.`;
+              const a = bete(it.key);
+              return `${cap(a.nom)} mange ${mangeTxt[a.mange ?? '']}.`;
             })
             .join(' '),
           _sc: 'mange',
@@ -641,29 +735,30 @@
       };
     },
     check(q) {
+      const sc = q._sc;
       const d = Q.dataOnce();
       if (d) return d;
-      if (q._sc === 'domsauv')
+      if (sc === 'domsauv')
         return Q.checkSort(q, (k) => {
-          const a = SC.animal(k);
+          const a = bete(k);
           return a.domestique ? 'dom' : 'sau';
         });
-      if (q._sc === 'mange')
+      if (sc === 'mange')
         return Q.checkSort(q, (k) => {
-          const a = SC.animal(k);
+          const a = bete(k);
           return a.foodQ ? a.mange : 'exclu';
         });
-      if (q._sc && q._sc.kind === 'mot') {
-        const a = SC.animal(q._sc.id);
-        if (!a.foodQ || a.mange !== q.answer) return 'régime incohérent';
+      if (typeof sc === 'object' && sc.kind === 'mot') {
+        const a = bete(sc.id);
+        if (!a.foodQ || a.mange !== Q.answerOf(q)) return 'régime incohérent';
       }
-      if (q._sc && q._sc.kind === 'quel')
+      if (typeof sc === 'object' && sc.kind === 'quel')
         return Q.checkOne(q, (v) => {
-          const a = SC.animal(v);
-          return a.foodQ && a.mange === q._sc.m;
+          const a = bete(v);
+          return a.foodQ && a.mange === sc.m;
         });
-      if (q._sc && q._sc.kind === 'nourri') {
-        const c = q._sc.ids.map((id) => SC.animal(id).cat);
+      if (typeof sc === 'object' && sc.kind === 'nourri') {
+        const c = sc.ids.map((id) => bete(id).cat);
         if (new Set(c).size !== c.length) return 'deux nourritures pareilles';
       }
     },
@@ -756,7 +851,7 @@
       const t = lvl === 0 ? 'couv' : lvl === 1 ? M.pick(['hiver', 'hiver', 'couv4']) : M.pick(['adapt', 'adapt', 'hiver']);
       if (t === 'couv' || t === 'couv4') {
         const kinds = t === 'couv' ? ['poils', 'plumes', 'ecailles'] : ['poils', 'plumes', 'ecailles', 'peau'];
-        const items = [];
+        const items: ScItem[] = [];
         kinds.forEach((c) =>
           Q.pickN(
             A().filter((a) => a.coverQ && a.couv === c),
@@ -801,15 +896,16 @@
       };
     },
     check(q) {
+      const sc = q._sc;
       const d = Q.dataOnce();
       if (d) return d;
-      if (q._sc === 'couv')
+      if (sc === 'couv')
         return Q.checkSort(q, (k) => {
-          const a = SC.animal(k);
+          const a = bete(k);
           return a.coverQ ? a.couv : 'exclu';
         });
-      if (q._sc && q._sc.kind === 'hiver') {
-        const h = q._sc.ids.map((id) => SC.animal(id));
+      if (typeof sc === 'object' && sc.kind === 'hiver') {
+        const h = sc.ids.map((id) => bete(id));
         if (h.some((a) => !a.hiverQ)) return 'animal exclu (hiverQ)';
         if (new Set(h.map((a) => a.hiver)).size !== h.length) return 'deux comportements pareils';
       }
@@ -817,9 +913,12 @@
   });
 
   /* ================================================================ 7 (enrichissement) */
-  const ZONE = { foret: 'foret', lac: 'eau', etang: 'eau', champ: 'champ', ville: 'ville' };
-  const zonesOf = (a) => (a.hab.every((h) => ZONE[h]) ? [...new Set(a.hab.map((h) => ZONE[h]))] : []);
-  const ZLABEL = { foret: 'la forêt', eau: 'le lac', champ: 'le champ', ville: 'la ville' };
+  const ZONE: Record<string, string> = { foret: 'foret', lac: 'eau', etang: 'eau', champ: 'champ', ville: 'ville' };
+  const zonesOf = (a: ScBete): string[] => {
+    const hab = SC.must(a.hab, 'habitat ' + a.id);
+    return hab.every((h) => ZONE[h]) ? [...new Set(hab.map((h) => ZONE[h]))] : [];
+  };
+  const ZLABEL: Record<string, string> = { foret: 'la forêt', eau: 'le lac', champ: 'le champ', ville: 'la ville' };
   M.registerSkill({
     id: 'sc-animaux-habitats',
     domain: 'sc-vivant',
@@ -837,7 +936,7 @@
           m = SC.MOVE_Q[v];
         const oui = Q.pickN(m.oui, M.pick(lvl === 0 ? [1, 2] : [2, 3])),
           non = Q.pickN(m.non, lvl === 0 ? 2 : 3);
-        const ch = M.shuffle([...oui, ...non]).map((id) => ({ label: lbl(SC.animal(id)), value: id }));
+        const ch = M.shuffle([...oui, ...non]).map((id) => ({ label: lbl(bete(id)), value: id }));
         return {
           prompt: `Touche <b>tous</b> les animaux qui <b>${m.verbe}</b>.`,
           format: 'multi',
@@ -853,7 +952,7 @@
                   ? "Lesquels vivent dans l'eau ou plongent pour manger ?"
                   : 'Pense à leurs pattes et à leur corps.',
           explain:
-            `Ces animaux ${m.verbe} : ${oui.map((id) => SC.animal(id).nom).join(', ')}.` +
+            `Ces animaux ${m.verbe} : ${oui.map((id) => bete(id).nom).join(', ')}.` +
             (oui.includes('chauve-souris') ? ' La chauve-souris vole, même si elle a des poils !' : ''),
           _sc: { kind: 'bouge', v },
         };
@@ -861,8 +960,8 @@
       if (t === 'habitat') {
         for (let k = 0; k < 40; k++) {
           const bins = Q.pickN(['foret', 'lac', 'etang', 'champ', 'fleuve', 'nord', 'ville'], 3);
-          const fit = (a) => a.habitatQ && a.hab.filter((h) => bins.includes(h)).length === 1;
-          const items = [];
+          const fit = (a: ScAnimal): boolean => a.habitatQ && a.hab.filter((h) => bins.includes(h)).length === 1;
+          const items: ScItem[] = [];
           bins.forEach((b) =>
             Q.pickN(
               A().filter((a) => fit(a) && a.hab.includes(b)),
@@ -878,7 +977,7 @@
             hint: 'Où trouve-t-il sa nourriture et un abri ?',
             explain: items
               .map((it) => {
-                const a = SC.animal(it.key);
+                const a = bete(it.key);
                 return `${cap(a.nom)} : ${SC.HABITATS[it.bin].label}.`;
               })
               .join(' '),
@@ -894,29 +993,31 @@
         answer: z,
         html: SC.svg.paysage(),
         answerText: ZLABEL[z],
-        scene: [{ emoji: a.emoji || '', art: a.emoji ? null : a.art, label: a.nom }],
+        scene: [{ emoji: a.emoji || '', art: a.emoji ? undefined : a.art, label: a.nom }],
         hint: 'Que mange-t-il ? Où trouve-t-il sa nourriture ?',
         explain: `${cap(a.nom)} vit dans ${SC.HABITATS[a.hab[0]].label === "l'étang et le marais" ? "l'eau d'un étang ou d'un lac" : ZLABEL[z]}. ${a.fait}`,
         _sc: { kind: 'scene', id: a.id },
       };
     },
     check(q) {
+      const sc = q._sc;
       const d = Q.dataOnce();
       if (d) return d;
-      if (q._sc && q._sc.kind === 'bouge') {
-        const m = SC.MOVE_Q[q._sc.v];
-        if (q.choices.some((c) => !m.oui.includes(c.value) && !m.non.includes(c.value))) return 'animal sans réponse sûre';
+      if (typeof sc === 'object' && sc.kind === 'bouge') {
+        const m = SC.MOVE_Q[sc.v];
+        if ('choices' in q && q.choices.some((c) => !m.oui.includes(String(c.value)) && !m.non.includes(String(c.value))))
+          return 'animal sans réponse sûre';
         return Q.checkMulti(q, (v) => m.oui.includes(v));
       }
-      if (q._sc && q._sc.kind === 'habitat')
+      if (typeof sc === 'object' && sc.kind === 'habitat')
         return Q.checkSort(q, (k) => {
-          const a = SC.animal(k);
-          const h = a.hab.filter((x) => q._sc.bins.includes(x));
+          const a = bete(k);
+          const h = SC.must(a.hab, 'habitat ' + k).filter((x) => sc.bins.includes(x));
           return a.habitatQ && h.length === 1 ? h[0] : 'ambigu';
         });
-      if (q._sc && q._sc.kind === 'scene') {
-        const z = zonesOf(SC.animal(q._sc.id));
-        if (z.length !== 1 || z[0] !== q.answer) return 'zone ambiguë';
+      if (typeof sc === 'object' && sc.kind === 'scene') {
+        const z = zonesOf(bete(sc.id));
+        if (z.length !== 1 || z[0] !== Q.answerOf(q)) return 'zone ambiguë';
       }
     },
   });
@@ -1037,15 +1138,20 @@
       };
     },
     check(q) {
-      if (q._sc && q._sc.kind === 'sert') return Q.checkOne(q, (v) => v === q._sc.id);
-      if (q._sc === 'habitudes')
+      const sc = q._sc;
+      if (typeof sc === 'object' && sc.kind === 'sert') return Q.checkOne(q, (v) => v === sc.id);
+      if (sc === 'habitudes')
         return Q.checkSort(q, (k) => (SC.HABITUDES.saine.includes(k) ? 'oui' : SC.HABITUDES.pas.includes(k) ? 'non' : '?'));
       return M.lint.noPrivate(q.prompt);
     },
   });
 
   /* ================================================================ 9 (enrichissement) */
-  const SENS = (id) => SC.SENS.find((s) => s.id === id);
+  const SENS = (id: string): ScSens =>
+    SC.must(
+      SC.SENS.find((s) => s.id === id),
+      id,
+    );
   M.registerSkill({
     id: 'sc-sens',
     domain: 'sc-vivant',
@@ -1094,7 +1200,7 @@
           SC.SENS.filter((x) => x.id !== s.a),
           2,
         );
-        const q = {
+        const q: QuestionOf<'choice'> = {
           prompt: `${s.t}<br>Quel <b>sens</b> utilises-tu ?`,
           format: 'choice',
           answer: s.a,
@@ -1133,7 +1239,8 @@
       };
     },
     check(q) {
-      if (q._sc && q._sc.kind === 'un') return Q.checkOne(q, (v) => v === q._sc.a);
+      const sc = q._sc;
+      if (typeof sc === 'object' && sc.kind === 'un') return Q.checkOne(q, (v) => v === sc.a);
     },
   });
 })();

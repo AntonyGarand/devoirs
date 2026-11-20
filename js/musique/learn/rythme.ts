@@ -10,7 +10,9 @@
   const M = window.M;
   const MU = M.MU;
   if (!MU) return;
-  const NEXT = { ta: 'titi', titi: 'chut', chut: 'ta' };
+  /** Rythmes d'une case de « Invente ton rythme » (sans la blanche). */
+  type Cell = 'ta' | 'titi' | 'chut';
+  const NEXT: Record<Cell, Cell> = { ta: 'titi', titi: 'chut', chut: 'ta' };
 
   M.registerLearn({
     id: 'mu-l-rythme',
@@ -50,13 +52,14 @@
             <div class="mu-row"><button class="mu-pad" aria-label="Tambour : tape le rythme">Tape ici !</button></div><div class="callout mu-echo-fb">Touche 👂 Écouter pour commencer.</div></div>`,
         }) +
         M.ui.section({ icon: '✅', title: '5. Vérifie ta compréhension', body: '<div class="mu-quiz"></div>' });
-      const $ = (s) => M.$(s, el);
+      // éléments rendus juste au-dessus (el.innerHTML) : jamais null
+      const $ = <E extends Element = HTMLElement>(s: string) => M.$<E>(s, el)!;
       const alive = () => el.isConnected;
 
       /* 1. pulsation */
       let bpm = 96,
         running = false,
-        timer = null;
+        timer: number | undefined;
       const ball = $('.mu-beat-ball');
       const beat = () => {
         if (!running || !alive()) {
@@ -70,7 +73,7 @@
         ball.classList.add('hop');
         timer = setTimeout(beat, 60000 / bpm);
       };
-      const setRun = (on) => {
+      const setRun = (on: boolean) => {
         running = on;
         clearTimeout(timer);
         $('.mu-pulse-go').textContent = on ? '⏸ Arrêter' : '▶ Démarrer';
@@ -96,7 +99,7 @@
       });
 
       /* 2. trois rythmes */
-      const THREE = [
+      const THREE: { k: MuBeat; t: string; d: string }[] = [
         { k: 'ta', t: 'La <b>noire</b> : « ta »', d: 'un son sur un temps' },
         { k: 'titi', t: 'Deux <b>croches</b> : « ti-ti »', d: 'deux sons rapides sur un temps' },
         { k: 'chut', t: 'Le <b>soupir</b> : « chut »', d: 'un temps de silence' },
@@ -106,17 +109,17 @@
           `<button class="mu-card" data-i="${i}">${MU.rhythmSvg([x.k, x.k], { w: 70 })}<span>${x.t}</span><small>${x.d}</small></button>`,
       ).join('');
       $('.mu-three').onclick = (e) => {
-        const b = e.target.closest('.mu-card');
+        const b = M.closest(e, '.mu-card');
         if (!b) return;
-        const x = THREE[+b.dataset.i];
+        const x = THREE[Number(b.dataset.i)];
         const cells = M.$$('.mu-cell', b);
         MU.play(MU.rhythm([x.k, x.k, x.k, x.k], { bpm: 88, inst: 'claves', pulse: true }), {
-          onStep: (k, ev) => cells.forEach((c, j) => c.classList.toggle('on', j === ev.cell % 2)),
+          onStep: (k, ev) => cells.forEach((c, j) => c.classList.toggle('on', j === Number(ev.cell) % 2)),
         }).then(() => cells.forEach((c) => c.classList.remove('on')));
       };
 
       /* 3. composer */
-      const comp = ['ta', 'titi', 'ta', 'chut'];
+      const comp: Cell[] = ['ta', 'titi', 'ta', 'chut'];
       let inst = 'claves';
       const INSTS = [
         ['claves', '🥢 Bâtons'],
@@ -135,9 +138,9 @@
       };
       drawComp();
       $('.mu-comp-cells').onclick = (e) => {
-        const b = e.target.closest('button');
+        const b = M.closest(e, 'button');
         if (!b) return;
-        const i = +b.dataset.i;
+        const i = Number(b.dataset.i);
         comp[i] = NEXT[comp[i]];
         drawComp(i);
         MU.play(MU.rhythm([comp[i]], { bpm: 88, inst }));
@@ -146,14 +149,14 @@
         ([id, l]) => `<button class="btn ${id === inst ? 'primary' : ''}" data-id="${id}">${l}</button>`,
       ).join('');
       $('.mu-comp-inst').onclick = (e) => {
-        const b = e.target.closest('button');
+        const b = M.closest(e, 'button');
         if (!b) return;
-        inst = b.dataset.id;
+        inst = String(b.dataset.id);
         M.$$('button', $('.mu-comp-inst')).forEach((x) => x.classList.toggle('primary', x === b));
         MU.snd({ inst, vel: 0.8, dur: 0.5 });
       };
       $('.mu-comp-play').onclick = () => {
-        MU.play(MU.rhythm(comp, { bpm: 88, inst, pulse: $('.mu-comp-pulse').checked }), {
+        MU.play(MU.rhythm(comp, { bpm: 88, inst, pulse: $<HTMLInputElement>('.mu-comp-pulse').checked }), {
           onStep: (k, ev) => M.$$('.mu-comp-cells .mu-cell', el).forEach((c, j) => c.classList.toggle('on', j === ev.cell)),
         }).then(() => M.$$('.mu-comp-cells .mu-cell', el).forEach((c) => c.classList.remove('on')));
       };
@@ -161,40 +164,42 @@
       /* 4. jeu de l'écho */
       const BPM = 80,
         spb = 60 / BPM;
-      let target = null,
-        taps = [],
+      let target: MuBeat[] | null = null,
+        taps: number[] = [],
         listening = false,
-        endTimer = null;
+        endTimer: number | undefined;
       const newRhythm = () => {
-        let p;
+        let p: MuBeat[];
         do {
-          p = MU.seq(4).map(() => M.pick(['ta', 'ta', 'titi', 'chut']));
+          p = MU.seq(4).map(() => M.pick<MuBeat>(['ta', 'ta', 'titi', 'chut']));
         } while (p[0] === 'chut' || new Set(p).size < 2);
         target = p;
         taps = [];
         listening = false;
-        $('.mu-echo-fig').innerHTML = $('.mu-echo-show').checked
+        $('.mu-echo-fig').innerHTML = $<HTMLInputElement>('.mu-echo-show').checked
           ? MU.rhythmSvg(p)
           : `<div class="mu-row" style="min-height:104px;font-size:2.4rem">❓ ❓ ❓ ❓</div>`;
         $('.mu-echo-fb').innerHTML = 'Touche 👂 Écouter, puis tape le rythme sur le tambour.';
+        return p;
       };
-      const onsets = (p) => {
-        const o = [];
+      const onsets = (p: MuBeat[]) => {
+        const o: number[] = [];
         p.forEach((k, i) => MU.BEATS[k].forEach((b) => o.push(i + b)));
         return o;
       };
       const listen = async () => {
-        if (!target) newRhythm();
+        const p = target ?? newRhythm();
         listening = false;
         taps = [];
         $('.mu-echo-fb').innerHTML = '👂 Écoute bien…';
-        await MU.play(MU.rhythm(target, { bpm: BPM, inst: 'tambour', countIn: true }));
+        await MU.play(MU.rhythm(p, { bpm: BPM, inst: 'tambour', countIn: true }));
         if (!alive()) return;
         listening = true;
         $('.mu-echo-fb').innerHTML = '🥁 À toi ! Tape le rythme.';
       };
       const judge = () => {
         listening = false;
+        if (!target) return; // listening n'est vrai qu'après listen(), qui choisit un rythme
         const want = onsets(target);
         if (taps.length !== want.length) {
           $('.mu-echo-fb').innerHTML =
@@ -221,7 +226,7 @@
         void pad.offsetWidth;
         pad.classList.add('hit');
         MU.snd({ inst: 'tambour', vel: 0.9 });
-        if (!listening) return;
+        if (!listening || !target) return;
         taps.push(performance.now() / 1000);
         clearTimeout(endTimer);
         const want = onsets(target).length;
@@ -231,7 +236,7 @@
         e.preventDefault();
         hit();
       });
-      const key = (e) => {
+      const key = (e: KeyboardEvent) => {
         if (
           e.code === 'Space' &&
           !e.repeat &&
@@ -255,7 +260,7 @@
       $('.mu-echo-listen').onclick = listen;
       $('.mu-echo-show').onchange = () => {
         if (target)
-          $('.mu-echo-fig').innerHTML = $('.mu-echo-show').checked
+          $('.mu-echo-fig').innerHTML = $<HTMLInputElement>('.mu-echo-show').checked
             ? MU.rhythmSvg(target)
             : `<div class="mu-row" style="min-height:104px;font-size:2.4rem">❓ ❓ ❓ ❓</div>`;
       };

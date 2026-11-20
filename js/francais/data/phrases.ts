@@ -7,11 +7,47 @@
    « * » en tête = plusieurs ordres possibles → jamais utilisée pour « Je construis une phrase ».
    Toutes les phrases ont un seul sujet animé : l'ordre des mots est unique et a du sens.
    ===================================================================== */
+
+/** Jeton d'une phrase étiquetée : d, n, a, v, p, x ou « . ». */
+interface FrPhraseTok {
+  w: string;
+  tag: string;
+}
+interface FrPhrase {
+  lvl: number;
+  toks: FrPhraseTok[];
+  /** Plusieurs ordres possibles. */
+  multi: boolean;
+}
+/** Mot d'une phrase (élision recollée) : tag = 'x' si plusieurs étiquettes. */
+interface FrPhraseWord {
+  w: string;
+  tag: string;
+  tags: string[];
+}
+interface FrSceneSujet {
+  id: string;
+  em: string;
+  le: string;
+}
+interface FrSceneObjet extends FrSceneSujet {
+  dans?: boolean;
+}
+interface FrSceneRelation {
+  id: string;
+  mot: string;
+}
+interface FrancaisApi {
+  PHRASES: FrPhrase[];
+  phraseWords(ph: FrPhrase): FrPhraseWord[];
+  SCENES: { sujets: FrSceneSujet[]; objets: FrSceneObjet[]; relations: FrSceneRelation[] };
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  M.FR = M.FR || {};
-  const RAW = {
+  M.FR = M.FR || ({} as FrancaisApi);
+  const RAW: Record<string, string[]> = {
     0: [
       'Le/d chat/n dort/v ./.',
       'Le/d chien/n jappe/v ./.',
@@ -75,7 +111,7 @@
       '*La/d vieille/a jument/n tire/v une/d charrette/n ./.',
     ],
   };
-  const parse = (s, lvl) => {
+  const parse = (s: string, lvl: string): FrPhrase => {
     const multi = s.startsWith('*');
     const toks = s
       .replace(/^\*/, '')
@@ -86,14 +122,14 @@
       });
     return { lvl: +lvl, toks, multi };
   };
-  M.FR.PHRASES = [].concat(...Object.entries(RAW).map(([lvl, arr]) => arr.map((s) => parse(s, lvl))));
+  M.FR.PHRASES = Object.entries(RAW).flatMap(([lvl, arr]) => arr.map((s) => parse(s, lvl)));
   /** Mots de la phrase (élision recollée : « l' » + « herbe » → « l'herbe »), sans le point. */
   M.FR.phraseWords = (ph) => {
-    const out = [];
+    const out: FrPhraseWord[] = [];
     ph.toks.forEach((t) => {
       if (t.tag === '.') return;
       const prev = out[out.length - 1];
-      if (prev && /'$/.test(prev.w)) {
+      if (prev && prev.w.endsWith("'")) {
         prev.w += t.w;
         prev.tags.push(t.tag);
       } else out.push({ w: t.w, tag: t.tag, tags: [t.tag] });

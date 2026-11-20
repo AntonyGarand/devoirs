@@ -5,6 +5,22 @@
    « fort » dépend du volume de l'appareil, « plus fort que » non.
    Aussi : M.MU.codeSvg — code non traditionnel (PDA B.2.a) : traits longs / courts, points, gros / petits, haut / bas.
    ===================================================================== */
+
+/** Durées du code non traditionnel. */
+type MuCodeKind = 'tres-court' | 'court' | 'long' | 'tres-long' | 'silence';
+/** Un son du code : k durée, v taille (intensité, 0 à 1), y hauteur (0 à 1). */
+interface MuCodePart {
+  k: MuCodeKind;
+  v?: number;
+  y?: number;
+}
+interface MusiqueApi {
+  /** Code non traditionnel (traits longs / courts, points, gros / petits, haut / bas). */
+  codeSvg(parts: readonly MuCodePart[], opts?: { w?: number; h?: number; cls?: string; color?: string }): string;
+  /** Points : levels = hauteurs (0 à 1), sizes = tailles (0 à 1). */
+  dotsSvg(levels: readonly number[], opts?: { sizes?: readonly number[]; w?: number; h?: number; cls?: string }): string;
+}
+
 (function () {
   'use strict';
   const M = window.M;
@@ -14,7 +30,7 @@
   /** Code non traditionnel. parts : [{ k: 'court'|'long'|'tres-court'|'tres-long'|'silence', v?: 0..1 (taille), y?: 0..1 (hauteur) }] */
   MU.codeSvg = (parts, { w = 300, h = 90, cls = 'mu-choice-fig', color = ink } = {}) => {
     const LEN = { 'tres-court': 0, court: 26, long: 74, 'tres-long': 120, silence: 34 };
-    const wid = (p) => (p.k === 'tres-court' ? 6 + (p.v ?? 0.5) * 14 + 4 : LEN[p.k]);
+    const wid = (p: MuCodePart) => (p.k === 'tres-court' ? 6 + (p.v ?? 0.5) * 14 + 4 : LEN[p.k]);
     const total = parts.reduce((s, p) => s + wid(p), 0) + 24 * (parts.length - 1);
     const W = Math.max(w, total + 28);
     let x = (W - total) / 2,
@@ -31,7 +47,10 @@
     return `<svg class="${cls}" viewBox="0 0 ${W} ${h}" width="${W}" height="${h}" aria-hidden="true">${body}</svg>`;
   };
   /** Points (hauteur / intensité) : levels = [0..1] hauteur, sizes = [0..1] taille. */
-  MU.dotsSvg = (levels, { sizes, w = 220, h = 100, cls = 'mu-choice-fig' } = {}) => {
+  MU.dotsSvg = (
+    levels,
+    { sizes, w = 220, h = 100, cls = 'mu-choice-fig' }: { sizes?: readonly number[]; w?: number; h?: number; cls?: string } = {},
+  ) => {
     const n = levels.length,
       step = (w - 40) / Math.max(1, n - 1);
     return `<svg class="${cls}" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><path d="M10 ${h - 8} H${w - 10}" stroke="#e3e6ef" stroke-width="2"/>${levels.map((l, i) => `<circle cx="${20 + i * step}" cy="${h - 18 - l * (h - 40)}" r="${5 + (sizes ? sizes[i] : 0.15) * 15}" fill="${ink}"/>`).join('')}</svg>`;
@@ -39,9 +58,17 @@
 
   const pick = M.pick,
     shuffle = M.shuffle;
-  const SON = (i) => `Son ${i + 1}`;
+  const SON = (i: number) => `Son ${i + 1}`;
+  interface WhichOpts {
+    prompt: string;
+    items: { events: MuEvent[] }[];
+    answer: number;
+    hint: string;
+    explain: string;
+    why?: (i: number) => string;
+  }
   /** Question « lequel ? » : items = [{events}], answer = index. */
-  function which({ prompt, items, answer, hint, explain, why }) {
+  function which({ prompt, items, answer, hint, explain, why }: WhichOpts): QuestionOf<'choice'> {
     const its = items.map((it, i) => ({ label: SON(i), events: it.events }));
     return {
       prompt,
@@ -55,7 +82,7 @@
       viz: (el) => MU.player(el, its),
     };
   }
-  const note = (inst, midi, vel = 0.8, dur = 0.5, t = 0) => ({ inst, midi, vel, dur, t });
+  const note = (inst: string, midi: number, vel = 0.8, dur = 0.5, t = 0): MuEvent => ({ inst, midi, vel, dur, t });
 
   /* ---------------------------------------------------------------- fort / doux */
   M.registerSkill({
@@ -166,7 +193,7 @@
           format: 'choice',
           answer: dir,
           cols: 3,
-          choices: shuffle(Object.keys(UP).map((k) => ({ label: MU.dotsSvg(UP[k].svg, { w: 150, h: 80 }), value: k }))),
+          choices: shuffle(Object.entries(UP).map(([k, u]) => ({ label: MU.dotsSvg(u.svg, { w: 150, h: 80 }), value: k }))),
           hint: 'Si le son monte, le point monte aussi sur le dessin.',
           explain: `Les sons ${dir === 'monte' ? 'montent ⬆️ : chaque point est plus haut' : dir === 'descend' ? 'descendent ⬇️ : chaque point est plus bas' : 'se répètent ➡️ : les points restent à la même hauteur'}.`,
           _mu: { items: [{ events: evs }] },
@@ -177,7 +204,7 @@
         prompt: 'Écoute la suite de sons. Que font les sons ?',
         format: 'choice',
         answer: dir,
-        choices: shuffle(Object.keys(UP).map((k) => ({ label: UP[k].label, value: k }))),
+        choices: shuffle(Object.entries(UP).map(([k, u]) => ({ label: u.label, value: k }))),
         hint: 'Compare le premier son et le dernier : lequel est le plus aigu ?',
         explain:
           dir === 'monte'
@@ -192,16 +219,22 @@
   });
 
   /* ---------------------------------------------------------------- long / court */
-  const DUR = { 'tres-court': 0.08, court: 0.28, long: 1.1, 'tres-long': 2.2, silence: 0.6 };
-  const seqEvents = (parts, inst = 'flute', midi = 69) => {
+  const DUR: Record<MuCodeKind, number> = { 'tres-court': 0.08, court: 0.28, long: 1.1, 'tres-long': 2.2, silence: 0.6 };
+  const seqEvents = (parts: MuCodeKind[], inst = 'flute', midi = 69) => {
     let t = 0;
-    return parts.reduce((ev, p) => {
+    return parts.reduce<MuEvent[]>((ev, p) => {
       if (p !== 'silence') ev.push(note(inst, midi, 0.7, DUR[p], t));
       t += DUR[p] + 0.32;
       return ev;
     }, []);
   };
-  const LBL = { 'tres-court': 'très court', court: 'court', long: 'long', 'tres-long': 'très long', silence: 'silence' };
+  const LBL: Record<MuCodeKind, string> = {
+    'tres-court': 'très court',
+    court: 'court',
+    long: 'long',
+    'tres-long': 'très long',
+    silence: 'silence',
+  };
   M.registerSkill({
     id: 'mu-long-court',
     domain: 'mu-sons',
@@ -227,14 +260,14 @@
           explain: `Le son ${ans + 1} est le plus <b>${want}</b>. La <b>durée</b>, c'est le temps que dure un son.`,
         });
       }
-      const kinds = lvl === 1 ? ['court', 'long', 'silence'] : ['tres-court', 'court', 'long', 'tres-long', 'silence'];
+      const kinds: MuCodeKind[] = lvl === 1 ? ['court', 'long', 'silence'] : ['tres-court', 'court', 'long', 'tres-long', 'silence'];
       const n = lvl === 1 ? 3 : 4;
-      let parts;
+      let parts: MuCodeKind[];
       do {
         parts = MU.seq(n).map(() => pick(kinds));
       } while (new Set(parts).size < 2 || parts[0] === 'silence' || parts.filter((p) => p === 'silence').length > 1);
-      const key = (ps) => ps.join(',');
-      const wrongs = new Map();
+      const key = (ps: MuCodeKind[]) => ps.join(',');
+      const wrongs = new Map<string, MuCodeKind[]>();
       for (let i = 0; i < 40 && wrongs.size < 2; i++) {
         const w = parts.slice();
         if (i % 2) {
@@ -291,7 +324,7 @@
           items,
           answer: ans,
           hint: "Un son <b>sec</b> s'arrête tout de suite : « toc ! ». Un son <b>résonnant</b> continue de vibrer : « dinnnng… ».",
-          explain: `Le son ${ans + 1} est ${want === 'sec' ? 'sec' : 'résonnant'}. Le son 1, c'était ${pair[0].le}; le son 2, ${pair[1].le}. ${pair.find((x) => x.qualite === 'resonnant').le.replace(/^./, (c) => c.toUpperCase())} ${/^les /i.test(pair.find((x) => x.qualite === 'resonnant').le) ? 'continuent' : 'continue'} de vibrer après le coup.`,
+          explain: `Le son ${ans + 1} est ${want === 'sec' ? 'sec' : 'résonnant'}. Le son 1, c'était ${pair[0].le}; le son 2, ${pair[1].le}. ${b.le.replace(/^./, (c) => c.toUpperCase())} ${/^les /i.test(b.le) ? 'continuent' : 'continue'} de vibrer après le coup.`,
         });
       }
       if (lvl === 1) {

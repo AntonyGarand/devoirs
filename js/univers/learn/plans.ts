@@ -9,12 +9,14 @@
     <circle cx="100" cy="100" r="62" fill="#fff" stroke="#2b2d42" stroke-width="3"/>
     <path d="M100 42 L112 100 L100 158 L88 100 Z" fill="#2b2d42"/><path d="M100 42 L112 100 L88 100 Z" fill="#d62828"/>
     <path d="M42 100 L100 88 L158 100 L100 112 Z" fill="#7a7f99"/>
-    ${[
-      ['N', 100, 28, 'nord, en haut'],
-      ['S', 100, 190, 'sud, en bas'],
-      ['E', 184, 108, 'est, à droite'],
-      ['O', 16, 108, 'ouest, à gauche'],
-    ]
+    ${(
+      [
+        ['N', 100, 28, 'nord, en haut'],
+        ['S', 100, 190, 'sud, en bas'],
+        ['E', 184, 108, 'est, à droite'],
+        ['O', 16, 108, 'ouest, à gauche'],
+      ] satisfies [string, number, number, string][]
+    )
       .map(
         ([l, x, y, s]) =>
           `<g data-say="${s}" style="cursor:pointer"><circle cx="${x}" cy="${y - 8}" r="17" fill="#fff6d6" stroke="#e9b949" stroke-width="2"/><text x="${x}" y="${y}" text-anchor="middle" font-size="24" font-weight="900" fill="#2b2d42">${l}</text></g>`,
@@ -31,8 +33,14 @@
     render(el) {
       const plans = U.d('plans'),
         P = U.d('paysages');
-      const q = plans.find((p) => p.id === 'quartier-maya'),
-        maison = plans.find((p) => p.id === 'maison-awa');
+      const q = U.must(
+          plans.find((p) => p.id === 'quartier-maya'),
+          'plan quartier-maya',
+        ),
+        maison = U.must(
+          plans.find((p) => p.id === 'maison-awa'),
+          'plan maison-awa',
+        );
       el.innerHTML = [
         ui.section({
           icon: '🐦',
@@ -102,11 +110,11 @@
         }),
         ui.section({ icon: '✅', title: '5. Vérifie ta compréhension', body: '<div class="us-mq"></div>' }),
       ].join('');
-      M.$('.us-bird', el).onclick = () => {
+      M.$('.us-bird', el)!.onclick = () => {
         M.sfx.pop();
-        M.$('.us-birdview', el).innerHTML = U.planHtml(maison);
+        M.$('.us-birdview', el)!.innerHTML = U.planHtml(maison);
       };
-      ui.miniQuiz(M.$('.us-mq', el), [
+      ui.miniQuiz(M.$('.us-mq', el)!, [
         () => M.skillById['us-plan'].gen({ lvl: 0 }),
         () => M.skillById['us-plan'].gen({ lvl: 1 }),
         () => M.skillById['us-paysages'].gen({ lvl: 0 }),

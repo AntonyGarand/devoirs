@@ -6,10 +6,27 @@
                   une phrase de contexte est obligatoire en dictée)
      REELS : mots courants qui ne doivent jamais être proposés comme « faute »
    ===================================================================== */
+
+/** Famille de mots : mots[0] = mot de base; piege = faux amis sonores; loin = même thème, autre famille. */
+interface FrFamille {
+  id: string;
+  em: string;
+  mots: string[];
+  piege: string[];
+  loin: string[];
+}
+interface FrancaisApi {
+  FAMILLES: FrFamille[];
+  /** Groupes de mots qui se prononcent pareil. */
+  HOMOPHONES: string[][];
+  /** Mots réels courants jamais proposés comme faute. */
+  REELS: string[];
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  M.FR = M.FR || {};
+  M.FR = M.FR || ({} as FrancaisApi);
   M.FR.FAMILLES = [
     { id: 'fleur', em: '🌸', mots: ['fleur', 'fleuriste', 'fleurir'], piege: ['fleuve'], loin: ['jardin', 'tulipe'] },
     { id: 'dent', em: '🦷', mots: ['dent', 'dentiste', 'dentier'], piege: ['danse', 'dans'], loin: ['bouche', 'brosse'] },

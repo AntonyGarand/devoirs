@@ -1,9 +1,55 @@
 /* Univers social — familles fictives (R7 : toutes les familles sont valides; on compte, on nomme, on observe).
    Membres : emoji d'une personne seule (rendu fiable) + rôle. adulte = true pour les adultes. */
+
+interface UsMembre {
+  emoji: string;
+  role: string;
+  adulte: boolean;
+}
+interface UsFamille {
+  id: string;
+  nom: string;
+  sorte: string;
+  membres: UsMembre[];
+}
+/** Vrai ou faux; e = précision donnée après la réponse. */
+interface UsFait {
+  t: string;
+  v: boolean;
+  e?: string;
+}
+interface UsArbrePersonne {
+  id: string;
+  emoji: string;
+  nom: string;
+  x: number;
+  y: number;
+}
+interface UsArbre {
+  gens: UsArbrePersonne[];
+  couples: [string, string][];
+  /** [parents, enfants] (ids). */
+  enfants: [string[], string[]][];
+  /** De qui parle-t-on, du point de vue de Léo ? */
+  q: { lien: string; ok: string; why: string }[];
+}
+interface UsFamilles {
+  familles: UsFamille[];
+  mots: { emoji: string; mot: string }[];
+  faits: UsFait[];
+  liens: UsQcm[];
+  /** Liens composés : situation t, question q. */
+  composes: (UsQcm & { t: string })[];
+  arbre: UsArbre;
+}
+interface DataRegistry {
+  'us-familles': UsFamilles;
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  const m = (emoji, role, adulte) => ({ emoji, role, adulte: !!adulte });
+  const m = (emoji: string, role: string, adulte?: number): UsMembre => ({ emoji, role, adulte: !!adulte });
   M.registerData('us-familles', {
     familles: [
       {

@@ -3,10 +3,34 @@
    aimer, aller, avoir, dire, être, faire — sans radical ni terminaison (3e année).
    P = pronoms de conjugaison (personnes 0..5); il/elle/on et ils/elles partagent la forme.
    ===================================================================== */
+
+type FrVerbeId = 'etre' | 'avoir' | 'aimer' | 'aller' | 'dire' | 'faire';
+/** Pronom de conjugaison et sa personne k (0..5). */
+interface FrPronom {
+  p: string;
+  k: number;
+}
+interface FrVerbe {
+  inf: string;
+  em: string;
+  /** Formes aux personnes 0..5. */
+  f: string[];
+}
+interface FrancaisApi {
+  PRONOMS: FrPronom[];
+  VERBES: Record<FrVerbeId, FrVerbe>;
+  /** Clés de VERBES, dans l'ordre. */
+  VERBE_IDS: FrVerbeId[];
+  /** Groupe pronom + verbe avec élision : « j'ai », « je suis ». */
+  conj(v: FrVerbeId, pron: string): string;
+  /** Compléments invariables qui vont avec chaque verbe. */
+  SUITE: Record<FrVerbeId, string[]>;
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  M.FR = M.FR || {};
+  M.FR = M.FR || ({} as FrancaisApi);
   M.FR.PRONOMS = [
     { p: 'je', k: 0 },
     { p: 'tu', k: 1 },
@@ -26,9 +50,11 @@
     dire: { inf: 'dire', em: '💬', f: ['dis', 'dis', 'dit', 'disons', 'dites', 'disent'] },
     faire: { inf: 'faire', em: '🛠️', f: ['fais', 'fais', 'fait', 'faisons', 'faites', 'font'] },
   };
+  M.FR.VERBE_IDS = ['etre', 'avoir', 'aimer', 'aller', 'dire', 'faire'];
   /** Groupe pronom + verbe avec élision : « j'ai », « j'aime », « je suis ». */
   M.FR.conj = (v, pron) => {
     const P = M.FR.PRONOMS.find((x) => x.p === pron);
+    if (!P) throw new Error('pronom inconnu : ' + pron);
     const f = M.FR.VERBES[v].f[P.k];
     return (pron === 'je' && /^[aeiouéêh]/.test(f) ? "j'" : pron + ' ') + f;
   };

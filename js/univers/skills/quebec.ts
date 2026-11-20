@@ -8,7 +8,7 @@
   const M = window.M;
   const U = M.us;
   const D = 'us-quebec';
-  const big = (e) => `<span style="font-size:2.2rem">${e}</span>`;
+  const big = (e: string) => `<span style="font-size:2.2rem">${e}</span>`;
 
   M.registerSkill({
     id: 'us-fetes',
@@ -109,14 +109,14 @@
     gen({ lvl }) {
       const E = U.d('emblemes');
       const fl = E.flags;
-      const flagSm = (f) => f().replace('class="us-flag"', 'class="us-flag" style="max-width:70px"');
-      const symPic = (s) =>
+      const flagSm = (f: () => string) => f().replace('class="us-flag"', 'class="us-flag" style="max-width:70px"');
+      const symPic = (s: UsEmblemes['symboles'][number]) =>
         s.flag
           ? flagSm(fl[s.flag])
           : s.art
             ? M.art.html(s.art, { size: 40, alt: s.nom })
             : `<span style="font-size:2rem">${s.emoji}</span>`;
-      const tfQ = (pool) => {
+      const tfQ = (pool: UsEmblemes['faits']): QuestionOf<'tf'> => {
         const f = M.pick(pool);
         return {
           prompt: `Vrai ou faux ? ${f.t}`,
@@ -126,7 +126,7 @@
           explain: `C'est <b>${f.v ? 'vrai' : 'faux'}</b>. ${f.e ? f.e + ' ' : ''}Les emblèmes du Québec : le fleurdelisé (drapeau), le harfang des neiges (oiseau), l'iris versicolore (fleur), le bouleau jaune (arbre) et la devise « Je me souviens ».`,
         };
       };
-      const emblemeQ = () => {
+      const emblemeQ = (): QuestionOf<'choice'> => {
         const e = M.pick(E.list.filter((x) => ['harfang', 'iris', 'bouleau'].includes(x.id)));
         const s = U.simple(U.cap(e.nom), M.shuffle(E.autres[e.id]).slice(0, 2).map(U.cap));
         return {
@@ -194,7 +194,13 @@
       if (lvl === 1) {
         const r = Math.random();
         if (r < 0.35) {
-          const TYPE = { drapeau: 'Le drapeau', oiseau: "L'oiseau", fleur: 'La fleur', arbre: "L'arbre", devise: 'La devise' };
+          const TYPE: Record<UsEmbleme['type'], string> = {
+            drapeau: 'Le drapeau',
+            oiseau: "L'oiseau",
+            fleur: 'La fleur',
+            arbre: "L'arbre",
+            devise: 'La devise',
+          };
           const list = M.shuffle(E.list).slice(0, M.pick([3, 4]));
           return {
             prompt: 'Associe chaque emblème du Québec à son image.',

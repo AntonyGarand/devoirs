@@ -1,9 +1,38 @@
 /* Univers social — lignes du temps de personnages fictifs (jamais celle de l'enfant dans le noté, R5).
    Québec : maternelle à 5 ans (septembre de l'année des 5 ans). */
+
+interface UsEvenement {
+  annee: number;
+  id: string;
+  label: string;
+  emoji: string;
+}
+interface UsPersonnage {
+  nom: string;
+  f: boolean;
+  naissance: number;
+  evenements: UsEvenement[];
+}
+interface UsAge {
+  id: string;
+  nom: string;
+  court: string;
+  emoji: string;
+  activite: string;
+}
+interface UsLignesTemps {
+  personnages: UsPersonnage[];
+  /** Âges de la vie, dans l'ordre. */
+  ages: UsAge[];
+}
+interface DataRegistry {
+  'us-lignes-temps': UsLignesTemps;
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  const ev = (annee, id, label, emoji) => ({ annee, id, label, emoji });
+  const ev = (annee: number, id: string, label: string, emoji: string): UsEvenement => ({ annee, id, label, emoji });
   M.registerData('us-lignes-temps', {
     personnages: [
       {

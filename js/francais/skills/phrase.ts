@@ -7,8 +7,8 @@
   const M = window.M;
   const FR = M.FR;
   const D = 'fr-phrase';
-  const words = (ph) => FR.phraseWords(ph).map((x) => x.w);
-  const sentence = (ph) => {
+  const words = (ph: FrPhrase) => FR.phraseWords(ph).map((x) => x.w);
+  const sentence = (ph: FrPhrase) => {
     const w = words(ph);
     w[0] = M.fr.cap(w[0]);
     return w.join(' ') + '.';
@@ -34,7 +34,7 @@
     "Youpi, c'est congé",
     'Aïe, je me suis cogné',
   ];
-  const BIG = (t) => `<div class="fr-big" style="font-size:1.6rem">${M.esc(t)}</div>`;
+  const BIG = (t: string) => `<div class="fr-big" style="font-size:1.6rem">${M.esc(t)}</div>`;
 
   /* ---------------- ✅ Majuscule et point ---------------- */
   M.registerSkill({
@@ -125,7 +125,7 @@
       };
     },
     check(q) {
-      if (q.format === 'tapwords' && q.answer.some((i) => i >= q.words.length)) return 'indice';
+      if (q.format === 'tapwords' && q.answer.some((i) => i >= (q.words?.length ?? 0))) return 'indice';
     },
   });
 

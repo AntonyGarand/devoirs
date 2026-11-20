@@ -8,20 +8,63 @@
             | 'none' (pas d'image seule : nombres, actions → poses).
    Emoji ≤ Emoji 13 seulement; sinon dessin SVG (art.js).
    ===================================================================== */
+
+/** Mot de la banque (M.EN.VOCAB). */
+interface EnWord extends EnPicItem {
+  id: string;
+  /** Orthographe canadienne. */
+  word: string;
+  fr: string;
+  theme: string;
+  /** 0 très fréquent, 1 attendu, 2 défi. */
+  lvl: number;
+  picture: 'ok' | 'context' | 'none';
+  /** Texte lu (article ou mini-phrase). */
+  say: string;
+  /** Nombres : la valeur et le chiffre affiché. */
+  n?: number;
+  digit?: number;
+  /** Jamais distracteurs l'un de l'autre. */
+  sameAs?: string[];
+  homophones?: string[];
+  /** Mot ami (ressemble au français). */
+  cognate?: boolean;
+}
+/** Thème du vocabulaire. */
+interface EnThemeInfo {
+  fr: string;
+  icon: string;
+  /** Étiquette de boîte (format sort). */
+  box: string;
+}
+
+interface EnglishApi {
+  VOCAB: EnWord[];
+  /** id → mot. */
+  word: Record<string, EnWord>;
+  THEMES: Record<string, EnThemeInfo>;
+  ofTheme(t: string, maxLvl?: number): EnWord[];
+  /** Deux mots ne peuvent pas cohabiter dans un même choix (image proche ou même son). */
+  clash(a: EnWord | string, b: EnWord | string): boolean;
+  /** Image d'un mot (emoji, dessin ou chiffre). */
+  wordPic(w: EnWord, size?: number): string;
+}
+
 (function () {
   'use strict';
   const M = window.M;
   const EN = M.EN;
-  const V = [];
+  const V: EnWord[] = [];
   /** Ajoute un thème : rows = [id, word, pic, fr, lvl, extra?] */
-  const theme = (name, rows) =>
+  type Row = [id: string, word: string, pic: string | Partial<EnWord>, fr: string, lvl: number, extra?: Partial<EnWord>];
+  const theme = (name: string, rows: Row[]): void =>
     rows.forEach(([id, word, pic, fr, lvl, x = {}]) => {
-      const it = { id, word, fr, theme: name, lvl, picture: 'ok', say: word, ...x };
+      const it: EnWord = { id, word, fr, theme: name, lvl, picture: 'ok', say: word, ...x };
       if (typeof pic === 'string') it.emoji = pic;
       else Object.assign(it, pic);
       V.push(it);
     });
-  const sw = (color) => ({ art: 'en-swatch', color });
+  const sw = (color: string): Partial<EnWord> => ({ art: 'en-swatch', color });
 
   theme('colours', [
     ['red', 'red', sw('red'), 'rouge', 0],
@@ -83,10 +126,10 @@
     'dix-neuf',
     'vingt',
   ];
-  const HOMO = { two: ['too', 'to'], four: ['for'], eight: ['ate'], one: ['won'] };
+  const HOMO: Record<string, string[]> = { two: ['too', 'to'], four: ['for'], eight: ['ate'], one: ['won'] };
   theme(
     'numbers',
-    NUM.map((w, n) => [w, w, { digit: n }, NUM_FR[n], n <= 10 ? 0 : 1, { n, picture: 'none', homophones: HOMO[w] || [] }]),
+    NUM.map((w, n): Row => [w, w, { digit: n }, NUM_FR[n], n <= 10 ? 0 : 1, { n, picture: 'none', homophones: HOMO[w] || [] }]),
   );
 
   theme('animals', [

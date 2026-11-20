@@ -10,7 +10,7 @@
   const SC = M.SC;
   if (!SC) return;
 
-  const zone = (v) =>
+  const zone = (v: number): { k: string; icon: string; t: string } =>
     v < 0
       ? { k: 'glace', icon: '❄️', t: 'Très froid' }
       : v < 10
@@ -20,9 +20,9 @@
           : v < 100
             ? { k: 'eau', icon: '🔥', t: 'Très chaud' }
             : { k: 'bout', icon: '♨️', t: 'Ça bout !' };
-  const fmt = (v) => `${zone(v).icon} ${zone(v).t}${v === 0 ? ' — 0 °C' : v === 100 ? ' — 100 °C' : ''}`;
+  const fmt = (v: number): string => `${zone(v).icon} ${zone(v).t}${v === 0 ? ' — 0 °C' : v === 100 ? ' — 100 °C' : ''}`;
 
-  function potSvg(v) {
+  function potSvg(v: number): string {
     const pct = (v + 20) / 130;
     const thermo = `<rect x="262" y="30" width="16" height="170" rx="8" fill="#fff" stroke="#7d8597" stroke-width="2"/>
       <rect x="265" y="${196 - 160 * pct}" width="10" height="${160 * pct}" rx="5" fill="${v < 0 ? '#118ab2' : v < 30 ? '#f4b400' : '#ef476f'}"/><circle cx="270" cy="206" r="12" fill="${v < 0 ? '#118ab2' : v < 30 ? '#f4b400' : '#ef476f'}" stroke="#7d8597" stroke-width="2"/>
@@ -50,7 +50,7 @@
       <rect width="300" height="230" rx="16" fill="${v < 0 ? '#e9f4fb' : v >= 100 ? '#fff0ea' : '#f6f1ff'}"/>
       ${inside}<path d="M60 110 v62 q0 10 10 10 h100 q10 0 10 -10 v-62" fill="none" stroke="#7d8597" stroke-width="5"/><rect x="40" y="182" width="160" height="12" rx="4" fill="#555"/>${fire}${thermo}</svg>`;
   }
-  const etat = (v) =>
+  const etat = (v: number): string =>
     v < 0
       ? '🧊 <b>Solide</b> : de la glace. Elle garde sa forme.'
       : v === 0
@@ -96,10 +96,10 @@
           <div class="sc-msg sc-eau-score"></div>${SC.castor("Une grosse bûche lourde flotte, un petit clou léger coule. Ce n'est pas seulement le poids qui compte : la <b>matière</b> et l'<b>air</b> aussi !")}`,
         }) +
         M.ui.section({ icon: '✅', title: '4. Vérifie ta compréhension', body: '<div class="sc-eau-quiz"></div>' });
-      const $ = (s) => M.$(s, el);
+      const $ = <E extends Element = HTMLElement>(s: string): E => M.$<E>(s, el)!; // élément qu'on vient de rendre
 
       /* 1. thermomètre */
-      const show = (v) => {
+      const show = (v: number): void => {
         $('.sc-eau-stage').innerHTML = potSvg(v);
         $('.sc-eau-txt').innerHTML = etat(v);
       };
@@ -116,7 +116,7 @@
       M.$$('.sc-eau-go', el).forEach((b) => {
         b.onclick = () => {
           M.sfx.tap();
-          sl.set(+b.dataset.v);
+          sl.set(Number(b.dataset.v));
         };
       });
 
@@ -141,21 +141,22 @@
       ];
       SC.mountCycle($('.sc-eau-cyc'), CY);
       $('.sc-eau-cyc').onclick = (e) => {
-        const g = e.target.closest('[data-hot]');
+        const g = M.closest(e, '[data-hot]');
         if (!g) return;
-        const i = +g.dataset.hot.slice(1);
+        const i = Number(String(g.dataset.hot).slice(1));
         M.$$('.cyc-st', $('.sc-eau-cyc')).forEach((x, k) => x.classList.toggle('sc-on', k === i));
         $('.sc-eau-cyctxt').innerHTML = `<b>${CY[i].emoji} ${CY[i].label}</b> : ${CY[i].texte}`;
         M.say(CY[i].label + '. ' + CY[i].texte);
       };
 
       /* 3. labo */
-      const pred = {},
-        res = {};
+      const pred: Record<string, string | undefined> = {},
+        res: Record<string, boolean> = {};
+      const obj = (id: string): ScObjet => SC.must(SC.objet(id), 'objet ' + id);
       let busy = false;
       const drawLab = () => {
         $('.sc-eau-lab').innerHTML = LAB.map((id) => {
-          const o = SC.objet(id),
+          const o = obj(id),
             p = pred[id],
             r = res[id];
           return `<div class="sc-lab-item ${r ? (o.float ? 'yes' : 'no') : ''}" data-id="${id}"><span class="sc-big">${SC.pic(o, 44)}</span>${SC.cap(o.nom)}
@@ -166,34 +167,34 @@
             }</div>`;
         }).join('');
         const done = LAB.filter((id) => res[id]);
-        const surprises = done.filter((id) => pred[id] !== (SC.objet(id).float ? 'f' : 'c')).length;
+        const surprises = done.filter((id) => pred[id] !== (obj(id).float ? 'f' : 'c')).length;
         $('.sc-eau-score').innerHTML = done.length
           ? `Essais : ${done.length} / ${LAB.length} · Surprises 😮 : ${surprises}${done.length === LAB.length ? " — Bravo ! Les surprises, c'est comme ça qu'on apprend. 🌱" : ''}`
           : '';
       };
       $('.sc-eau-bac').innerHTML = `<div class="sc-stage">${SC.svg.bac('')}</div>`;
       $('.sc-eau-lab').onclick = async (e) => {
-        const it = e.target.closest('.sc-lab-item');
+        const it = M.closest(e, '.sc-lab-item');
         if (!it || busy) return;
-        const id = it.dataset.id;
-        const pb = e.target.closest('[data-p]');
+        const id = String(it.dataset.id);
+        const pb = M.closest(e, '[data-p]');
         if (pb) {
           pred[id] = pb.dataset.p;
           M.sfx.tap();
           drawLab();
           return;
         }
-        if (e.target.closest('[data-go]')) {
+        if (M.closest(e, '[data-go]')) {
           busy = true;
           try {
-            await SC.sim.bac($('.sc-eau-bac'), SC.objet(id));
+            await SC.sim.bac($('.sc-eau-bac'), obj(id));
           } finally {
             busy = false;
           }
           if (!el.isConnected) return;
           res[id] = true;
           drawLab();
-          const o = SC.objet(id);
+          const o = obj(id);
           M.say(`${o.nom} ${o.float ? 'flotte' : 'coule'}.`);
         }
       };

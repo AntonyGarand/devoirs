@@ -19,7 +19,7 @@
     render(el) {
       el.innerHTML = `${M.ui.callout("Écoute d'abord toute l'histoire. Ensuite, touche le 🔊 d'une phrase pour la réécouter. Tu peux aussi voir le sens en français.", { tone: 'tip' })}<div class="en-st"></div>`;
       M.ui.tabs(
-        M.$('.en-st', el),
+        M.$('.en-st', el)!,
         EN.STORIES.map((st) => ({
           id: st.id,
           label: `${EN.picStr(st.lines[0].pic.split('|')[0], 22)} ${M.esc(st.title)}`,
@@ -29,21 +29,22 @@
             <div class="en-hidefr en-stbox">${EN.storyHtml(st, { fr: true })}</div>
             <h3>📖 Mot à mot</h3><div class="en-rd"></div>
             <h3>✅ Vérifie ta compréhension</h3><div class="en-mq"></div>`;
-            const segs = (rate) => st.lines.map((l) => ({ text: l.en, lang: LANG, raw: true, rate }));
-            M.$('.en-all', panel).onclick = () => M.say(segs(), { pause: 600 });
-            M.$('.en-allslow', panel).onclick = () => M.say(segs(0.6), { pause: 800 });
-            M.$('.en-fr-toggle', panel).onclick = (e) => {
-              const b = M.$('.en-stbox', panel);
+            const segs = (rate?: number): SaySegment[] => st.lines.map((l) => ({ text: l.en, lang: LANG, raw: true, rate }));
+            M.$('.en-all', panel)!.onclick = () => M.say(segs(), { pause: 600 });
+            M.$('.en-allslow', panel)!.onclick = () => M.say(segs(0.6), { pause: 800 });
+            const toggle = M.$('.en-fr-toggle', panel)!;
+            toggle.onclick = () => {
+              const b = M.$('.en-stbox', panel)!;
               b.classList.toggle('en-hidefr');
-              e.target.textContent = b.classList.contains('en-hidefr') ? '💡 Voir le sens en français' : '🙈 Cacher le français';
+              toggle.textContent = b.classList.contains('en-hidefr') ? '💡 Voir le sens en français' : '🙈 Cacher le français';
             };
-            M.ui.reading(M.$('.en-rd', panel), { text: EN.storyText(st), lang: LANG });
+            M.ui.reading(M.$('.en-rd', panel)!, { text: EN.storyText(st), lang: LANG });
             const qs = st.questions
               .slice()
               .sort((a, b) => a.lvl - b.lvl)
               .slice(0, 3);
             M.ui.miniQuiz(
-              M.$('.en-mq', panel),
+              M.$('.en-mq', panel)!,
               qs.map((sq) => () => EN.storyQuestion(st, sq)),
             );
           },
@@ -67,14 +68,14 @@
         ${M.ui.section({ icon: '🔔', title: 'Des mots qui riment', intro: 'Deux mots <b>riment</b> quand ils finissent par le même son. Touche-les pour les entendre.', body: `<div class="en-pairs">${EN.RHYMES.map((r) => `<div class="en-pair">${[r.target, ...r.rhymes].map((id) => `${EN.picStr(EN.RW[id].pic, 34)}${M.ui.speak(id, { lang: LANG, label: id })}`).join(' ')}</div>`).join('')}</div>` })}
         ${M.ui.section({ icon: '✅', title: 'Vérifie ta compréhension', body: '<div class="en-mq"></div>' })}`;
       M.ui.tabs(
-        M.$('.en-chs', el),
+        M.$('.en-chs', el)!,
         EN.CHANTS.map((ch) => ({
           id: ch.id,
           label: `${EN.picStr(ch.lines[0].g, 22)} ${M.esc(ch.title)}`,
           render: (panel) => EN.mountChant(panel, ch),
         })),
       );
-      M.ui.miniQuiz(M.$('.en-mq', el), [EN.quiz('en-rimes', 0), EN.quiz('en-rimes', 0), EN.quiz('en-rimes', 1)]);
+      M.ui.miniQuiz(M.$('.en-mq', el)!, [EN.quiz('en-rimes', 0), EN.quiz('en-rimes', 0), EN.quiz('en-rimes', 1)]);
       EN.voiceWarn(el);
     },
   });

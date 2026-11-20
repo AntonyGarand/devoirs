@@ -8,10 +8,64 @@
    Vocabulaire officiel (PDA 2009, 1er cycle) : fort / doux; aigu / grave; long, très long, court, très court, silence;
    lent / rapide; pulsation; noire, croches, soupir; sec / résonnant; forme A-B; sons qui montent / descendent / se répètent.
    ===================================================================== */
+
+/** Ce qui fait le son d'un instrument. */
+type MuMatiere = 'bois' | 'metal' | 'peau' | 'graines';
+type MuQualite = 'sec' | 'resonnant';
+type MuMood = 'joyeuse' | 'triste' | 'calme' | 'agitee';
+interface MuMatiereInfo {
+  id: MuMatiere;
+  label: string;
+  icon: string;
+  soft: string;
+}
+/** Instrument de percussion de la classe. */
+interface MuInstrument {
+  id: string;
+  nom: string;
+  /** Avec l'article : « le tambour », « les maracas ». */
+  le: string;
+  /** Dessin (M.art). */
+  art: string;
+  /** Son de la synthèse (MuEvent.inst). */
+  inst: string;
+  matiere: MuMatiere;
+  qualite: MuQualite;
+  /** Comment on en joue. */
+  geste: string;
+}
+/** Percussion corporelle. */
+interface MuBodySound {
+  id: string;
+  nom: string;
+  icon: string;
+  inst: string;
+}
+/** Action à classer selon sa source sonore (bin : id de MU.SOURCE_BINS). */
+interface MuSourceItem {
+  t: string;
+  bin: string;
+}
+interface MuMoodInfo {
+  label: string;
+  icon: string;
+  /** Pourquoi (tempo, nuance, registre), html. */
+  why: string;
+}
+interface MusiqueApi {
+  MATIERES: MuMatiereInfo[];
+  INSTRUMENTS: MuInstrument[];
+  instById: Record<string, MuInstrument>;
+  CORPS: MuBodySound[];
+  SOURCES: MuSourceItem[];
+  SOURCE_BINS: { id: string; label: string }[];
+  MOODS: Record<MuMood, MuMoodInfo>;
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  const MU = (M.MU = M.MU || {});
+  const MU = (M.MU = M.MU || ({} as MusiqueApi));
 
   MU.MATIERES = [
     { id: 'bois', label: 'Bois', icon: '🪵', soft: '#f6e7d4' },

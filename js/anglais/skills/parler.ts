@@ -2,16 +2,38 @@
    anglais/skills/parler.js — domaine en-parler (habiletés 10 à 13)
    Langage fonctionnel (M.EN.EXPR), questions courantes (M.EN.QA_TYPES), sentiments.
    ===================================================================== */
+
+/** Réponse d'une question courante : phrase anglaise + image. */
+interface EnQaAnswer {
+  en: string;
+  pic: string;
+}
+/** Question courante (M.EN.QA_TYPES) : question entendue, scène, bonne réponse, réponse proche (même type), sens. */
+interface EnQa {
+  q: string;
+  pic: string;
+  ok: EnQaAnswer;
+  near: EnQaAnswer;
+  fr: string;
+}
+
+interface EnglishApi {
+  /** Deux expressions ne vont pas dans le même choix. */
+  exprClash(a: EnExpr, b: EnExpr): boolean;
+  /** Types de questions courantes (colour, count, what, weather, feel, age, name). */
+  QA_TYPES: Record<string, (lvl: number) => EnQa>;
+}
+
 (function () {
   'use strict';
   const M = window.M;
   const EN = M.EN;
   const LANG = EN.LANG;
-  const NEEDS = ['speech:en'];
+  const NEEDS: SkillNeed[] = ['speech:en'];
 
   /* Deux expressions ne vont pas dans le même choix : même groupe, même emoji ou un mot important en commun. */
   const STOP = new Set(['i', "i'm", 'you', 'a', 'the', 'me', 'can', 'is', 'it', 'to', 'and', 'my', 'your', 'go', 'good']);
-  const words = (x) =>
+  const words = (x: EnExpr): Set<string> =>
     new Set(
       x.en
         .toLowerCase()
@@ -19,7 +41,7 @@
         .split(/\s+/)
         .filter((w) => w && !STOP.has(w)),
     );
-  const AVOID = [
+  const AVOID: [string, string][] = [
     ['thank-you', 'welcome'],
     ['how-are-you', 'fine'],
     ['please', 'yes-please'],
@@ -51,19 +73,19 @@
     const wa = words(a);
     return [...words(b)].some((w) => wa.has(w));
   };
-  const checkExpr = (q) => {
-    const xs = (q.choices || []).map((c) => EN.expr[c.value]).filter(Boolean);
+  const checkExpr = (q: Question): CheckResult => {
+    const xs = (('choices' in q && q.choices) || []).map((c) => EN.expr[c.value]).filter(Boolean);
     for (let i = 0; i < xs.length; i++)
       for (let j = i + 1; j < xs.length; j++)
         if (EN.exprClash(xs[i], xs[j])) return `expressions incompatibles : ${xs[i].id} / ${xs[j].id}`;
   };
-  const sit = (x) => `<span class="en-sit"><span class="en-emo">${x.emoji}</span><span>${M.esc(x.situation)}</span></span>`;
-  const sayLabel = (text) => `<span class="en-say" lang="en">${M.esc(text)}</span>`;
-  const explainExpr = (x) =>
+  const sit = (x: EnExpr): string => `<span class="en-sit"><span class="en-emo">${x.emoji}</span><span>${M.esc(x.situation)}</span></span>`;
+  const sayLabel = (text: string): string => `<span class="en-say" lang="en">${M.esc(text)}</span>`;
+  const explainExpr = (x: EnExpr): string =>
     `${EN.ear(x.en, x.say)} veut dire <b>« ${M.esc(x.fr)} »</b>. On le dit quand : ${M.esc(x.situation.charAt(0).toLowerCase() + x.situation.slice(1))}`;
 
   /* ------------------------------ 10. Quand dit-on ça ? ------------------------------ */
-  const KINDS = {
+  const KINDS: Record<number, string[]> = {
     0: ['greeting', 'courtesy', 'pairwork', 'cheer'],
     1: ['greeting', 'courtesy', 'pairwork', 'cheer', 'needs'],
     2: ['greeting', 'courtesy', 'pairwork', 'cheer', 'needs', 'feelings', 'classroom'],
@@ -143,14 +165,14 @@
 
   /* ------------------------------ 12. Réponds à la question ------------------------------ */
   // Types de questions courantes; chaque type donne une scène, une bonne réponse (image + phrase) et des réponses « d'un autre type ».
-  const NAMES = [
+  const NAMES: [name: string, emoji: string][] = [
     ['Max', '🦫'],
     ['Lily', '🐰'],
     ['Sam', '🐻'],
     ['Mia', '🦊'],
   ];
-  const QA_TYPES = {
-    colour(lvl) {
+  const QA_TYPES: Record<string, (lvl: number) => EnQa> = {
+    colour() {
       const o = M.pick(EN.COLOR_OBJ.filter((x) => x.art !== 'en-mittens'));
       const c = M.pick(EN.ofTheme('colours', 1));
       const other = M.pick(EN.ofTheme('colours', 1).filter((x) => x !== c));
@@ -166,7 +188,8 @@
       const [emoji] = M.pick([['🍎'], ['🦆'], ['⭐'], ['🎈'], ['🐟']]);
       const n = M.rnd(2, lvl === 0 ? 5 : 9);
       const m = n + M.pick([-1, 1]);
-      const w = (k) => EN.word[EN.VOCAB.find((x) => x.theme === 'numbers' && x.n === k).id].word;
+      // k de 1 à 10 : toujours dans le vocabulaire des nombres (0 à 20)
+      const w = (k: number): string => EN.word[EN.VOCAB.find((x) => x.theme === 'numbers' && x.n === k)!.id].word;
       return {
         q: 'How many?',
         pic: `<span class="en-coll" style="font-size:2.2rem">${Array(n)
@@ -178,7 +201,7 @@
         fr: `« Combien ? » — « ${M.fr.cap(M.frNum(n))}. »`,
       };
     },
-    what(lvl) {
+    what() {
       const ws = EN.pickSet(
         EN.VOCAB.filter(
           (w) =>
@@ -221,7 +244,8 @@
     age() {
       const n = M.rnd(5, 9),
         m = n === 9 ? 8 : n + 1;
-      const w = (k) => EN.VOCAB.find((x) => x.theme === 'numbers' && x.n === k).word;
+      // k de 5 à 10 : toujours dans le vocabulaire des nombres (0 à 20)
+      const w = (k: number): string => EN.VOCAB.find((x) => x.theme === 'numbers' && x.n === k)!.word;
       return {
         q: 'How old are you?',
         pic: `<span class="en-emo" style="font-size:80px">🎂</span>${EN.digit(n)}`,
@@ -242,7 +266,7 @@
     },
   };
   EN.QA_TYPES = QA_TYPES;
-  const QA_BY_LVL = {
+  const QA_BY_LVL: Record<number, string[]> = {
     0: ['colour', 'count', 'what'],
     1: ['colour', 'count', 'what', 'weather', 'feel', 'age', 'name'],
     2: ['colour', 'count', 'what', 'weather', 'feel', 'age', 'name'],
@@ -264,7 +288,7 @@
         const c = QA_TYPES.colour(0),
           k = QA_TYPES.count(0),
           w = QA_TYPES.what(0);
-        const mains = { colour: c, count: k, what: w };
+        const mains: Record<string, EnQa> = { colour: c, count: k, what: w };
         const m = mains[type];
         const set = [
           { ...m.ok, v: 'ok' },
@@ -291,7 +315,7 @@
         0,
         lvl === 2 ? 3 : 4,
       );
-      const seen = new Set();
+      const seen = new Set<string>();
       set = set.filter((a) => (seen.has(a.en) ? false : seen.add(a.en)));
       return {
         prompt:
@@ -311,7 +335,7 @@
   });
 
   /* ------------------------------ 13. Comment ça va ? ------------------------------ */
-  const REASONS = {
+  const REASONS: Record<string, string[]> = {
     happy: ["I'm happy. It's my birthday!", "I'm happy. I have a new puppy!"],
     sad: ["I'm sad. I lost my ball.", "I'm sad. My friend is not here today."],
     angry: ["I'm angry! My brother broke my toy!", "I'm angry! It's not fair!"],

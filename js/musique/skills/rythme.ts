@@ -4,6 +4,12 @@
    ta = noire (1 temps), ti-ti = 2 croches (1 temps), chut = soupir (1 temps de silence),
    ta-a = blanche (2 temps, enrichissement 2e cycle).
    ===================================================================== */
+
+interface MusiqueApi {
+  /** Petit air de 8 notes (pentatonique, ou notes : écarts en demi-tons depuis root), joué au tempo bpm. */
+  tune(bpm: number, opts?: { inst?: string; root?: number; notes?: readonly number[] }): MuTimedEvent[];
+}
+
 (function () {
   'use strict';
   const M = window.M;
@@ -13,23 +19,23 @@
   const PENTA = [0, 2, 4, 7, 9, 12, 14];
 
   /** Petit air de 8 notes (pentatonique), joué au tempo bpm. */
-  MU.tune = (bpm, { inst = 'xylo', root = 67, notes } = {}) => {
+  MU.tune = (bpm, { inst = 'xylo', root = 67, notes }: { inst?: string; root?: number; notes?: readonly number[] } = {}) => {
     const ns = notes || MU.seq(8).map((i) => (i === 0 || i === 7 ? 0 : pick(PENTA.slice(0, 6))));
     const spb = 60 / bpm;
     return ns.map((n, i) => ({ t: i * spb, inst, midi: root + n, vel: 0.75, dur: spb * 0.9 }));
   };
-  const SON = (i) => `Son ${i + 1}`;
-  const its2 = (evA, evB) => [
+  const SON = (i: number) => `Son ${i + 1}`;
+  const its2 = (evA: MuEvent[], evB: MuEvent[]): MuPlayerItem[] => [
     { label: SON(0), events: evA },
     { label: SON(1), events: evB },
   ];
-  const choice2 = (items, ans, extra) => ({
-    format: 'choice',
+  const choice2 = (items: MuPlayerItem[], ans: number, extra?: Partial<QuestionBase>) => ({
+    format: 'choice' as const,
     answer: String(ans),
     cols: 2,
     _mu: { items },
     choices: items.map((it, i) => ({ label: MU.tag(i, it.label), value: String(i) })),
-    viz: (el) => MU.player(el, items),
+    viz: (el: HTMLElement) => MU.player(el, items),
     ...extra,
   });
 
@@ -130,7 +136,7 @@
           viz: (el) => MU.player(el, [{ label: 'Écoute', events: evs }], { big: true }),
         };
       }
-      const regular = (spb) => MU.seq(8).map((i) => ({ t: i * spb, inst, vel: 0.85, dur: 0.15 }));
+      const regular = (spb: number) => MU.seq(8).map((i) => ({ t: i * spb, inst, vel: 0.85, dur: 0.15 }));
       const irregular = () => {
         const off = M.pick(MU.seq(7));
         let t = 0;
@@ -168,17 +174,19 @@
   });
 
   /* ---------------------------------------------------------------- ta / ti-ti / chut */
-  const KEY = (p) => p.join('-');
-  function patterns(lvl) {
-    const pool = lvl === 0 ? ['ta', 'titi'] : ['ta', 'titi', 'chut'];
-    let p;
+  const KEY = (p: MuBeat[]) => p.join('-');
+  function patterns(lvl: number) {
+    const pool: MuBeat[] = lvl === 0 ? ['ta', 'titi'] : ['ta', 'titi', 'chut'];
+    // niveau 2 : un rythme sans silence est refait une fois sur deux
+    const retryNoChut = (q: MuBeat[]) => lvl === 2 && !q.includes('chut') && Math.random() < 0.5;
+    let p: MuBeat[];
     do {
       p = MU.seq(4).map(() => pick(pool));
-    } while (new Set(p).size < 2 || p[0] === 'chut' || (lvl === 2 && !p.includes('chut') && Math.random() < 0.5));
+    } while (new Set(p).size < 2 || p[0] === 'chut' || retryNoChut(p));
     return p;
   }
-  function variants(p, pool) {
-    const out = new Map();
+  function variants(p: MuBeat[], pool: MuBeat[]) {
+    const out = new Map<string, MuBeat[]>();
     for (let i = 0; i < 60 && out.size < 2; i++) {
       const v = p.slice();
       const k = M.pick(MU.seq(4));
@@ -203,8 +211,8 @@
             ? pick(['ecoute', 'ecoute', 'nom', 'compte'])
             : pick(['ecoute', 'compte', 'blanche']);
       if (t === 'nom') {
-        const k = pick(lvl === 0 ? ['ta', 'titi'] : ['ta', 'titi', 'chut']);
-        const opts = ['ta', 'titi', 'chut'];
+        const k = pick<MuBeat>(lvl === 0 ? ['ta', 'titi'] : ['ta', 'titi', 'chut']);
+        const opts: MuBeat[] = ['ta', 'titi', 'chut'];
         return {
           prompt: `Comment dit-on ce rythme ? ${MU.rhythmSvg([k], { labels: false })}`,
           format: 'choice',
@@ -227,7 +235,7 @@
         };
       }
       if (t === 'blanche') {
-        const p = shuffle(['taa', 'ta', 'titi']);
+        const p = shuffle<MuBeat>(['taa', 'ta', 'titi']);
         const beats = p.reduce((s, x) => s + MU.beatsOf(x), 0);
         return {
           prompt: `La <b>blanche</b> (une note vide) dure <b>2 temps</b> : « ta-a ». Combien de <b>temps</b> dure ce rythme ? ${MU.rhythmSvg(p)}`,
@@ -238,7 +246,7 @@
         };
       }
       const p = patterns(lvl);
-      const pool = lvl === 0 ? ['ta', 'titi'] : ['ta', 'titi', 'chut'];
+      const pool: MuBeat[] = lvl === 0 ? ['ta', 'titi'] : ['ta', 'titi', 'chut'];
       const opts = shuffle([p, ...variants(p, pool)]);
       const bpm = lvl === 0 ? 80 : 92;
       const evs = MU.rhythm(p, { bpm, inst: pick(['claves', 'tambour', 'woodblock', 'mains']), countIn: true });

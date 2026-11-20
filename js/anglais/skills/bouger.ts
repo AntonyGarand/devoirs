@@ -2,20 +2,38 @@
    anglais/skills/bouger.js — domaine en-bouger (habiletés 7 à 9, TPR)
    Corps d'enfant (M.EN.bodySvg), scènes SVG (M.EN.scene), poses d'action.
    ===================================================================== */
+
+/** Objet d'une scène (M.EN.scene) : emoji ou dessin, zone data-hot = id. */
+interface EnSceneObj {
+  id: string;
+  emoji?: string;
+  art?: string;
+  color?: string;
+  /** Taille (px du viewBox, défaut 76). */
+  size?: number;
+}
+
+interface EnglishApi {
+  /** Partie du corps → « sa tête », « ses yeux »… */
+  FR_POSS: Record<string, string>;
+  /** Scène SVG : objets placés au hasard sur un décor (farm, bedroom, classroom, winter, home). */
+  scene(bg: string, objs: EnSceneObj[], opts?: { label?: string }): string;
+}
+
 (function () {
   'use strict';
   const M = window.M;
   const EN = M.EN;
   const LANG = EN.LANG;
-  const NEEDS = ['speech:en'];
+  const NEEDS: SkillNeed[] = ['speech:en'];
 
   /* ------------------------------ 7. Touche ton nez ! ------------------------------ */
-  const PARTS = {
+  const PARTS: Record<number, string[]> = {
     0: ['head', 'hands', 'feet', 'tummy', 'arms', 'legs'],
     1: ['head', 'hands', 'feet', 'tummy', 'arms', 'legs', 'eyes', 'nose', 'mouth', 'ears'],
     2: ['head', 'hands', 'feet', 'tummy', 'arms', 'legs', 'eyes', 'nose', 'mouth', 'ears', 'hair', 'knees', 'toes', 'shoulders'],
   };
-  const FR_POSS = {
+  const FR_POSS: Record<string, string> = {
     head: 'sa tête',
     eyes: 'ses yeux',
     nose: 'son nez',
@@ -32,8 +50,13 @@
     tummy: 'son ventre',
   };
   EN.FR_POSS = FR_POSS;
-  const SUBS = { head: ['eyes', 'nose', 'mouth', 'ears', 'hair'], legs: ['knees'], feet: ['toes'], arms: ['shoulders'] };
-  M.registerSkill({
+  const SUBS: Record<string, string[]> = {
+    head: ['eyes', 'nose', 'mouth', 'ears', 'hair'],
+    legs: ['knees'],
+    feet: ['toes'],
+    arms: ['shoulders'],
+  };
+  M.registerSkill<QuestionOf<'hotspot'>>({
     id: 'en-corps',
     domain: 'en-bouger',
     title: 'Touche ton nez !',
@@ -47,7 +70,7 @@
     },
     gen({ lvl = 0 }) {
       const zones = PARTS[lvl];
-      let part = M.pickWeighted(zones, (p) => p, 'en-corps');
+      const part = M.pickWeighted(zones, (p) => p, 'en-corps');
       // au niveau 2, « head » seul serait trop petit (yeux, nez… sont des zones à part) : on le replie
       const fold = SUBS[part] ? [part] : [];
       // consignes variées (TPR) : Touch / Show me / Point to / Where is…?
@@ -72,7 +95,7 @@
   });
 
   /* ------------------------------ 8. Trouve dans l'image ------------------------------ */
-  const BG = {
+  const BG: Record<string, string> = {
     farm: '<rect width="400" height="300" fill="#bfe6ff"/><circle cx="350" cy="40" r="24" fill="#ffd166"/><rect y="105" width="400" height="195" fill="#9ad27a"/><path d="M20 105 L20 50 L60 22 L100 50 L100 105 Z" fill="#c0392b" stroke="#7b241c" stroke-width="3"/><rect x="48" y="70" width="24" height="35" fill="#fff"/><path d="M130 105 v-18 M150 105 v-18 M170 105 v-18 M190 105 v-18 M120 92 h80" stroke="#8d5524" stroke-width="5"/>',
     bedroom:
       '<rect width="400" height="300" fill="#fdf0d5"/><rect y="110" width="400" height="190" fill="#e0b98a"/><rect x="290" y="14" width="80" height="70" rx="6" fill="#cfe9f7" stroke="#8d5524" stroke-width="5"/><line x1="330" y1="14" x2="330" y2="84" stroke="#8d5524" stroke-width="4"/><rect x="20" y="40" width="110" height="64" rx="10" fill="#9b5de5" opacity=".35"/>',
@@ -82,7 +105,7 @@
       '<rect width="400" height="300" fill="#dbeefc"/><rect y="105" width="400" height="195" fill="#ffffff"/><path d="M0 105 Q100 90 200 105 T400 105" fill="#fff" stroke="#c9dff0" stroke-width="3"/><g fill="#9cc7e6"><circle cx="40" cy="30" r="3"/><circle cx="120" cy="60" r="3"/><circle cx="210" cy="24" r="3"/><circle cx="300" cy="66" r="3"/><circle cx="370" cy="30" r="3"/></g>',
     home: '<rect width="400" height="300" fill="#fff1e0"/><rect y="115" width="400" height="185" fill="#c9a27a"/><rect x="40" y="20" width="70" height="56" fill="#cfe9f7" stroke="#fff" stroke-width="6"/><rect x="270" y="30" width="90" height="60" rx="8" fill="#f2c14e" opacity=".5"/>',
   };
-  const SLOTS = [
+  const SLOTS: [number, number][] = [
     [52, 160],
     [150, 160],
     [250, 160],
@@ -107,14 +130,14 @@
       .join('');
     return `<svg class="en-scene" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${M.esc(label)}">${BG[bg] || ''}${body}</svg>`;
   };
-  const W = (id) => EN.word[id];
-  const SCENES = {
+  const W = (id: string): EnWord => EN.word[id];
+  const SCENES: Record<string, string[]> = {
     farm: ['cow', 'pig', 'horse', 'duck', 'dog', 'cat', 'rabbit', 'mouse', 'bird', 'frog'],
     bedroom: ['teddy-bear', 'robot', 'puzzle', 'train', 'kite', 'balloon', 'book', 'cat'],
     classroom: ['book', 'pencil', 'crayon', 'scissors', 'ruler', 'backpack', 'computer', 'eraser'],
     winter: ['snowman', 'tree', 'sled', 'skates', 'scarf', 'dog', 'boots', 'bird'],
   };
-  const objOf = (w) => ({ id: w.id, emoji: w.emoji, art: w.art, color: w.color });
+  const objOf = (w: EnWord): EnSceneObj => ({ id: w.id, emoji: w.emoji, art: w.art, color: w.color });
   M.registerSkill({
     id: 'en-trouve',
     domain: 'en-bouger',
@@ -177,7 +200,7 @@
         EN.ofTheme('colours', lvl).filter((c) => c.id !== 'white'),
         mode === 'size' ? 2 : 3,
       );
-      const objs = [];
+      const objs: (EnSceneObj & { c: EnWord; b?: string })[] = [];
       if (mode === 'size')
         cols.forEach((c) =>
           ['big', 'little'].forEach((b) => objs.push({ id: b + '-' + c.id, art: k.art, color: c.id, size: b === 'big' ? 84 : 46, c, b })),
@@ -194,7 +217,7 @@
         audio: EN.audio(cmd),
         format: 'hotspot',
         lang: LANG,
-        html: EN.scene(k.bg, objs.concat(others)),
+        html: EN.scene(k.bg, [...objs, ...others]),
         answer: t.id,
         answerText: `${k.fr} (${t.b ? (t.b === 'big' ? (k.f ? 'grosse, ' : 'gros, ') : k.f ? 'petite, ' : 'petit, ') : ''}${EN.frColour(t.c.fr, k)})`,
         answerSay: cmd,
@@ -216,7 +239,7 @@
     ['stand-up', 'wave'],
     ['stand-up', 'raise-hand'],
   ];
-  const confuse = (a, b) => CONFUSE.some(([x, y]) => (x === a.id && y === b.id) || (x === b.id && y === a.id));
+  const confuse = (a: EnWord, b: EnWord): boolean => CONFUSE.some(([x, y]) => (x === a.id && y === b.id) || (x === b.id && y === a.id));
   M.registerSkill({
     id: 'en-actions',
     domain: 'en-bouger',

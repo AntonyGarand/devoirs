@@ -2,6 +2,71 @@
    skills/operations.js — Les opérations (PFEQ, Arithmétique)
    Sens des opérations + Opérations sur les nombres, 1er cycle
    ===================================================================== */
+
+/** Stratégie de calcul suggérée (M.opStrat.add / sub). */
+interface OpStrategy {
+  key: string;
+  name: string;
+  txt: string;
+}
+interface OpStratApi {
+  add(a: number, b: number): OpStrategy;
+  sub(a: number, b: number): OpStrategy;
+}
+/** Terme d'un côté de la balance : valeur, retranchée (neg) ou inconnue (unk). */
+interface OpBalanceTerm {
+  v: number;
+  neg?: boolean;
+  unk?: boolean;
+}
+interface OpBalanceOpts {
+  L: OpBalanceTerm[];
+  R: OpBalanceTerm[];
+  /** Valeur de l'inconnue (showMe). */
+  ans?: number;
+}
+interface OpGroupsOpts {
+  /** Nombre de groupes (ou de rangées). */
+  g: number;
+  /** Objets par groupe. */
+  k: number;
+  emoji: string;
+  layout: 'groups' | 'array';
+  box?: boolean;
+}
+/** Partage entre n enfants, ou boîtes de k (contenance). */
+type OpShareOpts = { total: number; n: number; emoji: string; mode: 'share' } | { total: number; k: number; emoji: string; mode: 'boxes' };
+interface OpCompareOpts {
+  a: number;
+  b: number;
+  /** Noms des deux rangées. */
+  na: string;
+  nb: string;
+  emoji: string;
+}
+interface OpBagPart {
+  n: number;
+  k: 'A' | 'B';
+}
+interface OpBagOpts {
+  parts: OpBagPart[];
+  emoji: string;
+  /** Indices des objets barrés par showMe. */
+  cross: number[];
+  hint: string;
+}
+interface OpVizApi {
+  balance(el: HTMLElement, o: OpBalanceOpts): ShowMeCtl;
+  groups(el: HTMLElement, o: OpGroupsOpts): ShowMeCtl;
+  share(el: HTMLElement, o: OpShareOpts): ShowMeCtl;
+  compare(el: HTMLElement, o: OpCompareOpts): ShowMeCtl;
+  bag(el: HTMLElement, o: OpBagOpts): ShowMeCtl;
+}
+interface MApi {
+  opStrat: OpStratApi;
+  opViz: OpVizApi;
+}
+
 (function () {
   'use strict';
   const M = window.M;
@@ -13,10 +78,10 @@
   /* ------------------------------------------------------------------
      Styles propres au domaine (préfixe op-)
      ------------------------------------------------------------------ */
-  const css = (str) => {
+  const css = (str: string) => {
     try {
       M.css(str);
-    } catch (e) {
+    } catch {
       /* hors navigateur (tools/check-skills.js) */
     }
   };
@@ -90,16 +155,16 @@
      ------------------------------------------------------------------ */
   // Prénoms : M.people (services.js)
   const MINUS = '−';
-  const op = (s) => `<span class="op">${s}</span>`;
-  const sym = (s) => (s === '-' ? MINUS : s);
+  const op = (s: string) => `<span class="op">${s}</span>`;
+  const sym = (s: string) => (s === '-' ? MINUS : s);
   /** eq('7','+','5','=','{?}') → ligne d'équation */
-  const eq = (...parts) =>
-    `<div class="eq">${parts.map((p) => (['+', '-', '=', '×', MINUS].includes(p) ? op(sym(p)) : `<span>${p}</span>`)).join('')}</div>`;
-  const instr = (t) => `<div class="op-instr">${t}</div>`;
+  const eq = (...parts: (string | number)[]) =>
+    `<div class="eq">${parts.map((p) => (typeof p === 'string' && ['+', '-', '=', '×', MINUS].includes(p) ? op(sym(p)) : `<span>${p}</span>`)).join('')}</div>`;
+  const instr = (t: string) => `<div class="op-instr">${t}</div>`;
   /** « de » ou « d' » devant une voyelle : de('œufs') → « d'œufs » */
-  const de = (w) => (/^[aeiouyéèêàâîôûœh]/i.test(w) ? "d'" : 'de ') + w;
-  const range = (a, b) => {
-    const r = [];
+  const de = (w: string) => (/^[aeiouyéèêàâîôûœh]/i.test(w) ? "d'" : 'de ') + w;
+  const range = (a: number, b: number) => {
+    const r: number[] = [];
     if (a <= b) for (let i = a; i <= b; i++) r.push(i);
     else for (let i = a; i >= b; i--) r.push(i);
     return r;
@@ -108,7 +173,7 @@
   /* ------------------------------------------------------------------
      Stratégies de calcul (partagées avec la page Apprendre)
      ------------------------------------------------------------------ */
-  function addStrat(a, b) {
+  function addStrat(a: number, b: number): OpStrategy {
     const s = a + b,
       big = Math.max(a, b),
       small = Math.min(a, b);
@@ -161,7 +226,7 @@
       txt: `Pars du plus grand, ${big}, et compte ${small} de plus : ${countOn()}. Ça fait ${s}.`,
     };
   }
-  function subStrat(a, b) {
+  function subStrat(a: number, b: number): OpStrategy {
     const r = a - b;
     if (b === 0) return { key: 'zero', name: 'Enlever zéro', txt: `Enlever 0 ne change rien : ${a} − 0 = ${a}.` };
     if (r === 0) return { key: 'tout', name: 'Tout enlever', txt: `Si on enlève tout, il ne reste rien : ${a} − ${b} = 0.` };
@@ -208,14 +273,14 @@
   M.opStrat = { add: addStrat, sub: subStrat };
 
   /* séquences de bonds pour la grenouille */
-  function seqAdd(a, b) {
+  function seqAdd(a: number, b: number): number[] {
     const s = a + b;
     if (!b) return [];
     if (a < 10 && s > 10) return [10, s];
     if (b <= 3) return range(a + 1, s);
     return [s];
   }
-  function seqSub(a, b) {
+  function seqSub(a: number, b: number): number[] {
     const r = a - b;
     if (!b) return [];
     if (a > 10 && r < 10) return [10, r];
@@ -223,8 +288,8 @@
     return [r];
   }
   /** Bonds de 10 puis unités (en passant par la dizaine si on la traverse). */
-  function seqTens(a, b, sign) {
-    const out = [];
+  function seqTens(a: number, b: number, sign: number) {
+    const out: number[] = [];
     let pos = a;
     const tens = Math.floor(b / 10),
       u = b % 10;
@@ -245,8 +310,17 @@
      Visuels
      ------------------------------------------------------------------ */
   /** Attache viz + showMe à une question. mount(el) → api {showMe?} */
-  function withViz(q, mount) {
-    let api = null;
+  /** Contrôle d'un visuel monté : démonstration facultative. */
+  interface VizCtl {
+    showMe?(): unknown;
+  }
+  /** Un modèle visuel d'un onglet. */
+  interface VizModel {
+    label: string;
+    mount(sub: HTMLElement): VizCtl | null | undefined;
+  }
+  function withViz<Q extends Question>(q: Q, mount: (el: HTMLElement) => VizCtl | null | undefined): Q {
+    let api: VizCtl | null = null;
     q.viz = (el) => {
       el.onclick = null;
       api = mount(el) || null;
@@ -255,14 +329,14 @@
     return q;
   }
   /** Onglets entre plusieurs modèles visuels. models: [{label, mount(sub)}] */
-  function tabs(el, models) {
-    let api = null;
+  function tabs(el: HTMLElement, models: VizModel[]): VizCtl {
+    let api: VizCtl | null = null;
     el.innerHTML =
       (models.length > 1
         ? `<div class="op-tabs">${models.map((m, i) => `<button class="op-tab${i ? '' : ' on'}" data-t="${i}">${m.label}</button>`).join('')}</div>`
         : '') + '<div class="op-pane"></div>';
-    const pane = el.querySelector('.op-pane');
-    function mount(i) {
+    const pane = M.$('.op-pane', el)!;
+    function mount(i: number) {
       el.querySelectorAll('.op-tab').forEach((b, j) => b.classList.toggle('on', j === i));
       pane.innerHTML = '';
       const sub = document.createElement('div');
@@ -270,17 +344,30 @@
       api = models[i].mount(sub) || null;
     }
     el.onclick = (e) => {
-      const b = e.target.closest && e.target.closest('.op-tab');
+      const b = M.closest(e, '.op-tab');
       if (!b || !el.contains(b)) return;
       M.sfx.tap();
-      mount(+b.dataset.t);
+      mount(Number(b.dataset.t));
     };
     mount(0);
     return { showMe: () => (api && api.showMe ? api.showMe() : undefined) };
   }
-  const countersModel = (o) => ({ label: '🔴 Cadres de dix', mount: (sub) => M.viz.counters(sub, o) });
+  /** n jetons de la même couleur. */
+  const cellsOf = (n: number, kind: CounterKind): CounterCellSpec[] => Array.from({ length: n }, () => ({ kind }));
+  const countersModel = (o: CountersOpts): VizModel => ({ label: '🔴 Cadres de dix', mount: (sub) => M.viz.counters(sub, o) });
+  interface LineModelOpts {
+    label?: string;
+    lo: number;
+    hi: number;
+    start: number;
+    /** Arrêts successifs de la grenouille (showMe). */
+    seq: number[];
+    hint?: string;
+    labelEvery?: number;
+    buttons?: number[];
+  }
   /** Droite numérique avec une suite de bonds pour la démonstration. */
-  function lineModel(o) {
+  function lineModel(o: LineModelOpts): VizModel {
     return {
       label: o.label || '🐸 Droite numérique',
       mount(sub) {
@@ -310,7 +397,7 @@
   }
 
   /* ---------- Balance ⚖️ ---------- */
-  function balanceViz(el, o) {
+  function balanceViz(el: HTMLElement, o: OpBalanceOpts): ShowMeCtl {
     // o: { L:[{v, neg?, unk?}], R:[...], ans? }
     const terms = o.L.concat(o.R);
     const hasUnk = terms.some((t) => t.unk);
@@ -318,12 +405,12 @@
       angle = 0,
       weighed = false,
       tok = 0;
-    const val = (side) => side.reduce((s, t) => s + (t.neg ? -1 : 1) * (t.unk ? trial : t.v), 0);
-    const label = (side) =>
+    const val = (side: OpBalanceTerm[]) => side.reduce((s, t) => s + (t.neg ? -1 : 1) * (t.unk ? trial : t.v), 0);
+    const label = (side: OpBalanceTerm[]) =>
       side.map((t, i) => (i ? (t.neg ? ` ${MINUS} ` : ' + ') : '') + (t.unk ? `<tspan class="op-unk">${trial}</tspan>` : t.v)).join('');
     const COLORS = ['var(--A)', 'var(--B)', 'var(--org)'];
-    function dots(side, cx) {
-      const list = [];
+    function dots(side: OpBalanceTerm[], cx: number) {
+      const list: { col: string; x: boolean }[] = [];
       let ci = 0;
       side.forEach((t) => {
         if (t.neg) {
@@ -354,8 +441,8 @@
         })
         .join('');
     }
-    const panDy = (side) => (side === 'L' ? -1 : 1) * 160 * Math.sin((angle * Math.PI) / 180);
-    function pan(side, cx) {
+    const panDy = (side: 'L' | 'R') => (side === 'L' ? -1 : 1) * 160 * Math.sin((angle * Math.PI) / 180);
+    function pan(side: 'L' | 'R', cx: number) {
       return `<g class="op-pan op-pan${side}" style="transform:translateY(${panDy(side).toFixed(1)}px)">
         <path d="M${cx} 60 L${cx - 68} 150 M${cx} 60 L${cx + 68} 150" stroke="#b9b2a0" stroke-width="2"/>
         ${dots(side === 'L' ? o.L : o.R, cx)}
@@ -385,11 +472,11 @@
         <div class="row" style="justify-content:center"><button class="btn blue op-weigh">⚖️ Peser</button></div>
         <div class="viz-status">${status()}</div>`;
     }
-    function setAngle(a) {
+    function setAngle(a: number) {
       angle = a;
-      const beam = el.querySelector('.op-beam'),
-        pl = el.querySelector('.op-panL'),
-        pr = el.querySelector('.op-panR');
+      const beam = M.$<SVGGElement>('.op-beam', el),
+        pl = M.$<SVGGElement>('.op-panL', el),
+        pr = M.$<SVGGElement>('.op-panR', el);
       if (!beam || !pl || !pr) return;
       beam.style.transform = `rotate(${a}deg)`;
       pl.style.transform = `translateY(${panDy('L').toFixed(1)}px)`;
@@ -406,7 +493,7 @@
       if (d === 0) M.sfx.good();
       else M.sfx.tone([330, 260], 0.1, 'triangle', 0.08);
     }
-    function setTrial(v) {
+    function setTrial(v: number) {
       trial = Math.max(0, Math.min(25, v));
       const wasAngle = angle;
       weighed = false;
@@ -417,7 +504,7 @@
       });
     }
     el.onclick = (e) => {
-      const t = e.target.closest ? e.target : null;
+      const t = e.target instanceof Element ? e.target : null;
       if (!t) return;
       if (t.closest('.op-weigh')) {
         tok++;
@@ -456,21 +543,21 @@
   }
 
   /* ---------- Groupes égaux / rangées ---------- */
-  function groupsViz(el, o) {
+  function groupsViz(el: HTMLElement, o: OpGroupsOpts): ShowMeCtl {
     // o: { g, k, emoji, layout:'groups'|'array', box? }
     const N = o.g * o.k;
-    let labels,
-      sums,
+    let labels: number[] = [],
+      sums: (number | null)[] = [],
       tok = 0;
     const reset = () => {
       labels = Array(N).fill(0);
       sums = Array(o.g).fill(null);
     };
     const counted = () => labels.filter((x) => x).length;
-    function item(i, flash) {
+    function item(i: number, flash?: number) {
       return `<button class="op-it ${labels[i] ? 'hl' : ''} ${i === flash ? 'flash' : ''}" data-i="${i}">${o.emoji}${labels[i] ? `<span class="op-n">${labels[i]}</span>` : ''}</button>`;
     }
-    function render(flash) {
+    function render(flash?: number) {
       let h = `<div class="viz-hint">${o.layout === 'array' ? 'Touche chaque objet pour le compter. Tu peux compter rangée par rangée !' : 'Touche chaque objet pour le compter. Tu peux compter groupe par groupe !'}</div>`;
       if (o.layout === 'array') {
         h += `<div class="op-arr-wrap"><div class="op-array" style="grid-template-columns:repeat(${o.k}, auto) auto">`;
@@ -493,10 +580,10 @@
       el.innerHTML = h;
     }
     el.onclick = (e) => {
-      const b = e.target.closest && e.target.closest('.op-it');
+      const b = M.closest(e, '.op-it');
       if (!b) return;
       tok++;
-      const i = +b.dataset.i;
+      const i = Number(b.dataset.i);
       if (labels[i]) {
         const L = labels[i];
         labels[i] = 0;
@@ -532,11 +619,11 @@
 
   /* ---------- Partage / contenance ---------- */
   const KIDS = ['🧒', '👧', '👦', '🧒🏽', '👧🏻', '👦🏾'];
-  function shareViz(el, o) {
+  function shareViz(el: HTMLElement, o: OpShareOpts): ShowMeCtl {
     // o: { total, n (enfants) | k (par boîte), emoji, mode:'share'|'boxes' }
-    let pile,
-      plates,
-      next,
+    let pile = 0,
+      plates: number[] = [],
+      next = 0,
       tok = 0;
     const reset = () => {
       pile = o.total;
@@ -603,8 +690,8 @@
       flashI = -1;
     }
     el.onclick = (e) => {
-      const t = e.target;
-      if (!t || !t.closest) return;
+      const t = e.target instanceof Element ? e.target : null;
+      if (!t) return;
       if (t.closest('.op-pile')) {
         tok++;
         if (dealOne()) {
@@ -647,13 +734,13 @@
   }
 
   /* ---------- Comparaison (deux rangées alignées) ---------- */
-  function compareViz(el, o) {
+  function compareViz(el: HTMLElement, o: OpCompareOpts): ShowMeCtl {
     // o: { a, b, na, nb, emoji }  (a > b)
     const W = Math.max(o.a, o.b);
     let pairs = 0,
-      labels = {},
+      labels: Record<number, number> = {},
       tok = 0;
-    function row(n, name, isLong) {
+    function row(n: number, name: string, isLong: boolean) {
       let h = `<span class="op-nm">${name}</span>`;
       for (let i = 0; i < W; i++) {
         if (i >= n) {
@@ -673,15 +760,15 @@
         <div class="viz-status">${n ? `De plus : ${n}` : ''}</div>`;
     }
     el.onclick = (e) => {
-      const b = e.target.closest && e.target.closest('.op-it');
+      const b = M.closest(e, '.op-it');
       if (!b || b.dataset.x !== '1') return;
       tok++;
-      const i = +b.dataset.i;
+      const i = Number(b.dataset.i);
       if (labels[i]) {
         const L = labels[i];
         delete labels[i];
         Object.keys(labels).forEach((k) => {
-          if (labels[k] > L) labels[k]--;
+          if (labels[Number(k)] > L) labels[Number(k)]--;
         });
       } else labels[i] = Object.keys(labels).length + 1;
       M.sfx.tap();
@@ -715,9 +802,9 @@
   }
 
   /* ---------- Sac d'objets (problèmes à deux étapes) ---------- */
-  function bagViz(el, o) {
+  function bagViz(el: HTMLElement, o: OpBagOpts): ShowMeCtl {
     // o: { parts:[{n, k:'A'|'B'}], emoji, cross:[indices], hint }
-    let items,
+    let items: { k: OpBagPart['k']; x: boolean; lab: number }[] = [],
       tok = 0;
     const reset = () => {
       items = [];
@@ -725,20 +812,20 @@
         for (let i = 0; i < p.n; i++) items.push({ k: p.k, x: false, lab: 0 });
       });
     };
-    function render(flash) {
+    function render(flash?: number) {
       const x = items.filter((i) => i.x).length;
       el.innerHTML = `<div class="viz-hint">${o.hint}</div><div class="op-groups" style="gap:4px">${items.map((it, i) => `<button class="op-it k${it.k} ${it.x ? 'x' : ''} ${i === flash ? 'flash' : ''}" data-i="${i}">${o.emoji}${it.lab ? `<span class="op-n g">${it.lab}</span>` : ''}</button>`).join('')}</div>
         <div class="viz-status">En tout : ${items.length} · Barrés : ${x} · Il reste : ${items.length - x}</div>`;
     }
     el.onclick = (e) => {
-      const b = e.target.closest && e.target.closest('.op-it');
+      const b = M.closest(e, '.op-it');
       if (!b) return;
       tok++;
-      const it = items[+b.dataset.i];
+      const it = items[Number(b.dataset.i)];
       it.x = !it.x;
       it.lab = 0;
       M.sfx.tap();
-      render(+b.dataset.i);
+      render(Number(b.dataset.i));
     };
     reset();
     render();
@@ -767,10 +854,10 @@
   }
 
   /* ---------- Suites ---------- */
-  function seqNumViz(el, o) {
-    // o: { terms:[n|null], steps:[d] }  null = case inconnue ; ans
-    let shown,
-      filled,
+  /** terms : null = case inconnue; step : la règle; ans : la valeur cachée. */
+  function seqNumViz(el: HTMLElement, o: { terms: (number | null)[]; step: number; ans: number }): ShowMeCtl {
+    let shown: boolean[] = [],
+      filled = false,
       tok = 0;
     const reset = () => {
       shown = o.terms.slice(1).map(() => false);
@@ -780,8 +867,10 @@
       let h = '<div class="viz-hint">Touche les flèches pour voir de combien on avance ou recule à chaque fois.</div><div class="op-seq">';
       o.terms.forEach((t, i) => {
         if (i) {
-          const d = o.terms[i] - o.terms[i - 1];
-          const known = o.terms[i] != null && o.terms[i - 1] != null;
+          const cur = o.terms[i],
+            prev = o.terms[i - 1];
+          const known = cur != null && prev != null;
+          const d = known ? cur - prev : 0;
           const lab = shown[i - 1]
             ? known
               ? d >= 0
@@ -799,10 +888,10 @@
       el.innerHTML = h + '<div class="viz-status"></div>';
     }
     el.onclick = (e) => {
-      const b = e.target.closest && e.target.closest('.op-step');
+      const b = M.closest(e, '.op-step');
       if (!b) return;
       tok++;
-      shown[+b.dataset.s] = true;
+      shown[Number(b.dataset.s)] = true;
       M.sfx.tap();
       render();
     };
@@ -828,11 +917,11 @@
       },
     };
   }
-  function seqMotifViz(el, o) {
-    // o: { items:[emoji|null], unitLen, ans }
+  /** items : emoji, ou null pour la case cachée; unitLen : longueur du motif. */
+  function seqMotifViz(el: HTMLElement, o: { items: (string | null)[]; unitLen: number; ans: string }): ShowMeCtl {
     let banded = false,
       filled = false,
-      hl = {},
+      hl: Record<number, boolean> = {},
       tok = 0;
     function render() {
       el.innerHTML = `<div class="viz-hint">Trouve le motif qui se répète. Touche les éléments pour les marquer.</div><div class="op-seq">${o.items
@@ -846,10 +935,10 @@
         )}</div><div class="viz-status">${banded ? `Le motif a ${o.unitLen} éléments : ${o.items.slice(0, o.unitLen).join(' ')}` : ''}</div>`;
     }
     el.onclick = (e) => {
-      const b = e.target.closest && e.target.closest('.op-term[data-i]');
+      const b = M.closest(e, '.op-term[data-i]');
       if (!b) return;
       tok++;
-      const i = +b.dataset.i;
+      const i = Number(b.dataset.i);
       hl[i] = !hl[i];
       M.sfx.tap();
       render();
@@ -877,18 +966,17 @@
   }
 
   /* ---------- Blocs avec centaines (statique + révélation) ---------- */
-  function hundredsLabel(n) {
+  function hundredsLabel(n: number) {
     const c = Math.floor(n / 100),
       d = Math.floor((n % 100) / 10),
       u = n % 10;
-    const parts = [];
+    const parts: string[] = [];
     if (c) parts.push(`${c} ${M.plural(c, 'centaine')}`);
     if (d) parts.push(`${d} ${M.plural(d, 'dizaine')}`);
     if (u) parts.push(`${u} ${M.plural(u, 'unité')}`);
     return parts.join(', ') || '0';
   }
-  function blocks1000Viz(el, o) {
-    // o: { a, b, opSign:'+'|'−', r }
+  function blocks1000Viz(el: HTMLElement, o: { a: number; b: number; opSign: string; r: number }) {
     let reveal = false;
     function render() {
       el.innerHTML = `<div class="viz-hint">Un carré = 100, une barre = 10, un petit cube = 1.</div><div class="op-b1000">
@@ -916,14 +1004,14 @@
   /* ------------------------------------------------------------------
      Modèles + / − jusqu'à 20 (cadres de dix + droite numérique)
      ------------------------------------------------------------------ */
-  function addModels(a, b, hi) {
+  function addModels(a: number, b: number, hi?: number) {
     hi = hi || (a + b > 10 ? 20 : 10);
     return [
       countersModel({ a, b, op: 'add', unknown: 'r' }),
       lineModel({ lo: 0, hi, start: a, seq: seqAdd(a, b), hint: `Pars de ${a} et avance de ${b}.` }),
     ];
   }
-  function subModels(a, b) {
+  function subModels(a: number, b: number) {
     return [
       countersModel({ a, b, op: 'sub', unknown: 'r' }),
       lineModel({ lo: 0, hi: a > 10 ? 20 : 10, start: a, seq: seqSub(a, b), hint: `Pars de ${a} et recule de ${b}.` }),
@@ -979,7 +1067,7 @@
           (el) =>
             tabs(el, [
               countersModel({
-                cells: [...Array(a).fill({ kind: 'A' }), ...Array(b).fill({ kind: 'B' }), ...Array(c).fill({ kind: 'A' })],
+                cells: [...cellsOf(a, 'A'), ...cellsOf(b, 'B'), ...cellsOf(c, 'A')],
                 mode: 'count',
               }),
               lineModel({ lo: 0, hi: 10, start: a, seq: [a + b, s], hint: `Pars de ${a}, avance de ${b}, puis de ${c}.` }),
@@ -1231,12 +1319,13 @@
   /* ==================================================================
      5. Relation d'égalité
      ================================================================== */
-  const T = (v, neg) => ({ v, neg: !!neg });
-  const U = () => ({ v: 0, unk: true });
-  const sideTxt = (side) => side.map((t, i) => (i ? (t.neg ? ` ${MINUS} ` : ' + ') : '') + (t.unk ? '?' : t.v)).join('');
-  const sideVal = (side, x = 0) => side.reduce((s, t) => s + (t.neg ? -1 : 1) * (t.unk ? x : t.v), 0);
-  const ex = (side) => (side.length === 1 ? String(side[0].v) : `${sideTxt(side)} = ${sideVal(side)}`);
-  const sideParts = (side) => side.flatMap((t, i) => (i ? [t.neg ? '-' : '+'] : []).concat([t.unk ? '{?}' : String(t.v)]));
+  type Side = OpBalanceTerm[];
+  const T = (v: number, neg?: boolean): OpBalanceTerm => ({ v, neg: !!neg });
+  const U = (): OpBalanceTerm => ({ v: 0, unk: true });
+  const sideTxt = (side: Side) => side.map((t, i) => (i ? (t.neg ? ` ${MINUS} ` : ' + ') : '') + (t.unk ? '?' : t.v)).join('');
+  const sideVal = (side: Side, x = 0) => side.reduce((s, t) => s + (t.neg ? -1 : 1) * (t.unk ? x : t.v), 0);
+  const ex = (side: Side) => (side.length === 1 ? String(side[0].v) : `${sideTxt(side)} = ${sideVal(side)}`);
+  const sideParts = (side: Side) => side.flatMap((t, i) => (i ? [t.neg ? '-' : '+'] : []).concat([t.unk ? '{?}' : String(t.v)]));
   M.registerSkill({
     id: 'egalite',
     domain: D,
@@ -1248,9 +1337,9 @@
     gen({ lvl }) {
       const kinds = lvl === 0 ? ['commut', 'vf0', 'vf0'] : lvl === 1 ? ['commut', 'vf1', 'vf1', 'unk1'] : ['vf2', 'unk1', 'unk2', 'unk2'];
       const k = pick(kinds);
-      let L,
-        R,
-        ans,
+      let L: Side,
+        R: Side,
+        ans: number | undefined,
         isVF = false,
         commut = false;
       if (k === 'commut') {
@@ -1349,7 +1438,7 @@
         Rv = sideVal(R);
       const prompt =
         (isVF ? instr('Vrai ou faux ?') : instr('Quel nombre rend les deux côtés égaux ?')) + eq(...sideParts(L), '=', ...sideParts(R));
-      const viz = (el) => balanceViz(el, { L, R, ans });
+      const viz = (el: HTMLElement) => balanceViz(el, { L, R, ans });
       const say =
         (isVF ? 'Vrai ou faux ? ' : 'Quel nombre rend les deux côtés égaux ? ') + `${sideTxt(L)} = ${sideTxt(R)}`.replace('?', '▢');
       if (isVF) {
@@ -1383,7 +1472,7 @@
           prompt,
           say,
           input: 'number',
-          answer: ans,
+          answer: ans ?? 0,
           hint: commut
             ? "Regarde bien les nombres des deux côtés. On peut changer l'ordre dans une addition !"
             : `Calcule d'abord le côté complet : ${sideTxt(known)} = ?`,
@@ -1399,13 +1488,13 @@
   /* ==================================================================
      6. Calculs < 100
      ================================================================== */
-  function explainTens(a, b, sign) {
+  function explainTens(a: number, b: number, sign: number) {
     const tens = Math.floor(b / 10) * 10,
       u = b % 10;
     const S = sign > 0 ? '+' : MINUS;
     const mid = a + sign * tens,
       end = mid + sign * u;
-    const parts = [];
+    const parts: string[] = [];
     if (tens) parts.push(`${a} ${S} ${tens} = ${mid}`);
     if (u) {
       const ten = sign > 0 ? Math.ceil(mid / 10) * 10 : Math.floor(mid / 10) * 10;
@@ -1428,7 +1517,7 @@
       let a,
         b,
         g = 0;
-      const ok = (x, y) => {
+      const ok = (x: number, y: number) => {
         const regroup = add ? (x % 10) + (y % 10) >= 10 : y % 10 > x % 10;
         const r = add ? x + y : x - y;
         if (r < 0 || r > 99 || y < 1) return false;
@@ -1498,8 +1587,8 @@
   /* ==================================================================
      7. Calculs < 1000 (centaines et dizaines)
      ================================================================== */
-  function seq1000(a, b, sign) {
-    const out = [];
+  function seq1000(a: number, b: number, sign: number) {
+    const out: number[] = [];
     let pos = a;
     const c = Math.floor(b / 100),
       d = Math.floor((b % 100) / 10),
@@ -1525,7 +1614,7 @@
     }
     return out;
   }
-  function explain1000(a, b, sign) {
+  function explain1000(a: number, b: number, sign: number) {
     const S = sign > 0 ? '+' : MINUS,
       r = a + sign * b;
     if (a % 100 === 0 && b % 100 === 0) {
@@ -1575,7 +1664,7 @@
       let a,
         b,
         g = 0;
-      const valid = (x, y) => y > 0 && (add ? x + y < 1000 : x - y >= 0) && x !== y;
+      const valid = (x: number, y: number) => y > 0 && (add ? x + y < 1000 : x - y >= 0) && x !== y;
       do {
         if (lvl === 0) {
           if (Math.random() < 0.5) {
@@ -1675,7 +1764,7 @@
     ['🧁', 'petits gâteaux'],
     ['🪟', 'fenêtres'],
   ];
-  const repeated = (g, k) => Array(g).fill(k).join(' + ');
+  const repeated = (g: number, k: number) => Array(g).fill(k).join(' + ');
   M.registerSkill({
     id: 'groupes-egaux',
     domain: D,
@@ -1707,7 +1796,8 @@
         rw = pick(ROWS);
       const isArray = kind === 'array' || (kind === 'times' && Math.random() < 0.4);
       const emoji = isArray ? rw[0] : th[0];
-      const viz = (el) => groupsViz(el, { g, k, emoji, layout: isArray ? 'array' : 'groups', box: th[4] === 'Dans' && th[3] !== 'nid' });
+      const viz = (el: HTMLElement) =>
+        groupsViz(el, { g, k, emoji, layout: isArray ? 'array' : 'groups', box: th[4] === 'Dans' && th[3] !== 'nid' });
       const sumTxt = `${repeated(g, k)} = ${N}`;
       if (kind === 'groups') {
         const txt = `Il y a ${g} ${th[2]}. ${th[4]} chaque ${th[3]}, il y a ${k} ${th[1]}. Combien ${de(th[1])} y a-t-il en tout ?`;
@@ -1810,7 +1900,7 @@
     ['🍎', 'pommes', 'une pomme'],
   ];
   // [emoji, objets, contenants, contenant féminin ?]
-  const BOXES = [
+  const BOXES: [string, string, string, boolean][] = [
     ['🥚', 'œufs', 'boîtes', true],
     ['🧁', 'petits gâteaux', 'boîtes', true],
     ['🎾', 'balles', 'tubes', false],
@@ -1892,8 +1982,8 @@
      11. Suites et régularités
      ================================================================== */
   const SYMS = ['🔴', '🔵', '🟡', '🟢', '🟣', '⭐', '🍁', '❄️', '🐟', '🍎', '🔺', '🟦', '🌙', '🦆'];
-  const UNITS = { 0: ['AB', 'ABC', 'AB'], 1: ['AAB', 'ABB', 'ABC'], 2: ['AABB', 'ABBC', 'AABC', 'ABCD'] };
-  const sign = (d) => (d >= 0 ? '+' + d : MINUS + Math.abs(d));
+  const UNITS: Record<number, string[]> = { 0: ['AB', 'ABC', 'AB'], 1: ['AAB', 'ABB', 'ABC'], 2: ['AABB', 'ABBC', 'AABC', 'ABCD'] };
+  const sign = (d: number) => (d >= 0 ? '+' + d : MINUS + Math.abs(d));
   M.registerSkill({
     id: 'suites',
     domain: D,
@@ -1907,7 +1997,7 @@
         const unit = pick(UNITS[lvl]);
         const letters = [...new Set(unit.split(''))];
         const syms = shuffle(SYMS).slice(0, letters.length + 1);
-        const map = {};
+        const map: Record<string, string> = {};
         letters.forEach((l, i) => (map[l] = syms[i]));
         const extra = syms[letters.length];
         const len = unit.length * (lvl === 0 ? 3 : 2) + rnd(0, unit.length - 1);

@@ -5,11 +5,46 @@
    Rimes : M.EN.RW (mots imageables) et ensembles { target, rhymes, couplet }.
    Rimes FRANCHES seulement (même voyelle et même finale à l'oreille).
    ===================================================================== */
+
+/** Comptine originale : vers + geste/image (emoji ou 'art:<nom>:<couleur>'). */
+interface EnChant {
+  id: string;
+  title: string;
+  fr: string;
+  lines: { en: string; g: string }[];
+}
+/** Mot imageable pour les rimes (M.EN.RW). */
+interface EnRhymeWord {
+  id: string;
+  word: string;
+  /** Emoji ou 'art:<nom>:<couleur>'. */
+  pic: string;
+  say: string;
+  fr: string;
+  /** Voyelle entendue. */
+  v?: string;
+}
+/** Famille de rimes; couplet : vers à compléter et le mot qui manque. */
+interface EnRhyme {
+  target: string;
+  rhymes: string[];
+  couplet: [verse: string, answer: string];
+  lvl: number;
+}
+
+interface EnglishApi {
+  CHANTS: EnChant[];
+  RW: Record<string, EnRhymeWord>;
+  RHYMES: EnRhyme[];
+  /** Groupe de rime d'un mot. */
+  rhymeGroup(id: string): string;
+}
+
 (function () {
   'use strict';
   const M = window.M;
   const EN = M.EN;
-  const C = (en, g) => ({ en, g });
+  const C = (en: string, g: string) => ({ en, g });
 
   EN.CHANTS = [
     {
@@ -84,53 +119,55 @@
   ];
 
   /* ---------- Mots qui riment : imageables, prononciation sûre ---------- */
-  const RW = {};
-  [
-    ['cat', '🐱', 'a cat', 'chat'],
-    ['hat', '👒', 'a hat', 'chapeau'],
-    ['bat', '🦇', 'a bat', 'chauve-souris'],
-    ['bee', '🐝', 'a bee', 'abeille'],
-    ['tree', '🌲', 'a tree', 'arbre'],
-    ['key', '🔑', 'a key', 'clé'],
-    ['frog', '🐸', 'a frog', 'grenouille'],
-    ['dog', '🐶', 'a dog', 'chien'],
-    ['log', '🪵', 'a log', 'bûche'],
-    ['cake', '🍰', 'a cake', 'gâteau'],
-    ['snake', '🐍', 'a snake', 'serpent'],
-    ['goat', '🐐', 'a goat', 'chèvre'],
-    ['boat', '⛵', 'a boat', 'bateau'],
-    ['coat', '🧥', 'a coat', 'manteau'],
-    ['fox', '🦊', 'a fox', 'renard'],
-    ['box', '📦', 'a box', 'boîte'],
-    ['socks', '🧦', 'socks', 'bas'],
-    ['star', '⭐', 'a star', 'étoile'],
-    ['car', 'art:en-car:blue', 'a car', 'auto'],
-    ['mouse', '🐭', 'a mouse', 'souris'],
-    ['house', 'art:en-house:yellow', 'a house', 'maison'],
-    ['moon', '🌙', 'the moon', 'lune'],
-    ['spoon', '🥄', 'a spoon', 'cuillère'],
-    ['bed', '🛏️', 'a bed', 'lit'],
-    ['bread', '🍞', 'bread', 'pain'],
-    ['nose', '👃', 'a nose', 'nez'],
-    ['rose', '🌹', 'a rose', 'rose'],
-    ['train', '🚂', 'a train', 'train'],
-    ['rain', '🌧️', 'rain', 'pluie'],
-    ['shell', '🐚', 'a shell', 'coquillage'],
-    ['bell', '🔔', 'a bell', 'cloche'],
-    ['pie', '🥧', 'a pie', 'tarte'],
-    ['tie', '👔', 'a tie', 'cravate'],
-    ['sun', '☀️', 'the sun', 'soleil'],
-    ['pig', '🐷', 'a pig', 'cochon'],
-    ['duck', '🦆', 'a duck', 'canard'],
-    ['fish', '🐟', 'a fish', 'poisson'],
-    ['ball', 'art:en-ball:red', 'a ball', 'ballon'],
-    ['book', '📕', 'a book', 'livre'],
-    ['apple', '🍎', 'an apple', 'pomme'],
-    ['bus', '🚌', 'a bus', 'autobus'],
-    ['cow', '🐮', 'a cow', 'vache'],
-  ].forEach(([id, pic, say, fr]) => (RW[id] = { id, pic, say, fr, word: id }));
+  const RW: Record<string, EnRhymeWord> = {};
+  (
+    [
+      ['cat', '🐱', 'a cat', 'chat'],
+      ['hat', '👒', 'a hat', 'chapeau'],
+      ['bat', '🦇', 'a bat', 'chauve-souris'],
+      ['bee', '🐝', 'a bee', 'abeille'],
+      ['tree', '🌲', 'a tree', 'arbre'],
+      ['key', '🔑', 'a key', 'clé'],
+      ['frog', '🐸', 'a frog', 'grenouille'],
+      ['dog', '🐶', 'a dog', 'chien'],
+      ['log', '🪵', 'a log', 'bûche'],
+      ['cake', '🍰', 'a cake', 'gâteau'],
+      ['snake', '🐍', 'a snake', 'serpent'],
+      ['goat', '🐐', 'a goat', 'chèvre'],
+      ['boat', '⛵', 'a boat', 'bateau'],
+      ['coat', '🧥', 'a coat', 'manteau'],
+      ['fox', '🦊', 'a fox', 'renard'],
+      ['box', '📦', 'a box', 'boîte'],
+      ['socks', '🧦', 'socks', 'bas'],
+      ['star', '⭐', 'a star', 'étoile'],
+      ['car', 'art:en-car:blue', 'a car', 'auto'],
+      ['mouse', '🐭', 'a mouse', 'souris'],
+      ['house', 'art:en-house:yellow', 'a house', 'maison'],
+      ['moon', '🌙', 'the moon', 'lune'],
+      ['spoon', '🥄', 'a spoon', 'cuillère'],
+      ['bed', '🛏️', 'a bed', 'lit'],
+      ['bread', '🍞', 'bread', 'pain'],
+      ['nose', '👃', 'a nose', 'nez'],
+      ['rose', '🌹', 'a rose', 'rose'],
+      ['train', '🚂', 'a train', 'train'],
+      ['rain', '🌧️', 'rain', 'pluie'],
+      ['shell', '🐚', 'a shell', 'coquillage'],
+      ['bell', '🔔', 'a bell', 'cloche'],
+      ['pie', '🥧', 'a pie', 'tarte'],
+      ['tie', '👔', 'a tie', 'cravate'],
+      ['sun', '☀️', 'the sun', 'soleil'],
+      ['pig', '🐷', 'a pig', 'cochon'],
+      ['duck', '🦆', 'a duck', 'canard'],
+      ['fish', '🐟', 'a fish', 'poisson'],
+      ['ball', 'art:en-ball:red', 'a ball', 'ballon'],
+      ['book', '📕', 'a book', 'livre'],
+      ['apple', '🍎', 'an apple', 'pomme'],
+      ['bus', '🚌', 'a bus', 'autobus'],
+      ['cow', '🐮', 'a cow', 'vache'],
+    ] satisfies [string, string, string, string][]
+  ).forEach(([id, pic, say, fr]) => (RW[id] = { id, pic, say, fr, word: id }));
   // Voyelle entendue : un distracteur ne partage jamais la voyelle de la cible (évite les quasi-rimes cake/rain, nose/goat).
-  const VOW = {
+  const VOW: Record<string, string> = {
     ae: 'cat hat bat apple',
     i: 'bee tree key',
     a: 'frog dog log fox box socks',

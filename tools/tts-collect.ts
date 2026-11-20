@@ -17,8 +17,51 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { JSDOM } from 'jsdom';
 
+type Kind = 'full' | 'piece' | 'num';
+/** Ce que ce script utilise de window.M (site compilé, chargé dans jsdom); clips.plan, say et sleep sont remplacés. */
+interface CollectM {
+  userData: { useFixtures: boolean };
+  CLIP_INDEX?: string;
+  clips: {
+    _set: Set<string> | null;
+    key(t: unknown, lang?: string): string;
+    clean(t: unknown): string;
+    split(t: unknown): { text: string; num?: true }[];
+    plan(t: unknown, lang: string): string[] | null;
+  };
+  sleep(ms: number): Promise<void>;
+  say(t: unknown, o?: { lang?: string; raw?: boolean }): Promise<unknown>;
+  text(html: string): string;
+  heard: Set<string>;
+  renderQuestion(host: HTMLElement, q: unknown, opts: { skill: unknown; record: boolean }): { destroy?(): void } | null | undefined;
+  skills: { id: string; available?(): unknown; gen(ctx: { lvl: number }): unknown }[];
+  learns: { id: string; title: string; intro?: string; render(el: HTMLElement): void }[];
+  BRAVO: string[];
+  subjectById: Record<string, { cheers?: { text: string; lang?: string }[] }>;
+  ui: { FEELINGS?: { label: string }[] };
+}
+/** Phrase entendue : clé de clip → texte, langue, nombre d'occurrences, provenances (skill:…, learn:…, fixed). */
+interface Heard {
+  t: string;
+  lang: string;
+  n: number;
+  src: Set<string>;
+}
+/** Point de reprise tools/tts/_habiletes.json. */
+interface Checkpoint {
+  infinite: string[];
+  full: [string, Omit<Heard, 'src'> & { src: string[] }][];
+}
+/** Élément de tools/tts/phrases.json. */
+interface Phrase {
+  t: string;
+  lang: string;
+  kind: Kind;
+  n: number;
+}
+
 const root = path.join(import.meta.dirname, '..', 'dist'); // site compilé (npm run build)
-const arg = (k, d) => {
+const arg = <D>(k: string, d: D): string | D => {
   const i = process.argv.indexOf(k);
   return i > 0 ? process.argv[i + 1] : d;
 };
@@ -28,7 +71,7 @@ const BATCH = 40;
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)]
   .map((m) => m[1])
-  .filter((f) => !/app\.js$/.test(f))
+  .filter((f) => !f.endsWith('app.js'))
   .concat(['js/styleguide.js']); // chargé à la demande dans l'app; ses phrases d'exemple doivent quand même être enregistrées
 const dom = new JSDOM('<!doctype html><html><body><div id="app"></div></body></html>', {
   runScripts: 'outside-only',
@@ -36,29 +79,32 @@ const dom = new JSDOM('<!doctype html><html><body><div id="app"></div></body></h
   url: 'http://localhost/',
 });
 const w = dom.window;
-w.matchMedia = () => ({ matches: true, addEventListener() {}, removeEventListener() {}, addListener() {} }); // mouvement réduit : pas d'animations
-w.HTMLElement.prototype.animate = function () {
-  return { finished: Promise.resolve(), cancel() {}, onfinish: null };
-};
+// Stubs partiels (jsdom n'a ni matchMedia, ni animate, ni getTotalLength) : Object.assign = simple affectation.
+Object.assign(w, { matchMedia: () => ({ matches: true, addEventListener() {}, removeEventListener() {}, addListener() {} }) }); // mouvement réduit : pas d'animations
+Object.assign(w.HTMLElement.prototype, {
+  animate: function () {
+    return { finished: Promise.resolve(), cancel() {}, onfinish: null };
+  },
+});
 w.HTMLElement.prototype.scrollIntoView = function () {};
 w.HTMLCanvasElement.prototype.getContext = () => null;
-w.SVGElement && (w.SVGElement.prototype.getTotalLength = () => 100);
+if (w.SVGElement) Object.assign(w.SVGElement.prototype, { getTotalLength: () => 100 });
 w.console.error = () => {};
 for (const f of scripts) {
   const code = fs.readFileSync(path.join(root, f), 'utf8');
   try {
     w.eval(code);
   } catch (e) {
-    console.log('⚠', f, e.message);
+    console.log('⚠', f, (e as Error).message);
   }
-  if (f === 'js/services.js') w.M.userData.useFixtures = true;
+  if (f === 'js/services.js') (w.M as CollectM).userData.useFixtures = true;
 }
-const M = w.M;
+const M: CollectM = w.M;
 
 /* ---- enregistreur ---- */
-const full = new Map(); // clé -> { t, lang, n, src:Set }
+const full = new Map<string, Heard>(); // clé -> { t, lang, n, src:Set }
 let src = '';
-const record = (t, lang) => {
+const record = (t: unknown, lang: string): void => {
   const k = M.clips.key(t, lang);
   if (!M.clips.clean(t)) return;
   const e = full.get(k);
@@ -74,7 +120,7 @@ M.clips.plan = (t, lang) => {
   return null;
 };
 M.sleep = () => Promise.resolve();
-let queue = Promise.resolve();
+let queue: Promise<unknown> = Promise.resolve();
 const say0 = M.say;
 M.say = (t, o) => (queue = queue.then(() => say0(t, o)));
 const flush = async () => {
@@ -85,8 +131,8 @@ const flush = async () => {
 
 const host = w.document.createElement('div');
 w.document.body.appendChild(host);
-const tap = (root) =>
-  root.querySelectorAll('button, [data-say], .ptok, .sc-tile, .feel, .flash-card, [data-i], [data-v]').forEach((b) => {
+const tap = (el: HTMLElement): void =>
+  el.querySelectorAll<HTMLElement>('button, [data-say], .ptok, .sc-tile, .feel, .flash-card, [data-i], [data-v]').forEach((b) => {
     try {
       b.click();
     } catch (e) {}
@@ -95,10 +141,10 @@ const tap = (root) =>
 (async () => {
   /* 1. habiletés (point de reprise : --resume relit tools/tts/_habiletes.json) */
   const CK = path.join(import.meta.dirname, 'tts', '_habiletes.json');
-  const infinite = new Set();
+  const infinite = new Set<string>();
   const resume = process.argv.includes('--resume') && fs.existsSync(CK);
   if (resume) {
-    const ck = JSON.parse(fs.readFileSync(CK, 'utf8'));
+    const ck = JSON.parse(fs.readFileSync(CK, 'utf8')) as Checkpoint;
     ck.infinite.forEach((x) => infinite.add(x));
     ck.full.forEach(([k, e]) => full.set(k, { ...e, src: new Set(e.src) }));
     console.log(`reprise : ${full.size} phrases, ${infinite.size} habiletés infinies`);
@@ -127,8 +173,11 @@ const tap = (root) =>
             M.heard.clear();
             host.innerHTML = '';
             const inst = M.renderQuestion(host, q, { skill: sk, record: false });
-            host.querySelectorAll('.q-speak, .q-listen, .q-slow, .q-read').forEach((b) => b.onclick && b.onclick());
-            host.querySelectorAll('.ptok').forEach((t) => t.click());
+            // onclick appelé sans événement, comme un appel direct b.onclick()
+            host
+              .querySelectorAll<HTMLElement>('.q-speak, .q-listen, .q-slow, .q-read')
+              .forEach((b) => b.onclick && Reflect.apply(b.onclick, b, []));
+            host.querySelectorAll<HTMLElement>('.ptok').forEach((t) => t.click());
             await flush();
             if (inst && inst.destroy) inst.destroy();
           } catch (e) {}
@@ -164,7 +213,7 @@ const tap = (root) =>
       tap(host);
       await flush();
     } catch (e) {
-      console.log('  ⚠ learn', l.id, e.message);
+      console.log('  ⚠ learn', l.id, (e as Error).message);
     }
   }
   /* 3. messages fixes */
@@ -177,8 +226,8 @@ const tap = (root) =>
   await flush();
 
   /* 4. classement */
-  const out = new Map();
-  const add = (t, lang, kind, n = 1) => {
+  const out = new Map<string, Phrase>();
+  const add = (t: string, lang: string, kind: Kind, n = 1): void => {
     const k = M.clips.key(t, lang);
     const e = out.get(k);
     if (e) {
@@ -205,7 +254,7 @@ const tap = (root) =>
   list.sort((a, b) => a.lang.localeCompare(b.lang) || a.kind.localeCompare(b.kind) || a.t.localeCompare(b.t));
   fs.mkdirSync(path.join(import.meta.dirname, 'tts'), { recursive: true });
   fs.writeFileSync(path.join(import.meta.dirname, 'tts', 'phrases.json'), JSON.stringify(list, null, 0).replace(/},{/g, '},\n{'));
-  const by = (k) => list.filter((e) => e.kind === k).length;
+  const by = (k: Kind): number => list.filter((e) => e.kind === k).length;
   const chars = list.reduce((s, e) => s + e.t.length, 0);
   console.log(
     `\n${list.length} enregistrements (${by('full')} phrases, ${by('piece')} morceaux, ${by('num')} nombres; ${list.filter((e) => e.lang === 'en').length} en anglais), ${chars} caractères.`,

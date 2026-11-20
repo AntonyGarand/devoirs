@@ -3,10 +3,52 @@
    Règle : on DÉCRIT les saisons, on n'explique jamais leur cause (3e cycle).
    La vapeur d'eau est invisible; le « nuage » au-dessus de la bouilloire = minuscules gouttes.
    ===================================================================== */
+
+interface ScSaison {
+  id: string;
+  label: string;
+  icon: string;
+  /** L'érable à cette saison. */
+  erable: string;
+  /** Heures de clarté (environ). */
+  jour: number;
+  temp: string;
+  precip: string;
+  vetements: string;
+  activites: string[];
+}
+/** Question à choix : t énoncé, a bonne réponse, e explication. */
+interface ScQa {
+  t: string;
+  a: string;
+  e: string;
+}
+/** Avec distracteurs [libellé, pourquoi]. */
+interface ScQaWhy extends ScQa {
+  d: [string, string][];
+}
+interface ScApi {
+  SAISONS: ScSaison[];
+  saison(id: string): ScSaison | undefined;
+  PRECIP: { id: string; label: string; def: string }[];
+  ASTRES: { id: string; label: string; type: string; def: string }[];
+  CIEL_VF: ScVf[];
+  JOUR_NUIT: { jour: string[]; nuit: string[] };
+  /** a : id de l'astre. */
+  ASTRE_Q: ScQa[];
+  CIEL_Q2: ScQaWhy[];
+  /** d : distracteurs. */
+  SAISON_Q: (ScQa & { d: string[] })[];
+  SOLIDE: string[];
+  LIQUIDE: string[];
+  ETAT_Q: ScQaWhy[];
+  EAU_SALEE: { salee: string[]; douce: string[] };
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  const SC = (M.SC = M.SC || {});
+  const SC = (M.SC = M.SC || ({} as ScApi));
 
   SC.SAISONS = [
     {

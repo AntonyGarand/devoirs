@@ -1,9 +1,19 @@
 /* Français, langue d'enseignement — matière et domaines (PDA 2009, fin du 1er cycle)
    Conception : docs/hld/francais.md */
+
+/* ---------- Types (scripts globaux : fusion de déclarations) ----------
+   M.FR est rempli par morceaux : chaque fichier (data/*.ts, skills/_commun.ts, skills/ma-liste.ts)
+   ajoute ses membres à FrancaisApi au niveau supérieur. (M.fr, minuscule, est l'outil d'élision du cadre.) */
+interface MApi {
+  FR: FrancaisApi;
+}
+/** M.FR : données et outils du français. */
+interface FrancaisApi {}
+
 (function () {
   'use strict';
   const M = window.M;
-  M.FR = M.FR || {};
+  M.FR = M.FR || ({} as FrancaisApi); // rempli par data/ et skills/
   M.registerSubject({
     id: 'francais',
     title: 'Français',

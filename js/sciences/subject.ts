@@ -10,10 +10,79 @@
      M.SC.cap(s), M.SC.plain(html)
    Les générateurs gen() ne touchent jamais au DOM.
    ===================================================================== */
+
+interface MApi {
+  SC: ScApi;
+}
+/** Fiche avec image (animal, objet, stade de cycle…) : emoji, ou dessin M.art (repli). */
+interface ScPic {
+  emoji?: string;
+  art?: string | null;
+  /** Emoji Unicode 13–15 (repli si non affiché). */
+  recent?: boolean;
+  nom?: string;
+}
+/**
+ * Métadonnées privées d'une question de sciences (q._sc) : check() revérifie la réponse contre les données.
+ * Chaîne : classement (sort) à revérifier; objet : notion et données tirées.
+ */
+type ScMeta =
+  | 'trier'
+  | 'texture'
+  | 'transp'
+  | 'sl'
+  | 'float'
+  | 'mag'
+  | 'jn'
+  | 'saison'
+  | 'natfab'
+  | 'domsauv'
+  | 'mange'
+  | 'couv'
+  | 'habitudes'
+  | { kind: 'type'; good: string }
+  | { kind: 'doux'; k: string }
+  | { kind: 'absorbe' | 'mat' | 'pred' | 'besoin'; o: string }
+  | { kind: 'salee' | 'midi' | 'pots' | 'vivant' | 'nonvivant' }
+  /** f : flotte (matière); m : régime alimentaire (vivant). */
+  | { kind: 'quel'; f?: boolean; m?: string }
+  | { kind: 'poles'; same: boolean }
+  | { kind: 'cote'; right: number }
+  | { kind: 'produits' | 'nourri' | 'hiver'; ids: string[] }
+  | { kind: 'multiPlante' | 'multiAnimal'; oui: string[] }
+  | { kind: 'mange' | 'mot' | 'scene' | 'sert'; id: string }
+  | { kind: 'missing'; k: string; id: string }
+  | { kind: 'bebe'; b: string }
+  | { kind: 'bouge'; v: string }
+  | { kind: 'habitat'; bins: string[] }
+  | { kind: 'un'; a: string };
+interface QuestionExtras {
+  _sc?: ScMeta;
+}
+/** Aides partagées de la matière (sciences/subject.ts); complétée par art.ts, ciel.ts, data/*, skills/*. */
+interface ScApi {
+  reduced(): boolean;
+  wait(ms: number): Promise<void>;
+  tween(ms: number, fn: (t: number) => void): Promise<void>;
+  ease(t: number): number;
+  cap(s: string | number): string;
+  /** de + le clou → « du clou ». */
+  de(nom: string): string;
+  /** à + le chat → « au chat ». */
+  a(nom: string): string;
+  plain(html: string): string;
+  emojiOk(ch: string): boolean;
+  pic(x: ScPic | null | undefined, size?: number): string;
+  lbl(x: ScPic & { nom: string }, size?: number): string;
+  castor(html: string, tone?: CalloutTone): string;
+  /** x, ou une erreur claire s'il manque (fiche introuvable dans les données). */
+  must<T>(x: T | null | undefined, what: string): T;
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  const SC = (M.SC = M.SC || {});
+  const SC = (M.SC = M.SC || ({} as ScApi));
   const NOTE_CYCLE =
     "Au 1<sup>er</sup> cycle, Science et technologie n'est <b>pas une matière distincte au bulletin</b> : ses apprentissages sont intégrés aux autres matières (français, mathématique…). Ici, c'est du contenu d'<b>intégration et d'enrichissement</b>, aligné sur la Progression des apprentissages.";
 
@@ -27,7 +96,15 @@
     parentNote: NOTE_CYCLE,
     /** Règles propres à la matière (tools/check-skills.js). */
     lint(q) {
-      const t = JSON.stringify([q.prompt, q.explain, q.hint, q.choices, q.check, q.items, q.pairs]);
+      const t = JSON.stringify([
+        q.prompt,
+        q.explain,
+        q.hint,
+        'choices' in q ? q.choices : undefined,
+        'check' in q ? q.check : undefined,
+        'items' in q ? q.items : undefined,
+        'pairs' in q ? q.pairs : undefined,
+      ]);
       if (/hiberne/.test(t) && /ours/.test(t) && /l'ours[^"]{0,40}hiberne/.test(t))
         return "l'ours « dort », il n'« hiberne » pas (HLD § 7)";
       if (/cocon/i.test(t) && /monarque/.test(t) && !/chrysalide/.test(t)) return 'le monarque fait une chrysalide, pas un cocon';
@@ -73,7 +150,7 @@
   };
   SC.wait = (ms) => M.sleep(SC.reduced() ? 0 : ms);
   SC.tween = (ms, fn) =>
-    new Promise((res) => {
+    new Promise<void>((res) => {
       if (SC.reduced()) {
         try {
           fn(1);
@@ -114,12 +191,12 @@
     String(html)
       .replace(/<[^>]*>/g, ' ')
       .replace(/&nbsp;/g, ' ')
-      .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu, '')
+      .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]|\u{FE0F}|\u{200D}/gu, '')
       .replace(/\s+/g, ' ')
       .trim();
 
   /** Détection (une fois par emoji) : un emoji non pris en charge s'affiche en carré noir/blanc, sans couleur. */
-  const EOK = {};
+  const EOK: Record<string, boolean> = {};
   SC.emojiOk = function (ch) {
     if (EOK[ch] !== undefined) return EOK[ch];
     let ok = true;
@@ -128,6 +205,7 @@
       if (c && c.getContext) {
         c.width = c.height = 24;
         const g = c.getContext('2d');
+        if (!g) throw new Error('canvas 2d');
         g.textBaseline = 'top';
         g.font = '20px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
         g.fillText(ch, 0, 0);
@@ -156,6 +234,10 @@
   };
   /** Libellé « image + nom » (le nom n'est jamais omis). */
   SC.lbl = (x, size = 40) => `<span class="sc-lbl">${SC.pic(x, size)}<span>${x.nom}</span></span>`;
+  SC.must = (x, what) => {
+    if (x == null) throw new Error('sciences : introuvable — ' + what);
+    return x;
+  };
   SC.castor = (html, tone = 'tip') => M.ui.callout('<b>Castor :</b> ' + html, { tone });
 
   /* ------------------------------------------------------------ styles (préfixe sc-) */

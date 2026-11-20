@@ -3,7 +3,7 @@
   'use strict';
   const M = window.M;
   const FR = M.FR;
-  const gen = (id, lvl) => () => M.skillById[id].gen({ lvl });
+  const gen = (id: string, lvl: number) => () => M.skillById[id].gen({ lvl });
   const ETUDE = [
     { icon: '👀', label: 'Je regarde', detail: 'Je regarde le mot lettre par lettre.' },
     { icon: '🗣️', label: 'Je le dis', detail: "Je dis le mot et je l'épelle." },
@@ -20,7 +20,7 @@
     short: "Regarde, dis, cache, écris, vérifie. Les lettres muettes, la majuscule et l'apostrophe.",
     intro: "Pour bien écrire un mot, on l'étudie avec une méthode. Et on connaît quelques trucs pour les lettres qu'on n'entend pas !",
     render(el) {
-      const muets = FR.mots((m) => m.mu && m.why && m.w.endsWith(m.mu) && m.lo >= 1).slice(0, 8);
+      const muets = FR.mots((m): m is FrMotWith<'mu' | 'why'> => !!(m.mu && m.why && m.w.endsWith(m.mu) && m.lo >= 1)).slice(0, 8);
       const flash = M.shuffle(FR.mots((m) => m.lo >= 1 && m.em)).slice(0, 10);
       el.innerHTML =
         M.ui.section({
@@ -58,14 +58,14 @@
         }) +
         M.ui.section({ icon: '✅', title: 'Vérifie ta compréhension', body: '<div class="fr-mq"></div>' });
       M.ui.flashcards(
-        M.$('.fr-flash', el),
+        M.$('.fr-flash', el)!,
         flash.map((m) => ({
           front: `<span style="font-size:3rem">${m.em}</span>`,
           back: `<span style="font-size:2rem;font-weight:900">${M.esc(m.w)}</span>`,
           say: m.w,
         })),
       );
-      M.ui.miniQuiz(M.$('.fr-mq', el), [gen('fr-bonne-orthographe', 1), gen('fr-lettres-muettes', 1), gen('fr-majuscule-apostrophe', 1)]);
+      M.ui.miniQuiz(M.$('.fr-mq', el)!, [gen('fr-bonne-orthographe', 1), gen('fr-lettres-muettes', 1), gen('fr-majuscule-apostrophe', 1)]);
     },
   });
 
@@ -86,7 +86,7 @@
           ) + M.ui.section({ icon: '🧠', title: 'Ma méthode pour étudier un mot', body: M.ui.demarche(ETUDE) });
         return;
       }
-      const label = (o) => (o.det ? (o.det === "l'" ? "l'" : o.det + ' ') : '') + o.t;
+      const label = (o: FrListeMot) => (o.det ? (o.det === "l'" ? "l'" : o.det + ' ') : '') + o.t;
       el.innerHTML =
         M.ui.section({
           icon: '🃏',
@@ -100,7 +100,7 @@
           body: M.ui.demarche(ETUDE) + '<div class="fr-mq"></div>',
         });
       M.ui.flashcards(
-        M.$('.fr-flash', el),
+        M.$('.fr-flash', el)!,
         l.mots.map((o) => {
           const k = FR.mot(o.t);
           const ph = o.phrase || (k && k.phrase) || '';
@@ -113,7 +113,7 @@
       );
       const pick = M.shuffle(l.mots).slice(0, 5);
       M.ui.miniQuiz(
-        M.$('.fr-mq', el),
+        M.$('.fr-mq', el)!,
         pick.map((o) => () => {
           const k = FR.mot(o.t);
           return FR.dictee(o.t, { phrase: o.phrase || (k && k.phrase) || null, caseSensitive: o.nomPropre ? 'first' : undefined });

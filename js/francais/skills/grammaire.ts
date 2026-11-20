@@ -8,15 +8,17 @@
   const M = window.M;
   const FR = M.FR;
   const D = 'fr-grammaire';
-  const TAG = { n: 'nom', d: 'det', a: 'adj', v: 'verbe', p: 'pron', x: null };
-  const NOMCLS = { n: 'un <b>nom</b>', d: 'un <b>déterminant</b>', a: 'un <b>adjectif</b>', v: 'le <b>verbe</b>' };
-  const TRUC = {
+  /** Classes ciblées par les questions (étiquettes de data/phrases.js). */
+  type Cible = 'n' | 'd' | 'a' | 'v';
+  const TAG: Record<string, string | null> = { n: 'nom', d: 'det', a: 'adj', v: 'verbe', p: 'pron', x: null };
+  const NOMCLS: Record<Cible, string> = { n: 'un <b>nom</b>', d: 'un <b>déterminant</b>', a: 'un <b>adjectif</b>', v: 'le <b>verbe</b>' };
+  const TRUC: Record<Cible, string> = {
     n: 'Truc : on peut mettre <b>un</b> ou <b>une</b> devant un nom.',
     d: 'Truc : le déterminant est le petit mot juste avant le nom (<b>le, la, un, une, mon…</b>).',
     a: 'Truc : on peut mettre <b>très</b> devant un adjectif.',
     v: 'Truc : on peut encadrer le verbe avec <b>ne… pas</b>.',
   };
-  const taggedHtml = (ws) => M.ui.tagged(ws.map((x) => ({ w: x.w, tag: TAG[x.tag] || '' })));
+  const taggedHtml = (ws: FrPhraseWord[]) => M.ui.tagged(ws.map((x) => ({ w: x.w, tag: TAG[x.tag] || '' })));
   // Mots sans double classe, pour les trucs (manipulations) : aucun verbe qui est aussi un nom (un écrit, la joue, un conduit,
   // une attrape) ou qui sonne comme un nom (boit/bois, rit/riz, mord/mors, oublie/oubli, sourit/souris, pleure/pleur, galope/galop).
   const VERBES = [
@@ -93,9 +95,9 @@
   ];
   const NOMS = () =>
     FR.mots(
-      (m) =>
+      (m): m is FrMotWith<'em' | 'g'> =>
         m.cls === 'nom' &&
-        m.em &&
+        !!m.em &&
         (m.g === 'm' || m.g === 'f') &&
         !['lit', 'porte', 'marche', 'bois', 'été', 'pied'].includes(m.w) &&
         /^[a-zàâçéèêîôûœ]+$/.test(m.w),
@@ -113,7 +115,7 @@
     desc: 'Quelle sorte de mot est-ce ? Utilise tes trucs !',
     pda: 'Accords A.1 a.i, b.i (nom); A.2 a, e (déterminant); A.3 b.ii (adjectif, → 2e); A.4 b.i (verbe, → 2e)',
     gen({ lvl }) {
-      const targets = lvl === 0 ? ['n', 'd'] : lvl === 1 ? ['n', 'd', 'v'] : ['n', 'd', 'v', 'a'];
+      const targets: Cible[] = lvl === 0 ? ['n', 'd'] : lvl === 1 ? ['n', 'd', 'v'] : ['n', 'd', 'v', 'a'];
       const r = Math.random();
       if (lvl === 0 && r < 0.4) {
         const ns = M.shuffle(NOMS1()).slice(0, 3),
@@ -133,12 +135,12 @@
       if (lvl >= 1 && r < 0.3) {
         const t = M.pick(targets.filter((x) => x !== 'd'));
         const yes = Math.random() < 0.5;
-        let w, test;
+        let w: string, test: string;
         // nom : seulement le BON déterminant (« un mouton », jamais « une mouton »); verbe : n' devant voyelle ou h muet
         if (t === 'n') {
           const m = yes ? M.pick(NOMS1()) : null;
-          w = yes ? m.w : M.pick(VERBES);
-          test = `« ${yes ? FR.un(m) : M.pick(['un', 'une'])} ${w} »`;
+          w = m ? m.w : M.pick(VERBES);
+          test = `« ${m ? FR.un(m) : M.pick(['un', 'une'])} ${w} »`;
         } else if (t === 'v') {
           w = yes ? M.pick(VERBES) : M.pick(NOMS1()).w;
           test = `« Il ${M.fr.ne(w)} pas. »`;
@@ -176,7 +178,7 @@
       };
     },
     check(q) {
-      if (q.format === 'tapwords' && q.answer.some((i) => !q.words[i])) return 'indice hors phrase';
+      if (q.format === 'tapwords' && q.answer.some((i) => !q.words?.[i])) return 'indice hors phrase';
     },
   });
 
@@ -198,7 +200,7 @@
     'chocolat',
     'été',
   ];
-  const regPl = (m) => !m.pl && !/[sxz]$/.test(m.w) && !UNCOUNT.includes(m.w);
+  const regPl = (m: FrMot) => !m.pl && !/[sxz]$/.test(m.w) && !UNCOUNT.includes(m.w);
   M.registerSkill({
     id: 'fr-genre-nombre',
     domain: D,
@@ -258,19 +260,23 @@
       }
       // lvl 2 : pluriels en x / aux, féminin + e
       if (Math.random() < 0.55) {
-        const m = M.pick(FR.mots((x) => x.cls === 'nom' && x.pl && /(eaux|eux|aux)$/.test(x.pl) && !['ciel', 'mal', 'œil'].includes(x.w)));
+        const m = M.pick(
+          FR.mots(
+            (x): x is FrMotWith<'pl'> => x.cls === 'nom' && !!x.pl && /(eaux|eux|aux)$/.test(x.pl) && !['ciel', 'mal', 'œil'].includes(x.w),
+          ),
+        );
         return {
           prompt: `Écris le mot au pluriel.<div class="fr-big" style="font-size:1.5rem">un ${m.w} ${m.em || ''}</div>`,
           say: `Un ${m.w}, deux… Écris le mot au pluriel.`,
           format: 'text',
           prefix: 'deux',
           answer: m.pl,
-          hint: /al$/.test(m.w) ? '<b>al</b> devient <b>aux</b> au pluriel.' : 'Après <b>eau</b> ou <b>eu</b>, on ajoute un <b>x</b>.',
-          explain: `Un ${m.w}, deux <b>${m.pl}</b>. ${/al$/.test(m.w) ? '<b>-al</b> → <b>-aux</b>' : 'On ajoute un <b>x</b>'}.`,
+          hint: m.w.endsWith('al') ? '<b>al</b> devient <b>aux</b> au pluriel.' : 'Après <b>eau</b> ou <b>eu</b>, on ajoute un <b>x</b>.',
+          explain: `Un ${m.w}, deux <b>${m.pl}</b>. ${m.w.endsWith('al') ? '<b>-al</b> → <b>-aux</b>' : 'On ajoute un <b>x</b>'}.`,
         };
       }
       // seulement des noms et des adjectifs (jamais un déterminant comme « tout »)
-      const m = M.pick(FR.mots((x) => x.fem && x.fem === x.w + 'e' && (x.cls === 'nom' || x.cls === 'adj')));
+      const m = M.pick(FR.mots((x): x is FrMotWith<'fem'> => !!x.fem && x.fem === x.w + 'e' && (x.cls === 'nom' || x.cls === 'adj')));
       const adj = m.cls === 'adj';
       return {
         prompt: adj
@@ -296,8 +302,9 @@
     { m: 'brun', pos: 'après' },
     { m: 'bleu', pos: 'après' },
   ];
-  const forms = (a) => ({ ms: a.m, fs: a.m + 'e', mp: a.m + 's', fp: a.m + 'es' });
-  const gn = (det, adj, nom, a) => (a.pos === 'avant' ? `${det} ${adj} ${nom}` : `${det} ${nom} ${adj}`);
+  type Adj4 = (typeof ADJ4)[number];
+  const forms = (a: Adj4) => ({ ms: a.m, fs: a.m + 'e', mp: a.m + 's', fp: a.m + 'es' });
+  const gn = (det: string, adj: string, nom: string, a: Adj4) => (a.pos === 'avant' ? `${det} ${adj} ${nom}` : `${det} ${nom} ${adj}`);
   M.registerSkill({
     id: 'fr-accords-gn',
     domain: D,
@@ -350,7 +357,7 @@
       const many = Math.random() < 0.5;
       const det = many ? 'les' : m.g === 'f' ? 'la' : 'le';
       if (FR.elide(m.w) && !many && a.pos === 'après') return this.gen({ lvl });
-      const good = F[(m.g === 'f' ? 'f' : 'm') + (many ? 'p' : 's')];
+      const good = F[`${m.g === 'f' ? 'f' : 'm'}${many ? 'p' : 's'}` as const];
       const nom = many ? FR.plur(m) : m.w;
       if (Math.random() < 0.45) {
         // vrai ou faux : groupe bien accordé ?

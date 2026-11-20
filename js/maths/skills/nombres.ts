@@ -3,10 +3,165 @@
    des nombres naturels < 1000, et fractions)
    Expose aussi M.nb : petits visuels réutilisés par learn/nombres.js
    ===================================================================== */
+
+/** Position : centaines, dizaines, unités. */
+type NbPos = 'c' | 'd' | 'u';
+type NbCdu = Record<NbPos, number>;
+type NbSym = '<' | '>' | '=';
+type NbShapeKind = 'pizza' | 'tab' | 'carre';
+/** Ligne du tableau de numération. */
+interface NbTabRow {
+  n: number;
+  label?: string;
+  /** Position cachée (« ? »). */
+  hide?: NbPos;
+  /** Classe par position (ex. { c: 'hl' }). */
+  cls?: Partial<Record<NbPos, string>>;
+}
+interface NbGridOpts {
+  from: number;
+  to: number;
+  /** valeur → classe de couleur (k1…k5). */
+  hl?: Record<string, string>;
+  msg?: string;
+  hint?: string;
+  /** false : cases non touchables. */
+  tap?: boolean;
+  tapCls?: string;
+  onTap?: (v: number, api: NbGridCtl) => void;
+}
+interface NbGridCtl {
+  col: Record<string, string>;
+  ring: Record<string, boolean>;
+  render(pop?: number): void;
+  set(v: number, c: string): void;
+  clear(): void;
+  status(s: string): void;
+  stop(): void;
+  /** Colorie seq une case à la fois; false si interrompu. */
+  play(
+    seq: readonly number[],
+    cls: string | ((v: number, i: number) => string),
+    labelFn?: ((v: number, i: number) => string) | null,
+    delay?: number,
+  ): Promise<boolean>;
+}
+interface NbCollectOpts {
+  c?: number;
+  d?: number;
+  u?: number;
+  /** Objets en sacs de 10 (sinon blocs base 10). */
+  emoji?: string | null;
+}
+interface NbSplitOpts {
+  breakable?: boolean;
+  hint?: string;
+}
+interface NbSplitShowOpts {
+  /** Casse d'abord une centaine (100) ou une dizaine (10). */
+  breakFirst?: number;
+  end?: string;
+}
+interface NbSplitCtl {
+  count(t: number): number;
+  showMe(parts?: readonly number[], opts?: NbSplitShowOpts): Promise<void>;
+}
+interface NbBuilderOpts {
+  start?: number;
+  words?: boolean;
+  tab?: boolean;
+  expanded?: boolean;
+  max?: number;
+  small?: boolean;
+  hint?: string;
+  onChange?: (v: number) => void;
+}
+interface NbBuilderCtl {
+  value(): number;
+  set(v: number): void;
+  showMe(target: number): Promise<void>;
+}
+interface NbPlaceOpts {
+  hint?: string;
+  /** Bouton « Changer les centaines en dizaines ». */
+  breakC?: boolean;
+}
+interface NbPlaceCtl {
+  showMe(focus?: NbPos, breakIt?: boolean): Promise<void>;
+}
+interface NbCompareOpts {
+  la?: string;
+  lb?: string;
+  noBlocks?: boolean;
+}
+interface NbShapeOpts {
+  tap?: boolean;
+  mini?: boolean;
+  variant?: number;
+}
+interface NbFracToolOpts {
+  kind: NbShapeKind;
+  weights: number[];
+  on?: number[];
+  variant?: number;
+  hint?: string;
+  status?: (k: number) => string;
+  onChange?: (on: number[]) => void;
+}
+interface NbFracToolCtl {
+  on: number[];
+  render(): void;
+}
+interface NbShareOpts {
+  hint?: string;
+  onChange?: (left: number, counts: number[]) => void;
+}
+/** M.nb : outils de texte et visuels des nombres (réutilisés par learn/nombres.ts). */
+interface NbApi {
+  cdu(n: number): NbCdu;
+  /** « 3 centaines » */
+  qty(n: number, w: string): string;
+  /** « a, b et c » */
+  joinFr(a: readonly string[]): string;
+  decompWords(n: number): string;
+  expanded(n: number): string;
+  colored(n: number): string;
+  tab(rows: readonly NbTabRow[], o?: { cols?: number }): string;
+  flats(k: number, small?: boolean): string;
+  rods(k: number, small?: boolean): string;
+  cubes(k: number, small?: boolean): string;
+  blocks(n: number, small?: boolean): string;
+  /** Vide el et y monte un enfant neuf (voir la définition). */
+  mount(el: HTMLElement): HTMLElement;
+  /** « de pommes » / « d'étoiles » */
+  de(w: string): string;
+  grid(el: HTMLElement, o: NbGridOpts): NbGridCtl;
+  gridBounds(vals: readonly number[]): { from: number; to: number };
+  collect(el: HTMLElement, o: NbCollectOpts): ShowMeCtl;
+  split(el: HTMLElement, n: number, o?: NbSplitOpts): NbSplitCtl;
+  builder(el: HTMLElement, o?: NbBuilderOpts): NbBuilderCtl;
+  place(el: HTMLElement, n: number, o?: NbPlaceOpts): NbPlaceCtl;
+  sym(a: number, b: number): NbSym;
+  symHtml(s: NbSym): string;
+  compare(el: HTMLElement, a: number, b: number, o?: NbCompareOpts): ShowMeCtl;
+  pairs(el: HTMLElement, n: number): ShowMeCtl;
+  scatter(el: HTMLElement, n: number, emoji: string): { showMe(): void };
+  fracName(k: number, n: number): string;
+  weights(n: number, equal: boolean): number[];
+  shapeSvg(kind: NbShapeKind, weights: readonly number[], on?: readonly number[], o?: NbShapeOpts): string;
+  fracTool(el: HTMLElement, o: NbFracToolOpts): NbFracToolCtl;
+  share(el: HTMLElement, total: number, n: number, emoji: string, o?: NbShareOpts): ShowMeCtl;
+}
+// eslint-disable-next-line no-unused-vars -- fusion de déclarations avec MApi (types/global.d.ts)
+interface MApi {
+  nb: NbApi;
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  const NB = (M.nb = M.nb || {});
+  const NB = {} as NbApi;
+  M.nb = NB;
   const R = M.rnd,
     P = M.pick;
   const pl = M.plural;
@@ -128,12 +283,14 @@
   /* ------------------------------------------------------------------
      Outils de texte
      ------------------------------------------------------------------ */
-  const cdu = (n) => ({ c: Math.floor(n / 100), d: Math.floor((n % 100) / 10), u: n % 10 });
-  const qty = (n, w) => `${n} ${pl(n, w)}`;
-  const joinFr = (a) => (a.length <= 1 ? a[0] || '' : a.slice(0, -1).join(', ') + ' et ' + a[a.length - 1]);
-  const NAMES = { c: 'centaines', d: 'dizaines', u: 'unités' };
-  const NAME1 = { c: 'centaine', d: 'dizaine', u: 'unité' };
-  const VAL = { c: 100, d: 10, u: 1 };
+  const cdu = (n: number): NbCdu => ({ c: Math.floor(n / 100), d: Math.floor((n % 100) / 10), u: n % 10 });
+  const qty = (n: number, w: string) => `${n} ${pl(n, w)}`;
+  const joinFr = (a: readonly string[]) => (a.length <= 1 ? a[0] || '' : a.slice(0, -1).join(', ') + ' et ' + a[a.length - 1]);
+  const NAMES: Record<NbPos, string> = { c: 'centaines', d: 'dizaines', u: 'unités' };
+  const NAME1: Record<NbPos, string> = { c: 'centaine', d: 'dizaine', u: 'unité' };
+  const VAL: Record<NbPos, number> = { c: 100, d: 10, u: 1 };
+  const POS: readonly NbPos[] = ['c', 'd', 'u'];
+  const isPos = (k: string | null | undefined): k is NbPos => k === 'c' || k === 'd' || k === 'u';
   NB.cdu = cdu;
   NB.qty = qty;
   NB.joinFr = joinFr;
@@ -171,7 +328,7 @@
   /** Tableau de numération. rows: [{n, label?, hide?:'c'|'d'|'u', cls?:{c:'hl'}}] */
   NB.tab = (rows, o = {}) => {
     const cols = o.cols || (rows.some((r) => r.n >= 100) ? 3 : 2);
-    const keys = ['c', 'd', 'u'].slice(3 - cols);
+    const keys = POS.slice(3 - cols);
     const hasLab = rows.some((r) => r.label != null);
     let h = `<table class="nb-tab"><tr>${hasLab ? '<th class="lab"></th>' : ''}${keys.map((k) => `<th class="${k}">${NAMES[k]}</th>`).join('')}</tr>`;
     rows.forEach((r, i) => {
@@ -201,7 +358,7 @@
   };
 
   /** Choix distincts : la bonne réponse + des distracteurs uniques. */
-  function mkChoices(answer, cands, n, label = (v) => String(v)) {
+  function mkChoices<V extends Value>(answer: V, cands: readonly V[], n: number, label: (v: V) => string = (v) => String(v)): Choice<V>[] {
     const out = [answer];
     for (const c of M.shuffle(cands)) {
       if (out.length >= n) break;
@@ -219,7 +376,7 @@
     el.appendChild(d);
     return d;
   };
-  const register = (def) => {
+  const register = (def: SkillDef) => {
     const gen = def.gen;
     def.gen = (ctx) => {
       const q = gen(ctx);
@@ -235,14 +392,14 @@
     };
     M.registerSkill(def);
   };
-  const alignPick = (lo, hi, m) => m * R(Math.ceil(lo / m), Math.floor(hi / m));
+  const alignPick = (lo: number, hi: number, m: number) => m * R(Math.ceil(lo / m), Math.floor(hi / m));
   const EMO = ['🍎', '⭐', '🎈', '🍓', '🐟', '🌼', '🍪', '⚽', '🐞', '🦋', '🍒', '🧸'];
-  const FEM = { '🍎': 1, '⭐': 1, '🍓': 1, '🌼': 1, '🐞': 1, '🍒': 1 };
-  const seul = (em) => (FEM[em] ? 'seules' : 'seuls');
+  const FEM: Record<string, number> = { '🍎': 1, '⭐': 1, '🍓': 1, '🌼': 1, '🐞': 1, '🍒': 1 };
+  const seul = (em: string) => (FEM[em] ? 'seules' : 'seuls');
   /** « de pommes » / « d'étoiles » */
-  const de = (w) => (/^[aeiouyéèêh]/i.test(w) ? "d'" : 'de ') + w;
+  const de = (w: string) => (/^[aeiouyéèêh]/i.test(w) ? "d'" : 'de ') + w;
   NB.de = de;
-  const EMO_NAME = {
+  const EMO_NAME: Record<string, string> = {
     '🍎': 'pommes',
     '⭐': 'étoiles',
     '🎈': 'ballons',
@@ -262,11 +419,11 @@
      o: { from, to, hl:{v:'k1'}, hint, tap:true, tapCls:'k2', onTap(v, api) }
      ------------------------------------------------------------------ */
   NB.grid = function (el, o) {
-    const col = Object.assign({}, o.hl || {});
-    const ring = {};
+    const col: Record<string, string> = Object.assign({}, o.hl || {});
+    const ring: Record<string, boolean> = {};
     let msg = o.msg || '',
       tok = 0;
-    function render(pop) {
+    function render(pop?: number) {
       let h = o.hint ? `<div class="viz-hint">${o.hint}</div>` : '';
       h += '<div class="nb-grid">';
       for (let v = o.from; v <= o.to; v++)
@@ -274,7 +431,7 @@
       h += `</div><div class="viz-status">${msg}</div>`;
       el.innerHTML = h;
     }
-    const api = {
+    const api: NbGridCtl = {
       col,
       ring,
       render,
@@ -307,10 +464,10 @@
       },
     };
     el.onclick = (e) => {
-      const b = e.target.closest('.nb-cell');
+      const b = M.closest(e, '.nb-cell');
       if (!b || o.tap === false) return;
       tok++;
-      const v = +b.dataset.v;
+      const v = Number(b.dataset.v);
       if (o.onTap) o.onTap(v, api);
       else {
         const tc = o.tapCls || 'k2';
@@ -333,8 +490,8 @@
      o: { c, d, u, emoji? }
      ------------------------------------------------------------------ */
   NB.collect = function (el, o) {
-    let items,
-      order,
+    let items: { t: number }[] = [],
+      order: number[] = [],
       flash = -1,
       tok = 0,
       msg = '';
@@ -348,14 +505,14 @@
       flash = -1;
       msg = '';
     }
-    const inner = (t) => {
+    const inner = (t: number) => {
       if (t === 100) return NB.flats(1);
       if (t === 10) return em ? `<span class="nb-pack">${`<i>${em}</i>`.repeat(10)}</span>` : NB.rods(1);
       return em ? `<span class="nb-one">${em}</span>` : NB.cubes(1);
     };
-    const count = (t) => items.filter((x) => x.t === t).length;
+    const count = (t: number) => items.filter((x) => x.t === t).length;
     function render() {
-      const cum = {};
+      const cum: Record<number, number> = {};
       let s = 0;
       order.forEach((i) => {
         s += items[i].t;
@@ -374,7 +531,7 @@
       h += `</div><div class="viz-status">${msg || (order.length ? `Tu as compté : <b>${s}</b>` : '')}</div>`;
       el.innerHTML = h;
     }
-    function regroup(t) {
+    function regroup(t: number) {
       const small = t / 10;
       let k = 0;
       for (let i = items.length - 1; i >= 0 && k < 10; i--)
@@ -395,16 +552,16 @@
       render();
     }
     el.onclick = (e) => {
-      const mk = e.target.closest('.nb-mk');
+      const mk = M.closest(e, '.nb-mk');
       if (mk) {
         tok++;
-        regroup(+mk.dataset.t);
+        regroup(Number(mk.dataset.t));
         return;
       }
-      const b = e.target.closest('.nb-it');
+      const b = M.closest(e, '.nb-it');
       if (!b) return;
       tok++;
-      const i = +b.dataset.i,
+      const i = Number(b.dataset.i),
         p = order.indexOf(i);
       if (p >= 0) order.splice(p, 1);
       else order.push(i);
@@ -452,7 +609,7 @@
      o: { breakable }
      ------------------------------------------------------------------ */
   NB.split = function (el, n, o = {}) {
-    let items,
+    let items: { t: number; hl: boolean }[] = [],
       tok = 0,
       flash = -1,
       msg = '';
@@ -464,8 +621,8 @@
       for (let i = 0; i < u; i++) items.push({ t: 1, hl: false });
       msg = '';
     }
-    const sum = (f) => items.filter(f).reduce((s, x) => s + x.t, 0);
-    const inner = (t) =>
+    const sum = (f: (x: { t: number; hl: boolean }) => boolean) => items.filter(f).reduce((s, x) => s + x.t, 0);
+    const inner = (t: number) =>
       t === 100
         ? `<span class="cA">${FLAT}</span>`
         : t === 10
@@ -489,7 +646,7 @@
       h += `<div class="viz-status">${msg || (a ? `🟨 Colorié : <b>${a}</b> · Pas colorié : <b>${n - a}</b>` : '')}</div>`;
       el.innerHTML = h;
     }
-    function brk(t) {
+    function brk(t: number) {
       let k = -1;
       items.forEach((x, i) => {
         if (x.t === t && !x.hl) k = i;
@@ -513,16 +670,16 @@
       return true;
     }
     el.onclick = (e) => {
-      const bk = e.target.closest('.nb-brk');
+      const bk = M.closest(e, '.nb-brk');
       if (bk) {
         tok++;
-        brk(+bk.dataset.t);
+        brk(Number(bk.dataset.t));
         return;
       }
-      const b = e.target.closest('.nb-sb');
+      const b = M.closest(e, '.nb-sb');
       if (!b) return;
       tok++;
-      const it = items[+b.dataset.i];
+      const it = items[Number(b.dataset.i)];
       it.hl = !it.hl;
       flash = -1;
       msg = '';
@@ -584,20 +741,19 @@
       glow = '',
       msg = '';
     const value = () => st.c * 100 + st.d * 10 + st.u;
-    const blk = (k) => (k === 'c' ? NB.flats(st.c) : k === 'd' ? NB.rods(st.d, o.small !== false) : NB.cubes(st.u, o.small !== false));
+    const blk = (k: NbPos) =>
+      k === 'c' ? NB.flats(st.c) : k === 'd' ? NB.rods(st.d, o.small !== false) : NB.cubes(st.u, o.small !== false);
     function render() {
       const v = value();
       let h = o.hint ? `<div class="viz-hint">${o.hint}</div>` : '';
       h +=
         '<div class="nb-b">' +
-        ['c', 'd', 'u']
-          .map(
-            (k) => `<div class="nb-bcol ${k}"><h4>${NAMES[k]}</h4>
+        POS.map(
+          (k) => `<div class="nb-bcol ${k}"><h4>${NAMES[k]}</h4>
           <div class="nb-bblk ${glow === k ? 'glow' : ''}">${blk(k)}</div>
           <div class="nb-bnum nb-d${k}">${st[k]}</div>
           <div class="nb-bctl"><button class="btn" data-a="-${k}" aria-label="moins">−</button><button class="btn" data-a="+${k}" aria-label="plus">+</button></div></div>`,
-          )
-          .join('') +
+        ).join('') +
         '</div>';
       const shown = v < 1000 ? v : 999;
       h += `<div class="nb-bout"><div class="nb-big">${NB.colored(shown)}</div>`;
@@ -609,13 +765,14 @@
       el.innerHTML = h;
       if (o.onChange) o.onChange(shown);
     }
-    const wait = async (t, ms) => {
+    const wait = async (t: number, ms: number) => {
       await M.sleep(ms);
       return t === tok && el.isConnected;
     };
-    async function act(a) {
+    async function act(a: string) {
       const sign = a[0],
         k = a[1];
+      if (!isPos(k)) return;
       const t = ++tok;
       msg = '';
       glow = '';
@@ -629,7 +786,7 @@
         st[k]++;
         M.sfx.tap();
         // échanges en chaîne : 10 unités → 1 dizaine, 10 dizaines → 1 centaine
-        const chain = [
+        const chain: [NbPos, NbPos][] = [
           ['u', 'd'],
           ['d', 'c'],
         ];
@@ -660,7 +817,8 @@
           return;
         }
         // casser une position plus grande (ex. 1 dizaine → 10 unités)
-        const chain = k === 'u' ? (st.d > 0 ? ['d'] : st.c > 0 ? ['c', 'd'] : null) : k === 'd' ? (st.c > 0 ? ['c'] : null) : null;
+        const chain: NbPos[] | null =
+          k === 'u' ? (st.d > 0 ? ['d'] : st.c > 0 ? ['c', 'd'] : null) : k === 'd' ? (st.c > 0 ? ['c'] : null) : null;
         if (!chain) {
           msg = "Il n'y a plus rien à enlever ici.";
           render();
@@ -668,7 +826,7 @@
         }
         busy = true;
         for (const big of chain) {
-          const small = big === 'c' ? 'd' : 'u';
+          const small: NbPos = big === 'c' ? 'd' : 'u';
           st[big]--;
           st[small] += 10;
           glow = small;
@@ -688,13 +846,13 @@
       }
     }
     el.onclick = (e) => {
-      if (e.target.closest('.nb-say')) {
+      if (M.closest(e, '.nb-say')) {
         M.say(M.frNum(value()));
         return;
       }
-      const b = e.target.closest('[data-a]');
+      const b = M.closest(e, '[data-a]');
       if (!b || busy) return;
-      act(b.dataset.a);
+      act(b.dataset.a || '');
     };
     render();
     return {
@@ -715,7 +873,7 @@
         glow = '';
         render();
         const g = cdu(target);
-        for (const k of ['c', 'd', 'u']) {
+        for (const k of POS) {
           for (let i = 0; i < g[k]; i++) {
             if (!(await wait(t, k === 'u' ? 260 : 380))) return;
             st[k]++;
@@ -736,21 +894,21 @@
      ------------------------------------------------------------------ */
   NB.place = function (el, n, o = {}) {
     const g = cdu(n);
-    let shown = {},
+    let shown: Partial<Record<NbPos, boolean | 'hl'>> = {},
       rodsC = false,
       tok = 0,
       msg = '';
-    const keys = n >= 100 ? ['c', 'd', 'u'] : ['d', 'u'];
+    const keys: NbPos[] = n >= 100 ? ['c', 'd', 'u'] : ['d', 'u'];
     function render() {
       let h = `<div class="viz-hint">${o.hint || 'Touche une colonne pour voir son chiffre.'}</div><table class="nb-ptab"><tr>${keys.map((k) => `<th class="${k}">${NAMES[k]}</th>`).join('')}</tr><tr>`;
       keys.forEach((k) => {
-        let b;
+        let b: string;
         if (k === 'c') b = rodsC ? '' : NB.flats(g.c);
         else if (k === 'd') b = (rodsC ? NB.rods(g.c * 10, true) : '') + NB.rods(g.d, true);
         else b = NB.cubes(g.u, true);
         h += `<td class="${shown[k] === 'hl' ? 'hl' : ''}" data-k="${k}"><div class="nb-brow" style="justify-content:center">${b || '<span class="muted">—</span>'}</div></td>`;
       });
-      const dig = (k) => (rodsC && k === 'c' ? 0 : rodsC && k === 'd' ? g.c * 10 + g.d : g[k]);
+      const dig = (k: NbPos) => (rodsC && k === 'c' ? 0 : rodsC && k === 'd' ? g.c * 10 + g.d : g[k]);
       h += `</tr><tr>${keys.map((k) => `<td class="dig nb-d${k} ${shown[k] === 'hl' ? 'hl' : ''}" data-k="${k}">${shown[k] ? dig(k) : '?'}</td>`).join('')}</tr></table>`;
       if (o.breakC && g.c)
         h += `<div class="row"><button class="btn nb-brkc">🔨 ${rodsC ? 'Remettre les centaines' : 'Changer les centaines en dizaines'}</button></div>`;
@@ -758,7 +916,7 @@
       el.innerHTML = h;
     }
     el.onclick = (e) => {
-      if (e.target.closest('.nb-brkc')) {
+      if (M.closest(e, '.nb-brkc')) {
         tok++;
         rodsC = !rodsC;
         msg = rodsC ? `${qty(g.c, 'centaine')} = ${g.c * 10} dizaines. Compte toutes les barres !` : '';
@@ -766,10 +924,11 @@
         render();
         return;
       }
-      const td = e.target.closest('td[data-k]');
-      if (!td) return;
+      const td = M.closest(e, 'td[data-k]');
+      const k = td && td.dataset.k;
+      if (!isPos(k)) return;
       tok++;
-      shown[td.dataset.k] = shown[td.dataset.k] ? false : true;
+      shown[k] = !shown[k];
       M.sfx.tap();
       render();
     };
@@ -810,7 +969,7 @@
     let tok = 0;
     const la = o.la || String(a),
       lb = o.lb || String(b);
-    function render(cls, done) {
+    function render(cls?: [Partial<Record<NbPos, string>>, Partial<Record<NbPos, string>>], done?: string) {
       const rows = [
         { n: a, label: la, cls: cls && cls[0] },
         { n: b, label: lb, cls: cls && cls[1] },
@@ -827,11 +986,11 @@
       async showMe() {
         const t = ++tok;
         render();
-        const keys = Math.max(a, b) >= 100 ? ['c', 'd', 'u'] : ['d', 'u'];
+        const keys: NbPos[] = Math.max(a, b) >= 100 ? ['c', 'd', 'u'] : ['d', 'u'];
         const A = cdu(a),
           B = cdu(b),
-          c0 = {},
-          c1 = {};
+          c0: Partial<Record<NbPos, string>> = {},
+          c1: Partial<Record<NbPos, string>> = {};
         for (const k of keys) {
           await M.sleep(650);
           if (t !== tok || !el.isConnected) return;
@@ -863,8 +1022,8 @@
   NB.pairs = function (el, n) {
     const tens = n > 20 ? Math.floor(n / 10) : 0;
     const k = n - tens * 10;
-    let pairOf,
-      sel,
+    let pairOf: number[] = [],
+      sel = -1,
       tok = 0,
       done = false;
     const reset = () => {
@@ -893,10 +1052,10 @@
       el.innerHTML = h;
     }
     el.onclick = (e) => {
-      const b = e.target.closest('.nb-dot');
+      const b = M.closest(e, '.nb-dot');
       if (!b) return;
       tok++;
-      const i = +b.dataset.i;
+      const i = Number(b.dataset.i);
       if (pairOf[i] >= 0) {
         const j = pairOf[i];
         pairOf[i] = pairOf[j] = -1;
@@ -983,7 +1142,7 @@
       if (st) st.innerHTML = grouped ? 'Chaque petit paquet a 10 objets. Compte les paquets de 10 !' : '';
     }
     el.onclick = (e) => {
-      if (e.target.closest('.nb-grp')) {
+      if (M.closest(e, '.nb-grp')) {
         grouped = !grouped;
         M.sfx.hop();
         move();
@@ -1003,18 +1162,18 @@
      Fractions : formes partagées en parts (égales ou non)
      ------------------------------------------------------------------ */
   const NUMW = ['zéro', 'un', 'deux', 'trois', 'quatre'];
-  const FN = { 2: ['demi', 'demis'], 3: ['tiers', 'tiers'], 4: ['quart', 'quarts'] };
+  const FN: Record<number, [string, string]> = { 2: ['demi', 'demis'], 3: ['tiers', 'tiers'], 4: ['quart', 'quarts'] };
   NB.fracName = (k, n) => `${NUMW[k]} ${k > 1 ? FN[n][1] : FN[n][0]}`;
-  const UNEQ = { 2: [1, 2], 3: [1, 1, 2], 4: [1, 2, 2, 3] };
+  const UNEQ: Record<number, number[]> = { 2: [1, 2], 3: [1, 1, 2], 4: [1, 2, 2, 3] };
   NB.weights = (n, equal) => (equal ? Array(n).fill(1) : M.shuffle(UNEQ[n]));
-  const KCLS = { pizza: 'pz', tab: 'ch', carre: 'sq' };
+  const KCLS: Record<NbShapeKind, string> = { pizza: 'pz', tab: 'ch', carre: 'sq' };
   /** Forme SVG. kind: 'pizza'|'tab'|'carre'; on: tableau d'index coloriés; variant pour le carré. */
   NB.shapeSvg = function (kind, weights, on = [], o = {}) {
     const n = weights.length,
       tot = weights.reduce((a, b) => a + b, 0),
       equal = weights.every((w) => w === weights[0]);
     const cls = `nb-shape ${KCLS[kind]} ${o.tap ? 'tap' : ''} ${o.mini ? 'nb-mini' : ''}`;
-    const part = (i, d) => `<path class="nb-part ${on.includes(i) ? 'on' : ''}" data-p="${i}" d="${d}"/>`;
+    const part = (i: number, d: string) => `<path class="nb-part ${on.includes(i) ? 'on' : ''}" data-p="${i}" d="${d}"/>`;
     let inner = '',
       vb = '0 0 200 200';
     if (kind === 'pizza') {
@@ -1091,9 +1250,9 @@
       el.innerHTML = h;
     }
     el.onclick = (e) => {
-      const p = e.target.closest('.nb-part');
+      const p = M.closest(e, '.nb-part');
       if (!p) return;
-      const i = +p.getAttribute('data-p'),
+      const i = Number(p.getAttribute('data-p')),
         j = on.indexOf(i);
       if (j >= 0) on.splice(j, 1);
       else on.push(i);
@@ -1109,12 +1268,12 @@
      Visuel : partager une collection en parts égales (assiettes)
      ------------------------------------------------------------------ */
   NB.share = function (el, total, n, emoji, o = {}) {
-    let loc,
+    let loc: number[] = [],
       tok = 0;
     const reset = () => {
       loc = Array(total).fill(-1);
     };
-    const inPlate = (p) => loc.filter((x) => x === p).length;
+    const inPlate = (p: number) => loc.filter((x) => x === p).length;
     function render() {
       let h = `<div class="viz-hint">${o.hint || `Touche un ${emoji} pour le donner à l'assiette qui en a le moins. Partage jusqu'au bout !`}</div><div class="nb-share">`;
       h += `<div class="nb-pile">${loc.map((x, i) => (x < 0 ? `<button class="nb-fi" data-i="${i}">${emoji}</button>` : '')).join('') || '<span class="muted">Tout est partagé !</span>'}</div>`;
@@ -1136,7 +1295,7 @@
       el.innerHTML = h;
       if (o.onChange) o.onChange(left, counts);
     }
-    function give(i) {
+    function give(i: number) {
       if (loc[i] >= 0) {
         loc[i] = -1;
         return;
@@ -1146,10 +1305,10 @@
       loc[i] = best;
     }
     el.onclick = (e) => {
-      const b = e.target.closest('.nb-fi');
+      const b = M.closest(e, '.nb-fi');
       if (!b) return;
       tok++;
-      give(+b.dataset.i);
+      give(Number(b.dataset.i));
       M.sfx.tap();
       render();
     };
@@ -1230,9 +1389,9 @@
             ? "Avec des bonds de 2 à partir d'un nombre impair, on reste sur les nombres impairs."
             : "Avec des bonds de 2 à partir d'un nombre pair, on reste sur les nombres pairs.";
       const explain = `On ${move} de ${step} à chaque bond${dir < 0 ? ' (à rebours)' : ''} : ${terms.map((t, i) => (i === miss ? `<b>${t}</b>` : t)).join(', ')}. ${tip}`;
-      let viz, showMe;
+      let viz: (el: HTMLElement) => unknown, showMe: (el: HTMLElement) => unknown;
       if (step === 100) {
-        const marks = {};
+        const marks: Record<number, string> = {};
         terms.forEach((t, i) => {
           marks[t] = i === miss ? '?' : String(t);
         });
@@ -1253,7 +1412,7 @@
         showMe = (el) => M.viz.numberLine(el, Object.assign({}, base, { interactive: false })).showMe();
       } else {
         const b = NB.gridBounds(terms),
-          hl = {};
+          hl: Record<string, string> = {};
         terms.forEach((t, i) => {
           if (i !== miss) hl[t] = 'k1';
         });
@@ -1363,7 +1522,7 @@
   /* =====================================================================
      3. Lire et écrire les nombres
      ===================================================================== */
-  function niceNumber(lvl) {
+  function niceNumber(lvl: number) {
     if (lvl === 0) return Math.random() < 0.35 ? R(70, 99) : R(11, 99);
     if (lvl === 1) {
       const n = R(100, 999);
@@ -1375,7 +1534,7 @@
     if (t === 2) return 100 * R(1, 9) + 80;
     return R(100, 999);
   }
-  function wordDistractors(n) {
+  function wordDistractors(n: number) {
     const { c, d, u } = cdu(n),
       s = [n + 10, n - 10, n + 1, n - 1];
     if (n >= 100) {
@@ -1434,7 +1593,7 @@
   /* =====================================================================
      4. Valeur de position
      ===================================================================== */
-  function distinctDigits(lo, hi, noZero = true) {
+  function distinctDigits(lo: number, hi: number, noZero = true) {
     for (let g = 0; g < 200; g++) {
       const n = R(lo, hi),
         s = String(n);
@@ -1481,8 +1640,8 @@
               ? 100 * R(1, 9) + R(1, 9) * (Math.random() < 0.5 ? 1 : 10)
               : R(100, 999);
       const g = cdu(n);
-      const keys = n >= 100 ? ['c', 'd', 'u'] : ['d', 'u'];
-      const pv = (el) => NB.place(el, n, { breakC: type === 'tot' });
+      const keys: NbPos[] = n >= 100 ? ['c', 'd', 'u'] : ['d', 'u'];
+      const pv = (el: HTMLElement) => NB.place(el, n, { breakC: type === 'tot' });
       if (type === 'pos') {
         const k = P(keys);
         return {
@@ -1500,7 +1659,7 @@
       }
       if (type === 'val') {
         const ks = keys.filter((k) => g[k] !== 0 && keys.filter((j) => g[j] === g[k]).length === 1);
-        const k = P(ks.length ? ks : ['c']);
+        const k = P<NbPos>(ks.length ? ks : ['c']);
         const dg = g[k],
           ans = dg * VAL[k];
         const ch = [dg, dg * 10, dg * 100].map((v) => ({ label: String(v), value: v }));
@@ -1545,11 +1704,11 @@
       let n,
         prompt,
         ans,
-        parts,
+        parts: number[],
         hint,
         explain,
-        splitOpts = {},
-        smOpts = {};
+        splitOpts: NbSplitOpts = {},
+        smOpts: NbSplitShowOpts = {};
       if (lvl === 0) {
         const d = R(1, 9),
           u = R(1, 9);
@@ -1709,7 +1868,7 @@
       const A = cdu(a),
         B = cdu(b);
       let why = '';
-      for (const k of ['c', 'd', 'u']) {
+      for (const k of POS) {
         if (A[k] !== B[k]) {
           why = `Aux ${NAMES[k]}, ${Math.max(A[k], B[k])} est plus grand que ${Math.min(A[k], B[k])}.`;
           break;
@@ -1745,7 +1904,7 @@
     learn: 'nombres-1000',
     gen({ lvl }) {
       const cnt = lvl === 0 ? 3 : 4;
-      const set = new Set();
+      const set = new Set<number>();
       let guard = 0;
       if (lvl === 2 && Math.random() < 0.6) {
         const ds = M.shuffle(M.range(1, 9)).slice(0, 3);
@@ -1817,7 +1976,7 @@
       if (lvl === 2 && Math.random() < 0.5) {
         const want = P(['pair', 'impair']),
           par = want === 'pair' ? 0 : 1;
-        const set = new Set();
+        const set = new Set<number>();
         let good;
         do {
           good = R(10, 999);
@@ -1850,7 +2009,7 @@
         explain = `Les dizaines se partagent toujours en paires. Seul le chiffre des unités compte : ${n} finit par ${n % 10}, qui est ${ans}. Donc ${n} est <b>${ans}</b>.`;
       const u = n % 10;
       // ≥ 100 : on se concentre sur le chiffre des unités
-      const bigViz = (el, demo) => {
+      const bigViz = (el: HTMLElement, demo: boolean) => {
         el.onclick = null;
         el.innerHTML = `<div class="viz-hint">Seul le chiffre des unités compte ! ${n} finit par ${u}.</div>${ruleCard}${u ? `<div class="viz-hint" style="margin-top:10px">Fais des paires avec ${u} ${pl(u, 'point')} :</div><div class="nb-pv"></div>` : ''}`;
         const pv = M.$('.nb-pv', el);
@@ -1890,22 +2049,32 @@
         const offs = lvl === 0 ? [-10, 10, -1, 1] : [-10, 10, -1, 1, -11, -9, 9, 11];
         const off = P(offs);
         const others = M.shuffle([-10, 10, -1, 1].filter((x) => x !== off)).slice(0, lvl === 0 ? 2 : 1);
-        const pos = { '-11': [0, 0], '-10': [0, 1], '-9': [0, 2], '-1': [1, 0], 0: [1, 1], 1: [1, 2], 9: [2, 0], 10: [2, 1], 11: [2, 2] };
-        const cell = {};
-        cell[pos[0]] = `<td class="k">${n}</td>`;
-        cell[pos[off]] = '<td class="q">?</td>';
+        const pos: Record<string, [number, number]> = {
+          '-11': [0, 0],
+          '-10': [0, 1],
+          '-9': [0, 2],
+          '-1': [1, 0],
+          0: [1, 1],
+          1: [1, 2],
+          9: [2, 0],
+          10: [2, 1],
+          11: [2, 2],
+        };
+        const cell: Record<string, string> = {};
+        cell[String(pos[0])] = `<td class="k">${n}</td>`;
+        cell[String(pos[off])] = '<td class="q">?</td>';
         others.forEach((x) => {
-          cell[pos[x]] = `<td>${n + x}</td>`;
+          cell[String(pos[x])] = `<td>${n + x}</td>`;
         });
         let tbl = '<table class="nb-frag">';
         for (let r = 0; r < 3; r++) {
           tbl += '<tr>';
-          for (let c = 0; c < 3; c++) tbl += cell[[r, c]] || '<td class="e"></td>';
+          for (let c = 0; c < 3; c++) tbl += cell[String([r, c])] || '<td class="e"></td>';
           tbl += '</tr>';
         }
         tbl += '</table>';
         const ans = n + off;
-        const dirs = {
+        const dirs: Record<string, string> = {
           '-10': 'au-dessus (−10)',
           10: 'en dessous (+10)',
           '-1': 'à gauche (−1)',
@@ -1915,7 +2084,7 @@
           9: 'en bas à gauche (+10 puis −1)',
           11: 'en bas à droite (+10 puis +1)',
         };
-        const rules = (hl) =>
+        const rules = (hl: number | null) =>
           `<div class="nb-ruleg">${[-11, -10, -9, -1, 0, 1, 9, 10, 11].map((x) => (x === 0 ? `<div class="c">${n}</div>` : `<div class="${x === hl ? 'hl' : ''}">${lvl === 0 && Math.abs(x) % 10 && Math.abs(x) > 1 ? '' : (x > 0 ? '+' : '−') + Math.abs(x)}</div>`)).join('')}</div>`;
         return {
           prompt: `Voici un morceau de la grille de nombres. Quel nombre va dans la case <b style="color:var(--red)">?</b>${tbl}`,
@@ -2027,18 +2196,18 @@
     carre: { de: 'du carré', n: 'le carré', N: 'Le carré', e: '⬜', f: false },
   };
   const allFracs = () => {
-    const a = [];
+    const a: string[] = [];
     [2, 3, 4].forEach((n) => {
       for (let k = 1; k < n; k++) a.push(`${k}/${n}`);
     });
     return a;
   };
   // valeur d'une fraction : 2/4 = 1/2 → jamais deux fractions équivalentes dans les mêmes choix
-  const fv = (s) => {
+  const fv = (s: string) => {
     const [k, n] = s.split('/').map(Number);
     return Math.round((k / n) * 1000);
   };
-  const fracLabel = (s) => {
+  const fracLabel = (s: string) => {
     const [k, n] = s.split('/').map(Number);
     return NB.fracName(k, n);
   };
@@ -2054,7 +2223,7 @@
     learn: 'fractions',
     gen({ lvl }) {
       const type = lvl === 0 ? P(['nom', 'nom', 'egal']) : lvl === 1 ? P(['nom', 'pick', 'egal']) : P(['coll', 'coll', 'nom', 'pick']);
-      const kind = P(['pizza', 'tab', 'carre']),
+      const kind = P<NbShapeKind>(['pizza', 'tab', 'carre']),
         K = KINDS[kind];
       if (type === 'egal') {
         const n = P([2, 3, 4]),
@@ -2106,7 +2275,7 @@
         const n = P([2, 3, 4]),
           k = lvl === 2 ? R(1, n - 1) : 1;
         const name = NB.fracName(k, n);
-        const variantFor = (nn) => (kind === 'carre' ? (nn === 4 ? R(0, 2) : nn === 2 ? R(0, 1) : 0) : 0);
+        const variantFor = (nn: number) => (kind === 'carre' ? (nn === 4 ? R(0, 2) : nn === 2 ? R(0, 1) : 0) : 0);
         const good = NB.shapeSvg(kind, NB.weights(n, true), M.shuffle(M.range(0, n - 1)).slice(0, k), {
           mini: true,
           variant: variantFor(n),
@@ -2148,7 +2317,7 @@
               M.shuffle(allFracs())
                 .filter((s, i, a) => fv(s) !== fv(ans) && a.findIndex((t) => fv(t) === fv(s)) === i)
                 .sort((x, y) => {
-                  const sc = (s) => (s.split('/')[1] === String(n) || s.split('/')[0] === String(k) ? 0 : 1);
+                  const sc = (s: string) => (s.split('/')[1] === String(n) || s.split('/')[0] === String(k) ? 0 : 1);
                   return sc(x) - sc(y);
                 })
                 .slice(0, 4),

@@ -4,6 +4,13 @@
    Plans : M.viz.plan (légende, lieux data-hot, rose des vents). Points cardinaux au niveau 2 seulement,
    nord toujours en haut, paires purement verticales ou horizontales.
    ===================================================================== */
+/** Point cardinal (direction d'un lieu par rapport à un autre). */
+type UsDir = 'nord' | 'sud' | 'est' | 'ouest';
+interface UsApi {
+  /** Html d'un plan déclaratif (data/plans.ts). */
+  planHtml(p: UsPlan, opts?: { north?: boolean }): string;
+}
+
 (function () {
   'use strict';
   const M = window.M;
@@ -14,7 +21,7 @@
   U.planHtml = (p, { north = false } = {}) =>
     M.viz.plan({ title: p.titre, cols: p.cols, rows: p.rows, roads: p.roads, places: p.places, ground: p.ground, water: p.water, north });
   /** Montre-moi : surligne l'élément de légende, puis le lieu. */
-  const flash = (id) => async (el) => {
+  const flash = (id: string) => async (el: HTMLElement) => {
     const card = el.closest ? el.closest('.q-card') : null;
     if (!card) return;
     const chip = M.$(`.plan-leg-it[data-for="${id}"]`, card);
@@ -25,19 +32,19 @@
     await M.sleep(700);
     M.$$('.plan-place', card).forEach((g) => g.classList.toggle('flash-on', g.dataset.hot === id));
   };
-  const near = (a, b) => Math.abs(a - b) < 0.3;
+  const near = (a: number, b: number) => Math.abs(a - b) < 0.3;
   /** Direction de A par rapport à B, ou null si la paire n'est pas alignée. */
-  const dir = (A, B) => {
+  const dir = (A: UsPlace, B: UsPlace): UsDir | null => {
     if (near(A.x, B.x) && near(A.w || 1, B.w || 1)) return A.y < B.y ? 'nord' : 'sud';
     if (near(A.y, B.y) && near(A.h || 1, B.h || 1)) return A.x < B.x ? 'ouest' : 'est';
     return null;
   };
   /** Voisins immédiats sur la même rangée (sans traverser de rue). */
-  const neighbours = (p, places) =>
+  const neighbours = (p: UsPlace, places: UsPlace[]) =>
     places.filter(
       (o) => o !== p && near(o.y, p.y) && (Math.abs(o.x - (p.x + (p.w || 1))) < 0.6 || Math.abs(p.x - (o.x + (o.w || 1))) < 0.6),
     );
-  const The = (s) => U.cap(s);
+  const The = (s: string) => U.cap(s);
 
   M.registerSkill({
     id: 'us-plan',
@@ -54,19 +61,19 @@
       const plans = U.d('plans');
       if (lvl === 2 && Math.random() < 0.7) {
         const p = M.pick(plans);
-        const pairs = [];
+        const pairs: [UsPlace, UsPlace, UsDir][] = [];
         p.places.forEach((a) =>
           p.places.forEach((b) => {
-            if (a !== b && dir(a, b)) pairs.push([a, b]);
+            const d = a !== b && dir(a, b);
+            if (d) pairs.push([a, b, d]);
           }),
         );
-        const [A, B] = M.pick(pairs);
-        const ans = dir(A, B);
+        const [A, B, ans] = M.pick(pairs);
         // « au nord », « au sud », « à l'est », « à l'ouest » + « du salon », « de la cuisine », « de l'école », « des casiers »
-        const LOC = { nord: 'au nord', sud: 'au sud', est: "à l'est", ouest: "à l'ouest" };
-        const ch = ['nord', 'sud', 'est', 'ouest'].map((d) => ({ label: LOC[d], value: d }));
+        const LOC: Record<UsDir, string> = { nord: 'au nord', sud: 'au sud', est: "à l'est", ouest: "à l'ouest" };
+        const ch = (['nord', 'sud', 'est', 'ouest'] as const).map((d) => ({ label: LOC[d], value: d }));
         const where = { nord: 'plus haut', sud: 'plus bas', est: 'à droite', ouest: 'à gauche' }[ans];
-        const est = /^les /.test(A.nom) ? 'sont' : 'est';
+        const est = A.nom.startsWith('les ') ? 'sont' : 'est';
         return {
           prompt: `Regarde la rose des vents 🧭. ${The(A.nom)} ${A.emoji} ${est} ▢ ${M.fr.de(B.nom)} ${B.emoji}.`,
           say: `Regarde la rose des vents. Où ${est === 'sont' ? 'sont' : 'est'} ${A.nom}, par rapport ${M.fr.a(B.nom)} ?`,
@@ -101,7 +108,7 @@
               el.innerHTML = U.planHtml(p);
             },
             hint: `Trouve ${X.nom} ${X.emoji} sur le plan, puis regarde ce qui est tout près.`,
-            explain: `Sur le plan « ${p.titre} », ${N.nom} ${N.emoji} ${/^les /.test(N.nom) ? 'sont' : 'est'} juste à côté ${M.fr.de(X.nom)} ${X.emoji}.`,
+            explain: `Sur le plan « ${p.titre} », ${N.nom} ${N.emoji} ${N.nom.startsWith('les ') ? 'sont' : 'est'} juste à côté ${M.fr.de(X.nom)} ${X.emoji}.`,
           };
         }
       }

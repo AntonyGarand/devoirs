@@ -28,7 +28,7 @@
     domain: 'sc-vivant',
     title: 'Ça grandit !',
     icon: '🔄',
-    enrichment: true,
+    // Enrichissement (au-delà du programme de 2e année).
     short: 'Le cycle de vie du haricot, de la grenouille, du monarque et de la poule',
     intro:
       "Les êtres vivants naissent, grandissent, deviennent adultes et ont des petits… puis ça recommence ! C'est un <b>cycle de vie</b>. Touche chaque étape pour la découvrir.",
@@ -43,7 +43,7 @@
         ${M.ui.section({ icon: '✅', title: '3. Vérifie ta compréhension', body: '<div class="sc-cyc-quiz"></div>' })}`;
 
       M.ui.tabs(
-        M.$('.sc-cyc-tabs', el),
+        M.$('.sc-cyc-tabs', el)!,
         ORDER.map((k) => ({
           id: k,
           label: `${SC.CYCLES[k].icon} ${SC.cap(SC.CYCLES[k].titre.replace(/^(Le|La) /, ''))}`,
@@ -53,23 +53,23 @@
             panel.innerHTML = `<div class="sc-cycle-box"><div class="sc-cyc"></div>
             <div class="sc-cyc-side"><div class="callout blue sc-cyc-txt">👆 Touche une étape du cercle.</div>
             <div class="row"><button class="btn primary big sc-play">▶ Voir le cycle</button></div></div></div>`;
-            SC.mountCycle(M.$('.sc-cyc', panel), C.stades);
-            const txt = M.$('.sc-cyc-txt', panel);
-            const show = (i, speak = true) => {
+            SC.mountCycle(M.$('.sc-cyc', panel)!, C.stades);
+            const txt = M.$('.sc-cyc-txt', panel)!;
+            const show = (i: number, speak = true): void => {
               M.$$('.cyc-st', panel).forEach((g) => g.classList.toggle('sc-on', g.dataset.hot === 'c' + i));
               const st = C.stades[i];
               txt.innerHTML = `<b>${i + 1}. ${st.label}</b><br>${st.texte}`;
               if (speak) M.say(st.label + '. ' + SC.plain(st.texte));
             };
             panel.onclick = async (e) => {
-              const g = e.target.closest('[data-hot]');
+              const g = M.closest(e, '[data-hot]');
               if (g) {
                 tok++;
                 M.sfx.tap();
-                show(+g.dataset.hot.slice(1));
+                show(Number(String(g.dataset.hot).slice(1)));
                 return;
               }
-              if (e.target.closest('.sc-play')) {
+              if (M.closest(e, '.sc-play')) {
                 const my = ++tok;
                 if (SC.reduced()) {
                   txt.innerHTML = `<ol class="sc-cyc-list">${C.stades.map((s) => `<li><b>${s.label}</b> : ${s.texte}</li>`).join('')}</ol><div>… et le cycle recommence !</div>`;
@@ -91,7 +91,7 @@
       );
 
       const P = SC.CYCLES.poule.stades;
-      M.ui.miniQuiz(M.$('.sc-cyc-quiz', el), [
+      M.ui.miniQuiz(M.$('.sc-cyc-quiz', el)!, [
         () => ({
           prompt: "Le cycle de la poule : l'œuf est placé. Touche les autres étapes dans l'ordre.",
           format: 'order',

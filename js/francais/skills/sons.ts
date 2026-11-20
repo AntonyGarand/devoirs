@@ -8,11 +8,11 @@
   const M = window.M;
   const FR = M.FR;
   const D = 'fr-sons';
-  const claps = (n) => '👏'.repeat(n);
-  const pic = (m) => `<div class="fr-em">${m.em}</div>`;
+  const claps = (n: number) => '👏'.repeat(n);
+  const pic = (m: FrMot) => `<div class="fr-em">${m.em}</div>`;
 
   /* ---------------- 👏 Je compte les syllabes ---------------- */
-  const SYL = () => FR.mots((m) => m.syl && m.em);
+  const SYL = () => FR.mots((m): m is FrMotWith<'syl' | 'em'> => !!(m.syl && m.em));
   M.registerSkill({
     id: 'fr-syllabes',
     domain: D,
@@ -28,9 +28,9 @@
       const pool = SYL().filter((m) => (lvl === 0 ? m.syl.length <= 2 : lvl === 1 ? m.syl.length >= 2 : m.syl.length >= 2));
       const m = M.pick(pool);
       const n = m.syl.length;
-      const showMe = async (el) => {
+      const showMe = async (el: HTMLElement) => {
         el.innerHTML = `${pic(m)}<div style="text-align:center">${M.ui.wordParts(m.w, m.syl)}</div><div class="fr-big fr-claps"></div>`;
-        const box = M.$('.fr-claps', el);
+        const box = M.$('.fr-claps', el)!;
         for (let i = 0; i < n; i++) {
           await M.sleep(450);
           if (!el.isConnected) return;
@@ -77,13 +77,14 @@
   });
 
   /* ---------------- 🎵 Les mots qui riment ---------------- */
-  const RIM = () => FR.mots((m) => m.r && m.em);
+  type RimMot = FrMotWith<'r' | 'em'>;
+  const RIM = () => FR.mots((m): m is RimMot => !!(m.r && m.em));
   const byRime = () => {
-    const g = {};
+    const g: Record<string, RimMot[]> = {};
     RIM().forEach((m) => (g[m.r] = g[m.r] || []).push(m));
     return g;
   };
-  const imgChoice = (m) => ({ label: `<span style="font-size:2.2rem">${m.em}</span><br>${m.w}`, value: m.w, say: m.w });
+  const imgChoice = (m: FrMot) => ({ label: `<span style="font-size:2.2rem">${m.em}</span><br>${m.w}`, value: m.w, say: m.w });
   M.registerSkill({
     id: 'fr-rimes',
     domain: D,
@@ -114,7 +115,7 @@
       const others = M.shuffle(RIM().filter((m) => m.r !== k));
       if (lvl === 2) {
         const good = rest.slice(0, 3);
-        const bad = [];
+        const bad: RimMot[] = [];
         for (const o of others) {
           if (bad.length >= 3) break;
           if (!bad.some((b) => b.r === o.r)) bad.push(o);
@@ -131,7 +132,7 @@
         };
       }
       const good = rest[0];
-      const bad = [];
+      const bad: RimMot[] = [];
       for (const o of others) {
         if (bad.length >= 2) break;
         if (!bad.some((b) => b.r === o.r)) bad.push(o);
@@ -147,35 +148,37 @@
       };
     },
     check(q) {
-      if (q.format === 'choice' && q.choices.filter((c) => FR.mot(c.value).r === FR.mot(q.answer).r).length !== 1)
+      if (q.format === 'choice' && q.choices.filter((c) => FR.mot(String(c.value))?.r === FR.mot(String(q.answer))?.r).length !== 1)
         return 'plusieurs rimes possibles';
     },
   });
 
   /* ---------------- 👂 J'entends le son ---------------- */
   const SON_IDS = ['ou', 'on', 'an', 'in', 'oi', 'o', 'ch', 'j', 'z', 'f', 'eu', 'é', 'è', 'k', 's', 'gn', 'ill'];
-  const SONW = () => FR.mots((m) => m.gr && m.em);
-  const posLabel = { debut: '⬅️ au début', milieu: '⏺️ au milieu', fin: '➡️ à la fin' };
+  type SonMot = FrMotWith<'gr' | 'em'>;
+  const SONW = () => FR.mots((m): m is SonMot => !!(m.gr && m.em));
+  const posLabel: Record<FrPosition, string> = { debut: '⬅️ au début', milieu: '⏺️ au milieu', fin: '➡️ à la fin' };
   /** Syllabe (début/milieu/fin) où l'on entend le son — null si ambigu. */
-  const sylPos = (m, id) => {
-    if (!m.syl || m.syl.length < 2 || m.syl.join('') !== m.w) return null;
+  const sylPos = (m: FrMotWith<'gr'>, id: string): { k: number; p: FrPosition; syl: string[] } | null => {
+    const syl = m.syl;
+    if (!syl || syl.length < 2 || syl.join('') !== m.w) return null;
     const idx = FR.letterIdx(m, id);
     if (!idx.length) return null;
     const parts = m.gr.filter((p) => p.s === id);
     if (parts.length !== 1) return null;
     let acc = 0;
-    const sylOf = (i) => {
+    const sylOf = (i: number) => {
       acc = 0;
-      for (let k = 0; k < m.syl.length; k++) {
-        acc += m.syl[k].length;
+      for (let k = 0; k < syl.length; k++) {
+        acc += syl[k].length;
         if (i < acc) return k;
       }
-      return m.syl.length - 1;
+      return syl.length - 1;
     };
     const k0 = sylOf(idx[0]),
       k1 = sylOf(idx[idx.length - 1]);
     if (k0 !== k1) return null;
-    return { k: k0, p: k0 === 0 ? 'debut' : k0 === m.syl.length - 1 ? 'fin' : 'milieu' };
+    return { k: k0, p: k0 === 0 ? 'debut' : k0 === syl.length - 1 ? 'fin' : 'milieu', syl };
   };
   M.registerSkill({
     id: 'fr-entendre-son',
@@ -189,28 +192,28 @@
       const W = SONW();
       const ids = SON_IDS.filter((id) => W.filter((m) => FR.hasSon(m, id)).length >= 3);
       if (lvl === 2) {
-        const cand = [];
+        const cand: { id: string; m: SonMot; p: FrPosition; k: number; syl: string[] }[] = [];
         ids.forEach((id) =>
           W.forEach((m) => {
             const r = sylPos(m, id);
-            if (r) cand.push({ id, m, p: r.p, k: r.k });
+            if (r) cand.push({ id, m, p: r.p, k: r.k, syl: r.syl });
           }),
         );
-        const { id, m, p, k } = M.pick(cand);
-        const opts = m.syl.length >= 3 ? ['debut', 'milieu', 'fin'] : ['debut', 'fin'];
+        const { id, m, p, k, syl } = M.pick(cand);
+        const opts: FrPosition[] = syl.length >= 3 ? ['debut', 'milieu', 'fin'] : ['debut', 'fin'];
         return {
           prompt: `Où entends-tu ${FR.sonRef(id)} dans <b>${m.w}</b> ?`,
           say: `Où entends-tu ${FR.sonSay(id)} dans ${m.w} ?`,
           audio: { text: m.w, autoplay: 'once' },
           viz: (el) => {
-            el.innerHTML = `${pic(m)}<div style="text-align:center">${M.ui.wordParts(m.w, m.syl)}</div>`;
+            el.innerHTML = `${pic(m)}<div style="text-align:center">${M.ui.wordParts(m.w, syl)}</div>`;
           },
           format: 'choice',
           answer: p,
           cols: opts.length,
           choices: opts.map((o) => ({ label: posLabel[o], value: o })),
           hint: 'Dis le mot lentement, une syllabe à la fois.',
-          explain: `${m.syl.map((s, i) => (i === k ? `<b>${s}</b>` : s)).join('-')} : on entend ${FR.son(id).label} ${p === 'debut' ? 'au début' : p === 'fin' ? 'à la fin' : 'au milieu'} (${FR.grHtml(m, id)}).`,
+          explain: `${syl.map((s, i) => (i === k ? `<b>${s}</b>` : s)).join('-')} : on entend ${FR.getSon(id).label} ${p === 'debut' ? 'au début' : p === 'fin' ? 'à la fin' : 'au milieu'} (${FR.grHtml(m, id)}).`,
         };
       }
       const id = M.pick(ids);
@@ -229,8 +232,8 @@
           labels: [{ label: "👂 Oui, je l'entends" }, { label: '🙉 Non' }],
           hint: 'Écoute le mot lentement, une syllabe à la fois.',
           explain: ans
-            ? `Dans <b>${FR.grHtml(m, id)}</b>, on entend ${FR.son(id).label}.`
-            : `Dans <b>${m.w}</b>, on n'entend pas ${FR.son(id).label}.`,
+            ? `Dans <b>${FR.grHtml(m, id)}</b>, on entend ${FR.getSon(id).label}.`
+            : `Dans <b>${m.w}</b>, on n'entend pas ${FR.getSon(id).label}.`,
         };
       }
       const good = yes.slice(0, M.rnd(2, 3));
@@ -243,7 +246,7 @@
         answer: good.map((m) => m.w),
         choices: M.shuffle(good.concat(bad)).map((m) => ({ label: `<span style="font-size:2.4rem">${m.em}</span>`, value: m.w, say: m.w })),
         hint: 'Dis chaque mot à voix basse. Écoute bien.',
-        explain: `On entend ${FR.son(id).label} dans : ${good.map((m) => FR.grHtml(m, id)).join(', ')}.`,
+        explain: `On entend ${FR.getSon(id).label} dans : ${good.map((m) => FR.grHtml(m, id)).join(', ')}.`,
       };
     },
     check(q) {
@@ -255,11 +258,18 @@
   });
 
   /* ---------------- 🔡 Les sons qui s'écrivent de plusieurs façons ---------------- */
-  const SIMPLE = { ou: ['o', 'u'], on: ['an', 'o'], oi: ['oa', 'o'], ch: ['c', 'sh'] };
-  const MULTI = { o: ['o', 'au', 'eau'], an: ['an', 'en'], in: ['in', 'ain', 'ein'], è: ['è', 'ê', 'ai', 'ei'], é: ['é', 'er', 'ez'] };
+  const SIMPLE: Record<string, string[]> = { ou: ['o', 'u'], on: ['an', 'o'], oi: ['oa', 'o'], ch: ['c', 'sh'] };
+  const MULTI: Record<string, string[]> = {
+    o: ['o', 'au', 'eau'],
+    an: ['an', 'en'],
+    in: ['in', 'ain', 'ein'],
+    è: ['è', 'ê', 'ai', 'ei'],
+    é: ['é', 'er', 'ez'],
+  };
   /** Mot à trou : le graphème du son remplacé par « __ ». */
-  const holed = (m, part) => m.gr.map((p) => (p === part ? '<span class="fr-hl">&nbsp;?&nbsp;</span>' : M.esc(p.g))).join('');
-  const fillWith = (m, part, g) => m.gr.map((p) => (p === part ? g : p.g)).join('');
+  const holed = (m: FrMotWith<'gr'>, part: FrGrapheme) =>
+    m.gr.map((p) => (p === part ? '<span class="fr-hl">&nbsp;?&nbsp;</span>' : M.esc(p.g))).join('');
+  const fillWith = (m: FrMotWith<'gr'>, part: FrGrapheme, g: string) => m.gr.map((p) => (p === part ? g : p.g)).join('');
   const RULES2 = [
     {
       w: 'garçon',
@@ -287,7 +297,7 @@
     desc: "<i>o</i>, <i>au</i> ou <i>eau</i> ? Choisis la bonne façon d'écrire le son.",
     pda: "Orthographe d'usage C.1 a–b (→ 1re, ★ 2e); C.3 a — c/ç, g/ge, m devant b et p (→ 2e, défi)",
     gen({ lvl }) {
-      const W = FR.mots((m) => m.gr && m.em);
+      const W = SONW();
       if (lvl === 2 && Math.random() < 0.5) {
         const r = M.pick(RULES2);
         const shown = [...r.w].map((c, i) => (i === r.hole ? '<span class="fr-hl">&nbsp;?&nbsp;</span>' : c)).join('');
@@ -307,7 +317,7 @@
         const ids = ['an', 'in', 'on', 'o', 'oi', 'ou', 'eu', 'ch', 'è', 'gn', 'ill'];
         const cand = W.filter((m) => ids.some((id) => FR.hasSon(m, id) && m.gr.some((p) => p.s === id && p.g.length > 1)));
         const m = M.pick(cand);
-        const id = M.pick(ids.filter((id) => FR.hasSon(m, id) && m.gr.some((p) => p.s === id && p.g.length > 1)));
+        const id = M.pick(ids.filter((x) => FR.hasSon(m, x) && m.gr.some((p) => p.s === x && p.g.length > 1)));
         const idx = FR.letterIdx(m, id);
         return {
           prompt: `Touche les lettres qui font ${FR.sonRef(id)} dans <b>${m.w}</b>.`,
@@ -319,14 +329,14 @@
           answer: idx,
           select: idx.length > 1 ? 'many' : 'one',
           hint: "Un son peut s'écrire avec plusieurs lettres.",
-          explain: `<b>${FR.grHtml(m, id)}</b> : ${FR.son(id).label} s'écrit ici <b>${m.gr
+          explain: `<b>${FR.grHtml(m, id)}</b> : ${FR.getSon(id).label} s'écrit ici <b>${m.gr
             .filter((p) => p.s === id)
             .map((p) => p.g)
             .join(' et ')}</b>.`,
         };
       }
       const table = lvl === 0 ? SIMPLE : MULTI;
-      const cand = [];
+      const cand: { m: SonMot; p: FrGrapheme; id: string }[] = [];
       W.forEach((m) =>
         m.gr.forEach((p) => {
           if (lvl === 0 && table[p.s] && p.g === p.s && m.gr.filter((x) => x.s === p.s).length === 1) cand.push({ m, p, id: p.s });
@@ -338,7 +348,7 @@
       if (lvl === 1 && Math.random() < 0.35) {
         const id = M.pick(['o', 'an', 'in', 'è']);
         const gs = table[id];
-        const items = [];
+        const items: { label: string; bin: string; say: string; w: string }[] = [];
         M.shuffle(cand.filter((c) => c.id === id)).forEach((c) => {
           if (items.length < 6 && items.filter((x) => x.bin === c.p.g).length < 2 && !items.some((x) => x.w === c.m.w))
             items.push({ label: `${c.m.em} ${FR.grHtml(c.m, id)}`, bin: c.p.g, say: c.m.w, w: c.m.w });
@@ -350,19 +360,23 @@
             say: `Classe les mots selon la façon d'écrire ${FR.sonSay(id)}.`,
             format: 'sort',
             bins: usedBins.map((g) => ({ id: g, label: `<span class="fr-big" style="font-size:1.6rem">${g}</span>` })),
-            items: items.map(({ w, ...it }) => it),
+            items: items.map(({ w: _w, ...it }) => it),
             hint: 'Regarde les lettres en couleur dans chaque mot.',
-            explain: FR.son(id).regle || '',
+            explain: FR.getSon(id).regle || '',
           };
         }
       }
-      let m, p, id, opts;
+      let c: (typeof cand)[number] | undefined;
+      let opts: string[] = [];
       for (let t = 0; t < 50; t++) {
-        ({ m, p, id } = M.pick(cand));
+        c = M.pick(cand);
+        const { m, p, id } = c;
         const wrong = (lvl === 0 ? SIMPLE[id] : MULTI[id].filter((g) => g !== p.g)).filter((g) => !FR.isReal(fillWith(m, p, g)));
         opts = [p.g, ...M.shuffle(wrong).slice(0, 2)];
         if (opts.length >= 2) break;
       }
+      if (!c) throw new Error('fr-sons-ecrits : aucun mot');
+      const { m, p, id } = c;
       return {
         prompt: `Complète le mot : <div class="fr-big">${holed(m, p)}</div>`,
         say: `Complète le mot ${m.w}. On entend ${FR.sonSay(id)}.`,
@@ -372,8 +386,8 @@
         answer: p.g,
         cols: opts.length,
         choices: M.shuffle(opts).map((g) => ({ label: `<span class="fr-big" style="font-size:1.8rem">${g}</span>`, value: g })),
-        hint: FR.son(id).regle || `Le son ${FR.son(id).label} s'écrit avec plusieurs lettres.`,
-        explain: `On écrit <b>${FR.grHtml(m, id)}</b>. ${FR.son(id).regle || ''}`,
+        hint: FR.getSon(id).regle || `Le son ${FR.getSon(id).label} s'écrit avec plusieurs lettres.`,
+        explain: `On écrit <b>${FR.grHtml(m, id)}</b>. ${FR.getSon(id).regle || ''}`,
       };
     },
     check(q) {

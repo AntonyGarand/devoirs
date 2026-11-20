@@ -3,13 +3,23 @@
    Histoires originales (M.EN.STORIES), comptines et rimes (M.EN.RHYMES).
    Le texte d'une histoire n'est jamais lu automatiquement (bouton 🔊).
    ===================================================================== */
+
+interface EnglishApi {
+  /** Étiquettes 👍 Yes / 👎 No (format tf). */
+  YESNO: [TfLabel, TfLabel];
+  /** Passage illustré : une ligne par phrase (image + texte + 🔊); 🔊 en haut = toute l'histoire. */
+  storyPassage(st: EnStory): Passage;
+  /** Question d'histoire → question du cadre. */
+  storyQuestion(st: EnStory, sq: EnStoryQuestion): QuestionOf<'tf'> | QuestionOf<'choice'>;
+}
+
 (function () {
   'use strict';
   const M = window.M;
   const EN = M.EN;
   const LANG = EN.LANG;
-  const NEEDS = ['speech:en'];
-  const YESNO = [
+  const NEEDS: SkillNeed[] = ['speech:en'];
+  const YESNO: [TfLabel, TfLabel] = [
     { label: '👍 Yes', say: 'Yes', lang: LANG },
     { label: '👎 No', say: 'No', lang: LANG },
   ];
@@ -21,7 +31,7 @@
   /** Question d'histoire → question du cadre. */
   EN.storyQuestion = (st, sq) => {
     const line = st.lines[sq.line];
-    const base = {
+    const base: Pick<QuestionBase, 'prompt' | 'hint' | 'explain' | 'audio'> = {
       prompt: sq.fr,
       hint: sq.hint || `Réécoute la phrase avec l'image ${EN.picStr(line.pic, 26)}.`,
       explain: `${EN.ear(line.en)}<br>« ${M.esc(line.fr)} »`,
@@ -62,7 +72,7 @@
     gen({ lvl = 0 }) {
       const stories = EN.STORIES.filter((s) => s.lvl <= lvl + 1);
       // questions du niveau (au niveau 2 : surtout les questions entendues en anglais)
-      const items = [];
+      const items: { st: EnStory; sq: EnStoryQuestion }[] = [];
       stories.forEach((st) =>
         st.questions.forEach((sq) => {
           if (sq.lvl <= lvl && (lvl < 2 || sq.lvl >= 1)) items.push({ st, sq });
@@ -115,13 +125,18 @@
 
   /* ------------------------------ 16. Ça rime ! ------------------------------ */
   const RW = () => EN.RW;
-  const rwChoice = (w) => ({ label: `<span class="en-pic-lbl">${EN.picStr(w.pic, 56)}</span>`, value: w.id, say: w.id, lang: LANG });
+  const rwChoice = (w: EnRhymeWord): Choice<string> => ({
+    label: `<span class="en-pic-lbl">${EN.picStr(w.pic, 56)}</span>`,
+    value: w.id,
+    say: w.id,
+    lang: LANG,
+  });
   /** Distracteurs : voyelle différente de la cible (pas de quasi-rime), images toutes différentes. */
-  const nonRhymes = (target, n, exclude = []) => {
+  const nonRhymes = (target: string, n: number, exclude: string[] = []): EnRhymeWord[] => {
     const pool = Object.values(RW()).filter((w) => w.v !== RW()[target].v && !exclude.includes(w.id));
     return EN.pickSet(pool, n, null, (a, b) => a.id === b.id || a.v === b.v || a.pic === b.pic);
   };
-  M.registerSkill({
+  M.registerSkill<QuestionOf<'choice'>>({
     id: 'en-rimes',
     domain: 'en-histoires',
     title: 'Ça rime !',

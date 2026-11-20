@@ -2,6 +2,34 @@
    sciences/skills/demarche.js — domaine sc-demarche (habileté 16)
    Étapes : ❓ Je me questionne → 🤔 Je prédis → 👀 J'observe → 📝 Je note → 💬 Je conclus.
    ===================================================================== */
+
+interface ScApi {
+  /** Étapes de la démarche scientifique. */
+  STEPS: { icon: string; label: string; detail: string }[];
+}
+/** Essai juste : ce qu'on garde pareil (a), distracteurs [libellé, pourquoi], consigne. */
+interface ScPareil {
+  a: string;
+  d: [string, string][];
+  q: string;
+}
+/** Mini-expérience : question, prédiction, observation, conclusion (+ distracteurs de chaque étape). */
+interface ScExp {
+  id: string;
+  titre: string;
+  who: string;
+  svg: () => string;
+  question: string;
+  qd: string[];
+  pred: string;
+  pd: string[];
+  obs: string;
+  od: string[];
+  concl: string;
+  cd: string[];
+  pareil: ScPareil | null;
+}
+
 (function () {
   'use strict';
   const M = window.M;
@@ -17,7 +45,7 @@
   ];
 
   /** Mini-expériences : question, prédiction, observation, conclusion (+ distracteurs de chaque étape). */
-  const EXP = [
+  const EXP: ScExp[] = [
     {
       id: 'plantes',
       titre: 'Deux plantes pareilles : une près de la fenêtre, une dans un placard noir, avec la même eau.',
@@ -195,7 +223,7 @@
       }
       const x = M.pick(EXP);
       if (t === 'type') {
-        const kind = M.pick(['pred', 'obs', 'question']);
+        const kind = M.pick(['pred', 'obs', 'question'] as const);
         const good = x[kind];
         const others = [x.pred, x.obs, x.question].filter((s) => s !== good);
         const nom = { pred: 'une <b>prédiction</b>', obs: 'une <b>observation</b>', question: 'une <b>question</b>' }[kind];
@@ -212,7 +240,7 @@
       }
       if (t === 'trier') {
         const pool = M.shuffle(EXP.slice()).slice(0, 2);
-        const items = [];
+        const items: ScItem[] = [];
         pool.forEach((e) => {
           items.push({ label: e.pred, bin: 'p', key: e.pred });
           items.push({ label: e.obs, bin: 'o', key: e.obs });
@@ -232,7 +260,7 @@
         };
       }
       if (t === 'pareil') {
-        const e = M.pick(EXP.filter((y) => y.pareil));
+        const e = M.pick(EXP.filter((y): y is ScExp & { pareil: ScPareil } => !!y.pareil));
         return {
           prompt: `${e.titre}<br>${e.pareil.q}`,
           format: 'choice',
@@ -246,7 +274,7 @@
             "Un <b>essai juste</b> : on change une seule chose (celle qu'on teste) et on garde tout le reste <b>pareil</b>. Comme ça, on sait ce qui a fait la différence.",
         };
       }
-      const ch = (good, bad) => M.shuffle([good, ...bad]).map((s) => ({ label: s, value: s }));
+      const ch = (good: string, bad: string[]): Choice[] => M.shuffle([good, ...bad]).map((s) => ({ label: s, value: s }));
       return {
         prompt: `<b>L'expérience ${SC.de(x.who)}</b> : ${x.titre}`,
         format: 'steps',
@@ -290,8 +318,9 @@
       };
     },
     check(q) {
-      if (q._sc && q._sc.kind === 'type') return Q.checkOne(q, (v) => v === q._sc.good);
-      if (q._sc === 'trier') return Q.checkSort(q, (k) => (EXP.some((e) => e.pred === k) ? 'p' : EXP.some((e) => e.obs === k) ? 'o' : '?'));
+      const sc = q._sc;
+      if (typeof sc === 'object' && sc.kind === 'type') return Q.checkOne(q, (v) => v === sc.good);
+      if (sc === 'trier') return Q.checkSort(q, (k) => (EXP.some((e) => e.pred === k) ? 'p' : EXP.some((e) => e.obs === k) ? 'o' : '?'));
     },
   });
 })();

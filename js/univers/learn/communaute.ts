@@ -4,7 +4,7 @@
   const M = window.M;
   const U = M.us;
   const ui = M.ui;
-  const REL = {
+  const REL: Record<string, string> = {
     gm: 'Rose, la grand-mère de Léo (la maman de sa maman)',
     gp: 'Paul, le grand-père de Léo (le papa de sa maman)',
     ma: 'Lina, la maman de Léo',
@@ -26,7 +26,10 @@
     render(el) {
       const F = U.d('familles'),
         L = U.d('lieux');
-      const plan = U.d('plans').find((p) => p.id === 'quartier-maya');
+      const plan = U.must(
+        U.d('plans').find((p) => p.id === 'quartier-maya'),
+        'plan quartier-maya',
+      );
       el.innerHTML = [
         ui.section({
           icon: '👨‍👩‍👧',
@@ -70,34 +73,39 @@
         }),
         ui.section({ icon: '✅', title: '5. Vérifie ta compréhension', body: '<div class="us-mq"></div>' }),
       ].join('');
-      ui.reading(M.$('.us-read', el), {
+      ui.reading(M.$('.us-read', el)!, {
         title: 'Des familles différentes',
         text: "Zoé vit avec sa maman. Mei a deux papas. Félix habite chez ses grands-parents. Awa vit avec sa maman, son beau-père et son petit demi-frère. Chaque famille est différente. Dans chaque famille, on s'aime et on prend soin les uns des autres.",
       });
-      M.$('.us-treebox', el).onclick = (e) => {
-        const g = e.target.closest('[data-hot]');
+      M.$('.us-treebox', el)!.onclick = (e) => {
+        const g = M.closest(e, '[data-hot]');
         if (!g) return;
         M.$$('[data-hot] circle', el).forEach((c) => c.setAttribute('stroke-width', '3'));
-        M.$('circle', g).setAttribute('stroke-width', '7');
-        M.$('.us-tree-info', el).textContent = REL[g.dataset.hot];
-        M.say(REL[g.dataset.hot]);
+        M.$('circle', g)!.setAttribute('stroke-width', '7');
+        const rel = REL[g.dataset.hot || ''];
+        M.$('.us-tree-info', el)!.textContent = rel;
+        M.say(rel);
       };
-      M.$('.us-qplan', el).addEventListener('click', (e) => {
-        const g =
-          e.target.closest('.plan-place') ||
-          (e.target.closest('.plan-leg-it') && M.$(`.plan-place[data-hot="${e.target.closest('.plan-leg-it').dataset.for}"]`, el));
+      M.$('.us-qplan', el)!.addEventListener('click', (e) => {
+        const leg = M.closest(e, '.plan-leg-it');
+        const g = M.closest(e, '.plan-place') || (leg && M.$(`.plan-place[data-hot="${leg.dataset.for}"]`, el));
         if (!g) return;
         const id = g.dataset.hot,
-          p = plan.places.find((x) => x.id === id),
           l = L.lieux.find((x) => x.id === id);
         M.$$('.plan-place', el).forEach((x) => x.classList.toggle('flash-on', x === g));
-        const txt = l
-          ? `${l.emoji} ${U.cap(l.nom)} : on y va pour ${l.pour}. ${U.cap(l.metier)} y travaille.`
-          : `${p.emoji} ${U.cap(p.nom)} : ${p.fn}.`;
-        M.$('.us-q-info', el).textContent = txt;
+        let txt: string;
+        if (l) txt = `${l.emoji} ${U.cap(l.nom)} : on y va pour ${l.pour}. ${U.cap(l.metier)} y travaille.`;
+        else {
+          const p = U.must(
+            plan.places.find((x) => x.id === id),
+            'lieu ' + id,
+          );
+          txt = `${p.emoji} ${U.cap(p.nom)} : ${p.fn}.`;
+        }
+        M.$('.us-q-info', el)!.textContent = txt;
         M.say(txt);
       });
-      ui.miniQuiz(M.$('.us-mq', el), [
+      ui.miniQuiz(M.$('.us-mq', el)!, [
         () => M.skillById['us-familles'].gen({ lvl: 0 }),
         () => M.skillById['us-lieux-metiers'].gen({ lvl: 0 }),
         () => M.skillById['us-animaux'].gen({ lvl: 1 }),

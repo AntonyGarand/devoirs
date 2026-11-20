@@ -23,7 +23,7 @@
   ];
 
   /** Règle fixe (HLD § 4) → { size 0–4, color, flower, wilt, msg, emo } */
-  function stateAt(eau, lum, w) {
+  function stateAt(eau: number, lum: number, w: number) {
     if (w === 0)
       return {
         size: 0,
@@ -73,9 +73,14 @@
       emo: '🌱',
     };
   }
-  const COL = { vert: ['#3f8a37', '#4fbf5a'], pale: ['#9fbf6a', '#cfe39a'], jaune: ['#a39a3a', '#e9d36b'], fane: ['#8a6a3c', '#b89a6a'] };
+  const COL: Record<string, [string, string]> = {
+    vert: ['#3f8a37', '#4fbf5a'],
+    pale: ['#9fbf6a', '#cfe39a'],
+    jaune: ['#a39a3a', '#e9d36b'],
+    fane: ['#8a6a3c', '#b89a6a'],
+  };
 
-  function drawPlant(eau, lum, s) {
+  function drawPlant(eau: number, lum: number, s: ReturnType<typeof stateAt>): string {
     const [stem, leaf] = COL[s.color];
     const bg = ['#2f2a45', '#c3cfdb', '#fff3c4'][lum];
     const h = 18 + s.size * (s.tall ? 34 : 26);
@@ -140,13 +145,18 @@
         }) +
         M.ui.section({ icon: '✅', title: '3. Vérifie ta compréhension', body: '<div class="sc-pl-quiz"></div>' });
 
-      const $ = (s) => M.$(s, el);
-      const st = { eau: 2, lum: 2, w: 0, log: [] };
+      const $ = <E extends Element = HTMLElement>(s: string): E => M.$<E>(s, el)!; // élément qu'on vient de rendre
+      const st: { eau: number; lum: number; w: number; log: { w: number; eau: number; lum: number; emo: string }[] } = {
+        eau: 2,
+        lum: 2,
+        w: 0,
+        log: [],
+      };
       const draw = () => {
         const s = stateAt(st.eau, st.lum, st.w);
         $('.sc-pl-stage').innerHTML = `<div class="sc-stage">${drawPlant(st.eau, st.lum, s)}</div>`;
         $('.sc-pl-msg').innerHTML = `${st.w ? `Semaine ${st.w} : ` : ''}${s.msg}`;
-        $('.sc-pl-next').disabled = st.w >= 4;
+        $<HTMLButtonElement>('.sc-pl-next').disabled = st.w >= 4;
         $('.sc-pl-log').innerHTML =
           st.log
             .map(
@@ -194,9 +204,12 @@
       draw();
 
       $('.sc-pl-parts').onclick = (e) => {
-        const z = e.target.closest('[data-hot]');
+        const z = M.closest(e, '[data-hot]');
         if (!z) return;
-        const p = SC.PARTIES_PLANTE.find((x) => x.id === z.dataset.hot);
+        const p = SC.must(
+          SC.PARTIES_PLANTE.find((x) => x.id === z.dataset.hot),
+          'partie ' + z.dataset.hot,
+        );
         M.$$('[data-hot]', $('.sc-pl-parts')).forEach((x) => x.classList.toggle('sc-hl', x.dataset.hot === p.id));
         $('.sc-pl-part').innerHTML = `<b>${SC.cap(p.nom)}</b> : ${p.role.toLowerCase()}.`;
         M.say(`${p.nom}. ${p.role}.`);

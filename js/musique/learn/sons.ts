@@ -40,7 +40,8 @@
           body: '<div class="mu-gal mu-codes"></div>',
         }) +
         M.ui.section({ icon: '✅', title: '4. Vérifie ta compréhension', body: '<div class="mu-quiz"></div>' });
-      const $ = (s) => M.$(s, el);
+      // éléments rendus juste au-dessus (el.innerHTML) : jamais null
+      const $ = <E extends Element = HTMLElement>(s: string) => M.$<E>(s, el)!;
 
       /* 1. son-jouet */
       const S = { int: 2, hau: 2, dur: 1 };
@@ -67,7 +68,6 @@
       const VEL = [0.06, 0.18, 0.4, 0.7, 1],
         MIDI = [43, 52, 62, 74, 86],
         SEC = [0.09, 0.3, 1, 2];
-      const KS = ['tres-court', 'court', 'long', 'tres-long'];
       const draw = () => {
         // le son dessiné : longueur = durée, épaisseur = intensité, hauteur = hauteur
         const L = [0, 60, 130, 200][S.dur],
@@ -140,9 +140,9 @@
           `<button class="mu-card" data-i="${i}">${MU.dotsSvg(d.dots, { w: 170, h: 90, cls: 'mu-dir-svg' })}<span>${d.label}</span></button>`,
       ).join('');
       $('.mu-dirs').onclick = (e) => {
-        const b = e.target.closest('.mu-card');
+        const b = M.closest(e, '.mu-card');
         if (!b) return;
-        const d = DIRS[+b.dataset.i];
+        const d = DIRS[Number(b.dataset.i)];
         M.$$('.mu-card', $('.mu-dirs')).forEach((x) => x.classList.toggle('on', x === b));
         const dots = M.$$('circle', b);
         MU.play(
@@ -152,7 +152,7 @@
       };
 
       /* 3. code */
-      const CODES = [
+      const CODES: { t: string; parts: MuCodePart[]; ev: MuEvent[]; say?: string }[] = [
         { t: 'Son long', parts: [{ k: 'long' }], ev: [{ inst: 'flute', midi: 69, dur: 1.2 }] },
         { t: 'Son court', parts: [{ k: 'court' }], ev: [{ inst: 'flute', midi: 69, dur: 0.28 }] },
         { t: 'Très long', parts: [{ k: 'tres-long' }], ev: [{ inst: 'flute', midi: 69, dur: 2.2 }] },
@@ -168,9 +168,9 @@
           `<button class="mu-card" data-i="${i}">${MU.codeSvg(c.parts, { w: 150, h: 80, cls: 'mu-code-svg' })}<span>${c.t}</span></button>`,
       ).join('');
       $('.mu-codes').onclick = (e) => {
-        const b = e.target.closest('.mu-card');
+        const b = M.closest(e, '.mu-card');
         if (!b) return;
-        const c = CODES[+b.dataset.i];
+        const c = CODES[Number(b.dataset.i)];
         b.classList.remove('hit');
         void b.offsetWidth;
         b.classList.add('hit');

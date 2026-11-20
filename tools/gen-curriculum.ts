@@ -1,10 +1,30 @@
 #!/usr/bin/env node
 /* Régénère les tableaux de docs/curriculum.md à partir du registre (habiletés, pages Apprendre).
-   Usage : node tools/gen-curriculum.js   — remplace tout ce qui suit le marqueur <!-- tableaux --> */
+   Usage : npm run curriculum   — remplace tout ce qui suit le marqueur <!-- tableaux --> */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
+
+interface Entry {
+  id: string;
+  title: string;
+  icon?: string;
+}
+/** Ce que ce script utilise de window.M (site compilé, chargé dans un contexte vm). */
+interface ToolM {
+  SUBJECTS: Entry[];
+  DOMAINS: (Entry & { subject: string; pda?: string })[];
+  skills: (Entry & { domain: string; order: number; pda: string; learn?: string; enrichment?: boolean; ungraded?: boolean })[];
+  learns: (Entry & { domain: string; short?: string })[];
+  learnById: Record<string, Entry | undefined>;
+}
+/** Global du contexte vm : window = le contexte lui-même; les scripts y ajoutent M. */
+interface SandboxCtx {
+  [name: string]: unknown;
+  window?: SandboxCtx;
+  M?: ToolM;
+}
 const root = path.join(import.meta.dirname, '..');
 const web = path.join(root, 'dist'); // site compilé (npm run build)
 const fakeEl = () => ({
@@ -28,7 +48,7 @@ const fakeEl = () => ({
     return '';
   },
 });
-const ctx = {
+const ctx: SandboxCtx = {
   console: { log() {}, warn() {}, error() {} },
   setTimeout,
   clearTimeout,
@@ -64,10 +84,11 @@ vm.createContext(ctx);
 const html = fs.readFileSync(path.join(web, 'index.html'), 'utf8');
 [...html.matchAll(/<script src="([^"]+)"><\/script>/g)]
   .map((m) => m[1])
-  .filter((f) => !/app\.js$/.test(f))
+  .filter((f) => !f.endsWith('app.js'))
   .forEach((f) => vm.runInContext(fs.readFileSync(path.join(web, f), 'utf8'), ctx, { filename: f }));
+if (!ctx.M) throw new Error('window.M absent : dist/ est-il compilé (node scripts/build.ts) ?');
 const M = ctx.M;
-const strip = (s) =>
+const strip = (s: unknown): string =>
   String(s || '')
     .replace(/<[^>]*>/g, '')
     .replace(/\|/g, '/');
@@ -82,7 +103,7 @@ for (const subj of M.SUBJECTS) {
     if (!sk.length && !ls.length) continue;
     out += `\n## ${d.icon} ${d.title}\n\n${d.pda ? '*' + strip(d.pda) + '*\n\n' : ''}| Habileté | Référence au programme | Page Apprendre |\n|---|---|---|\n`;
     sk.forEach((s) => {
-      out += `| ${s.icon || ''} ${strip(s.title)} (\`${s.id}\`)${s.enrichment ? ' 🌟' : ''}${s.ungraded ? ' 💬' : ''} | ${strip(s.pda)} | ${M.learnById[s.learn] ? strip(M.learnById[s.learn].title) : ''} |\n`;
+      out += `| ${s.icon || ''} ${strip(s.title)} (\`${s.id}\`)${s.enrichment ? ' 🌟' : ''}${s.ungraded ? ' 💬' : ''} | ${strip(s.pda)} | ${s.learn && M.learnById[s.learn] ? strip(M.learnById[s.learn]?.title) : ''} |\n`;
     });
     if (ls.length)
       out += `\nPages Apprendre : ${ls.map((l) => '**' + strip(l.title) + '**' + (l.short ? ' (' + strip(l.short) + ')' : '')).join(' · ')}\n`;

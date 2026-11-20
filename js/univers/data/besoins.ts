@@ -1,5 +1,24 @@
 /* Univers social — besoins et envies (CCQ 1re : besoins individuels).
    « Jouer » est un besoin (droit au jeu) : jamais dans les envies. type : corps | coeur | apprendre (null = pas classé au niveau 2). */
+
+type UsBesoinType = 'corps' | 'coeur' | 'apprendre';
+interface UsBesoin {
+  label: string;
+  emoji: string;
+  kind: 'besoin' | 'envie';
+  /** null = pas classé au niveau 2; absent pour les envies. */
+  type?: UsBesoinType | null;
+}
+interface UsBesoins {
+  items: UsBesoin[];
+  types: { id: UsBesoinType; label: string }[];
+  /** Situation → ce qui répond au besoin (ok), hors sujet (off). */
+  reponses: { sit: string; em: string; ok: string; off: string[] }[];
+}
+interface DataRegistry {
+  'us-besoins': UsBesoins;
+}
+
 (function () {
   'use strict';
   const M = window.M;

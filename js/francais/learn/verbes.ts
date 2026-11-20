@@ -3,10 +3,10 @@
   'use strict';
   const M = window.M;
   const FR = M.FR;
-  const gen = (id, lvl) => () => M.skillById[id].gen({ lvl });
+  const gen = (id: string, lvl: number) => () => M.skillById[id].gen({ lvl });
   const PERS = [['je'], ['tu'], ['il', 'elle', 'on'], ['nous'], ['vous'], ['ils', 'elles']];
   // Petites comptines originales pour mémoriser (rythme à taper dans les mains)
-  const COMPTINE = {
+  const COMPTINE: Record<FrVerbeId, string> = {
     etre: "Je suis, tu es, il est, elle est. Nous sommes, vous êtes, ils sont, elles sont. Être, être, c'est facile à chanter !",
     avoir: "J'ai, tu as, il a, elle a. Nous avons, vous avez, ils ont, elles ont. Avoir, avoir, on l'a dans la tête !",
     aimer: "J'aime, tu aimes, il aime la neige. Nous aimons, vous aimez, ils aiment glisser !",
@@ -34,8 +34,8 @@
         }) +
         M.ui.section({ icon: '✅', title: 'Vérifie ta compréhension', body: '<div class="fr-mq"></div>' });
       M.ui.tabs(
-        M.$('.fr-vtabs', el),
-        Object.entries(FR.VERBES).map(([id, V]) => ({
+        M.$('.fr-vtabs', el)!,
+        FR.VERBE_IDS.map((id) => [id, FR.VERBES[id]] as const).map(([id, V]) => ({
           id,
           label: `${V.em} ${V.inf}`,
           render(p) {
@@ -58,9 +58,9 @@
           },
         })),
       );
-      const cards = M.shuffle([].concat(...Object.keys(FR.VERBES).map((id) => [0, 1, 2, 3, 4, 5].map((k) => ({ id, k }))))).slice(0, 12);
+      const cards = M.shuffle(FR.VERBE_IDS.flatMap((id) => [0, 1, 2, 3, 4, 5].map((k) => ({ id, k })))).slice(0, 12);
       M.ui.flashcards(
-        M.$('.fr-flash', el),
+        M.$('.fr-flash', el)!,
         cards.map(({ id, k }) => {
           const p = PERS[k][0];
           const g = FR.conj(id, p);
@@ -71,7 +71,7 @@
           };
         }),
       );
-      M.ui.miniQuiz(M.$('.fr-mq', el), [gen('fr-etre-avoir', 0), gen('fr-etre-avoir', 1), gen('fr-verbes-frequents', 1)]);
+      M.ui.miniQuiz(M.$('.fr-mq', el)!, [gen('fr-etre-avoir', 0), gen('fr-etre-avoir', 1), gen('fr-verbes-frequents', 1)]);
     },
   });
 })();

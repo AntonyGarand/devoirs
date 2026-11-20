@@ -31,8 +31,9 @@
 `);
   } catch (e) {}
 
-  const tip = (html, cls = '') => `<div class="callout ${cls}">🦫 <b>Castor te dit :</b> ${html}</div>`;
-  const on = (btns, val, attr) => btns.forEach((b) => b.classList.toggle('on', b.dataset[attr] === String(val)));
+  const tip = (html: string, cls = '') => `<div class="callout ${cls}">🦫 <b>Castor te dit :</b> ${html}</div>`;
+  const on = (btns: HTMLElement[], val: string | number, attr: string) =>
+    btns.forEach((b) => b.classList.toggle('on', b.dataset[attr] === String(val)));
 
   /* =====================================================================
      Les nombres jusqu'à 1000
@@ -96,11 +97,11 @@
         </section>`;
 
       // --- Explorateur
-      const exp = NB.builder(M.$('.nb-exp', el), { start: 124, tab: true, expanded: true });
-      M.$('.nb-pres', el).onclick = (e) => {
-        const b = e.target.closest('[data-go]');
+      const exp = NB.builder(M.$('.nb-exp', el)!, { start: 124, tab: true, expanded: true });
+      M.$('.nb-pres', el)!.onclick = (e) => {
+        const b = M.closest(e, '[data-go]');
         if (!b) return;
-        exp.set(b.dataset.go === 'rnd' ? M.rnd(1, 999) : +b.dataset.go);
+        exp.set(b.dataset.go === 'rnd' ? M.rnd(1, 999) : Number(b.dataset.go));
         M.sfx.pop();
       };
       M.$$('[data-say]', el).forEach((b) => {
@@ -108,12 +109,12 @@
       });
 
       // --- Plusieurs façons
-      NB.split(M.$('.nb-many', el), 47, { breakable: true, hint: 'Casse une dizaine : il y a toujours 47 cubes en tout !' });
+      NB.split(M.$('.nb-many', el)!, 47, { breakable: true, hint: 'Casse une dizaine : il y a toujours 47 cubes en tout !' });
 
       // --- Comparer
-      const cmp = { a: 347, b: 374 };
-      const cbox = M.$('.nb-cmpt', el);
-      const side = (k) => `<div class="nb-side"><div class="nb-big">${NB.colored(cmp[k])}</div>
+      const cmp: { a: number; b: number } = { a: 347, b: 374 };
+      const cbox = M.$('.nb-cmpt', el)!;
+      const side = (k: 'a' | 'b') => `<div class="nb-side"><div class="nb-big">${NB.colored(cmp[k])}</div>
           <div class="nb-steps">${[-100, -10, -1, 1, 10, 100].map((d) => `<button class="btn" data-k="${k}" data-d="${d}">${d > 0 ? '+' : '−'}${Math.abs(d)}</button>`).join('')}</div>
           ${NB.blocks(cmp[k], true)}</div>`;
       function drawCmp() {
@@ -121,10 +122,10 @@
           s = NB.sym(a, b),
           A = NB.cdu(a),
           B = NB.cdu(b);
-        const ca = {},
-          cb = {};
+        const ca: Record<string, string> = {},
+          cb: Record<string, string> = {};
         let why = `Les deux nombres sont pareils : <b>${a} = ${b}</b>.`;
-        for (const k of ['c', 'd', 'u']) {
+        for (const k of ['c', 'd', 'u'] as const) {
           if (A[k] === B[k]) {
             ca[k] = cb[k] = 'same';
             continue;
@@ -147,7 +148,7 @@
           <div class="nb-ctl" style="justify-content:center"><button class="btn yellow" data-rnd="1">🎲 Deux nombres au hasard</button><button class="btn" data-rnd="2">🎲 Deux nombres presque pareils</button></div>`;
       }
       cbox.onclick = (e) => {
-        const r = e.target.closest('[data-rnd]');
+        const r = M.closest(e, '[data-rnd]');
         if (r) {
           if (r.dataset.rnd === '2') {
             cmp.a = M.rnd(101, 989);
@@ -161,9 +162,10 @@
           drawCmp();
           return;
         }
-        const b = e.target.closest('[data-k]');
+        const b = M.closest(e, '[data-k]');
         if (!b) return;
-        cmp[b.dataset.k] = Math.min(999, Math.max(0, cmp[b.dataset.k] + +b.dataset.d));
+        const k = b.dataset.k === 'b' ? 'b' : 'a';
+        cmp[k] = Math.min(999, Math.max(0, cmp[k] + Number(b.dataset.d)));
         M.sfx.tap();
         drawCmp();
       };
@@ -173,13 +175,13 @@
       let estN = 0;
       const newEst = () => {
         estN = M.pick([M.rnd(8, 12), M.rnd(25, 35), M.rnd(45, 55), M.rnd(90, 110)]);
-        NB.scatter(M.$('.nb-estl', el), estN, M.pick(['🐞', '🌼', '⭐', '🍓', '🐟']));
-        M.$('.nb-estans', el).innerHTML = 'Environ combien ? Fais ton estimation dans ta tête…';
+        NB.scatter(M.$('.nb-estl', el)!, estN, M.pick(['🐞', '🌼', '⭐', '🍓', '🐟']));
+        M.$('.nb-estans', el)!.innerHTML = 'Environ combien ? Fais ton estimation dans ta tête…';
       };
-      M.$('.nb-estnew', el).onclick = newEst;
-      M.$('.nb-estrev', el).onclick = () => {
+      M.$('.nb-estnew', el)!.onclick = newEst;
+      M.$('.nb-estrev', el)!.onclick = () => {
         const near = [10, 30, 50, 100].reduce((p, c) => (Math.abs(c - estN) < Math.abs(p - estN) ? c : p));
-        M.$('.nb-estans', el).innerHTML = `Il y en a exactement <b>${estN}</b>. C'est <b>environ ${near}</b> !`;
+        M.$('.nb-estans', el)!.innerHTML = `Il y en a exactement <b>${estN}</b>. C'est <b>environ ${near}</b> !`;
         M.sfx.good();
       };
       newEst();
@@ -189,7 +191,7 @@
   /* =====================================================================
      La grille de 100
      ===================================================================== */
-  const OBS = {
+  const OBS: Record<string, string> = {
     color: 'Touche des cases pour les colorier. Peux-tu inventer une régularité ? (Touche encore « Colorier » pour changer de couleur.)',
     voisins: 'Touche une case pour voir ses voisins. Vers la droite : <b>+1</b>. Vers le bas : <b>+10</b>.',
     b2: 'Les bonds de <b>2</b> à partir de 0 tombent sur les nombres <b>pairs</b> : ils finissent tous par 0, 2, 4, 6 ou 8. Ça fait des colonnes !',
@@ -243,18 +245,18 @@
       // --- Grille
       let base = 0,
         mode = 'color',
-        grid = null,
+        grid: ReturnType<typeof NB.grid> | null = null,
         ci = 0;
       const modeBtns = M.$$('.nb-modes [data-m]', el);
-      const obs = M.$('.nb-obs', el);
+      const obs = M.$('.nb-obs', el)!;
       const COLS = ['k1', 'k2', 'k3', 'k4', 'k5'];
-      function onTap(v, api) {
+      function onTap(v: number, api: NbGridCtl) {
         if (mode === 'voisins') {
           api.clear();
           api.ring[v] = true;
-          const row = (x) => Math.floor((x - 1) / 10);
-          const parts = [];
-          const nb = [
+          const row = (x: number) => Math.floor((x - 1) / 10);
+          const parts: string[] = [];
+          const nb: [number, string, string][] = [
             [1, 'À droite', 'k2'],
             [-1, 'À gauche', 'k2'],
             [10, 'En dessous', 'k3'],
@@ -284,17 +286,19 @@
       }
       function makeGrid() {
         if (grid) grid.stop();
-        M.$('.nb-rlab', el).textContent = `${base + 1} à ${base + 100}`;
-        M.$('.nb-prev', el).disabled = base === 0;
-        M.$('.nb-next', el).disabled = base === 900;
-        grid = NB.grid(M.$('.nb-g100', el), { from: base + 1, to: base + 100, onTap, hint: '' });
+        M.$('.nb-rlab', el)!.textContent = `${base + 1} à ${base + 100}`;
+        M.$<HTMLButtonElement>('.nb-prev', el)!.disabled = base === 0;
+        M.$<HTMLButtonElement>('.nb-next', el)!.disabled = base === 900;
+        grid = NB.grid(M.$('.nb-g100', el)!, { from: base + 1, to: base + 100, onTap, hint: '' });
       }
-      async function setMode(m) {
+      async function setMode(m: string) {
+        const g = grid;
+        if (!g) return;
         if (m === 'clear') {
-          grid.stop();
-          grid.clear();
-          grid.status('');
-          grid.render();
+          g.stop();
+          g.clear();
+          g.status('');
+          g.render();
           mode = 'color';
           on(modeBtns, 'color', 'm');
           obs.innerHTML = '🦫 ' + OBS.color;
@@ -303,10 +307,10 @@
         mode = m;
         on(modeBtns, m, 'm');
         obs.innerHTML = '🦫 ' + OBS[m];
-        grid.stop();
-        grid.clear();
-        grid.status('');
-        grid.render();
+        g.stop();
+        g.clear();
+        g.status('');
+        g.render();
         if (m === 'color') {
           ci = (ci + 1) % COLS.length;
           return;
@@ -315,28 +319,28 @@
         const all = M.range(base + 1, base + 100);
         if (m === 'pair' || m === 'impair') {
           all.forEach((v) => {
-            if ((v % 2 === 0) === (m === 'pair')) grid.set(v, m === 'pair' ? 'k2' : 'k3');
+            if ((v % 2 === 0) === (m === 'pair')) g.set(v, m === 'pair' ? 'k2' : 'k3');
           });
-          grid.render();
+          g.render();
           return;
         }
         const step = +m.slice(1);
         const seq = all.filter((v) => v % step === 0);
-        await grid.play(
+        await g.play(
           seq,
           step === 2 ? 'k2' : step === 5 ? 'k4' : 'k1',
           (v) => `Bonds de ${step} : <b>${v}</b>`,
           step === 2 ? 110 : step === 5 ? 200 : 380,
         );
       }
-      M.$('.nb-modes', el).onclick = (e) => {
-        const b = e.target.closest('[data-m]');
+      M.$('.nb-modes', el)!.onclick = (e) => {
+        const b = M.closest(e, '[data-m]');
         if (b) {
           M.sfx.tap();
-          setMode(b.dataset.m);
+          setMode(b.dataset.m ?? '');
         }
       };
-      const moveRange = (d) => {
+      const moveRange = (d: number) => {
         const nb = base + d;
         if (nb < 0 || nb > 900) return;
         base = nb;
@@ -344,8 +348,8 @@
         makeGrid();
         if (mode !== 'color' && mode !== 'voisins') setMode(mode);
       };
-      M.$('.nb-prev', el).onclick = () => moveRange(-100);
-      M.$('.nb-next', el).onclick = () => moveRange(100);
+      M.$('.nb-prev', el)!.onclick = () => moveRange(-100);
+      M.$('.nb-next', el)!.onclick = () => moveRange(100);
       makeGrid();
       on(modeBtns, 'color', 'm');
       obs.innerHTML = '🦫 ' + OBS.color;
@@ -356,7 +360,7 @@
         tok = 0;
       const bondBtns = M.$$('.nb-bonds [data-s]', el),
         dirBtns = M.$$('.nb-dirs [data-dir]', el);
-      const lineFor = (s) =>
+      const lineFor = (s: number): NumberLineOpts =>
         s === 2
           ? { lo: 0, hi: 20 }
           : s === 5
@@ -364,19 +368,19 @@
             : s === 10
               ? { lo: 0, hi: 100 }
               : { lo: 0, hi: 1000, labelEvery: 100, tickEvery: 50 };
-      let line = null;
+      let line: ReturnType<typeof M.viz.numberLine> | null = null;
       function makeLine() {
         tok++;
         const L = lineFor(bond);
-        line = M.viz.numberLine(NB.mount(M.$('.nb-fline', el)), Object.assign({ start: dir > 0 ? L.lo : L.hi, interactive: false }, L));
-        M.$('.nb-seqout', el).textContent = String(dir > 0 ? L.lo : L.hi);
+        line = M.viz.numberLine(NB.mount(M.$('.nb-fline', el)!), Object.assign({ start: dir > 0 ? L.lo : L.hi, interactive: false }, L));
+        M.$('.nb-seqout', el)!.textContent = String(dir > 0 ? L.lo : L.hi);
       }
       async function play() {
         makeLine();
         const t = tok,
           L = lineFor(bond),
-          out = M.$('.nb-seqout', el);
-        const seq = [];
+          out = M.$('.nb-seqout', el)!;
+        const seq: number[] = [];
         let v = dir > 0 ? L.lo : L.hi;
         seq.push(v);
         for (;;) {
@@ -384,28 +388,28 @@
           if (v < L.lo || v > L.hi) break;
           await M.sleep(350);
           if (t !== tok || !el.isConnected) return;
-          await line.hop(v);
+          await line?.hop(v);
           if (t !== tok || !el.isConnected) return;
           seq.push(v);
           out.textContent = seq.join(', ');
           M.say(String(v));
         }
       }
-      M.$('.nb-bonds', el).onclick = (e) => {
-        const b = e.target.closest('[data-s]');
+      M.$('.nb-bonds', el)!.onclick = (e) => {
+        const b = M.closest(e, '[data-s]');
         if (!b) return;
-        bond = +b.dataset.s;
+        bond = Number(b.dataset.s);
         on(bondBtns, bond, 's');
         makeLine();
       };
-      M.$('.nb-dirs', el).onclick = (e) => {
-        if (e.target.closest('.nb-go')) {
+      M.$('.nb-dirs', el)!.onclick = (e) => {
+        if (M.closest(e, '.nb-go')) {
           play();
           return;
         }
-        const b = e.target.closest('[data-dir]');
+        const b = M.closest(e, '[data-dir]');
         if (!b) return;
-        dir = +b.dataset.dir;
+        dir = Number(b.dataset.dir);
         on(dirBtns, dir, 'dir');
         makeLine();
       };
@@ -422,12 +426,12 @@
   /* =====================================================================
      Les fractions
      ===================================================================== */
-  const SHAPES = [
+  const SHAPES: [NbShapeKind, string][] = [
     ['pizza', '🍕 Pizza'],
     ['tab', '🍫 Tablette'],
     ['carre', '⬜ Carré'],
   ];
-  const WHAT = { 2: 'La moitié', 3: 'Le tiers', 4: 'Le quart' };
+  const WHAT: Record<number, string> = { 2: 'La moitié', 3: 'Le tiers', 4: 'Le quart' };
   M.registerLearn({
     id: 'fractions',
     domain: 'nombres',
@@ -437,7 +441,7 @@
     intro:
       "Une fraction, c'est une partie d'un tout partagé en parts égales. Partage des pizzas, des tablettes de chocolat et des collections !",
     render(el) {
-      const svgTile = (kind, n, k, name, extra = '', variant = 0) =>
+      const svgTile = (kind: NbShapeKind, n: number, k: number, name: string, extra = '', variant = 0) =>
         `<div class="l-tile"><div class="nb-tile-svg">${NB.shapeSvg(kind, NB.weights(n, true), M.range(0, k - 1), { variant })}</div><h3>${name}</h3><p>${extra}</p></div>`;
       el.innerHTML = `
         <section class="l-sec"><h2>✂️ Partage et colorie</h2>
@@ -482,16 +486,16 @@
         </section>`;
 
       // --- Outil de partage d'une forme
-      const S = { kind: 'pizza', n: 4, eq: true, variant: 0 };
-      const nameBox = M.$('.nb-fname', el);
-      function showName(onArr) {
+      const S: { kind: NbShapeKind; n: number; eq: boolean; variant: number } = { kind: 'pizza', n: 4, eq: true, variant: 0 };
+      const nameBox = M.$('.nb-fname', el)!;
+      function showName(onArr: readonly unknown[]) {
         const k = onArr.length,
           n = S.n;
-        let h;
+        let h: string;
         if (!S.eq)
           h =
             '🙃 Les parts ne sont <b style="font-size:1.1em">pas égales</b> : on ne peut pas dire « un ' +
-            { 2: 'demi', 3: 'tiers', 4: 'quart' }[n] +
+            ({ 2: 'demi', 3: 'tiers', 4: 'quart' } as Record<number, string>)[n] +
             ' ». Pour une fraction, il faut des parts égales !';
         else if (!k) h = 'Touche une part pour la colorier !';
         else {
@@ -504,50 +508,50 @@
         nameBox.innerHTML = h;
       }
       nameBox.onclick = (e) => {
-        const b = e.target.closest('.nb-fsay');
+        const b = M.closest(e, '.nb-fsay');
         if (b) M.say(b.dataset.say);
       };
       function drawShape() {
         on(M.$$('.nb-fshape [data-shape]', el), S.kind, 'shape');
         on(M.$$('.nb-fparts [data-n]', el), S.n, 'n');
         on(M.$$('.nb-feq [data-eq]', el), S.eq ? 1 : 0, 'eq');
-        const varBtn = M.$('.nb-fvar', el);
+        const varBtn = M.$('.nb-fvar', el)!;
         varBtn.hidden = !(S.kind === 'carre' && S.eq && S.n !== 3);
-        NB.fracTool(M.$('.nb-ftool', el), {
+        NB.fracTool(M.$('.nb-ftool', el)!, {
           kind: S.kind,
           weights: NB.weights(S.n, S.eq),
           variant: S.variant,
-          status: (k) => `Parts coloriées : <b>${k}</b> sur <b>${S.n}</b>`,
+          status: (k: number) => `Parts coloriées : <b>${k}</b> sur <b>${S.n}</b>`,
           onChange: showName,
         });
         showName([]);
       }
-      M.$('.nb-fshape', el).onclick = (e) => {
-        const b = e.target.closest('[data-shape]');
+      M.$('.nb-fshape', el)!.onclick = (e) => {
+        const b = M.closest(e, '[data-shape]');
         if (b) {
-          S.kind = b.dataset.shape;
+          S.kind = SHAPES.find(([k]) => k === b.dataset.shape)?.[0] ?? S.kind;
           S.variant = 0;
           M.sfx.tap();
           drawShape();
         }
       };
-      M.$('.nb-fparts', el).onclick = (e) => {
-        const b = e.target.closest('[data-n]');
+      M.$('.nb-fparts', el)!.onclick = (e) => {
+        const b = M.closest(e, '[data-n]');
         if (b) {
-          S.n = +b.dataset.n;
+          S.n = Number(b.dataset.n);
           S.variant = 0;
           M.sfx.tap();
           drawShape();
         }
       };
-      M.$('.nb-feq', el).onclick = (e) => {
-        if (e.target.closest('.nb-fvar')) {
+      M.$('.nb-feq', el)!.onclick = (e) => {
+        if (M.closest(e, '.nb-fvar')) {
           S.variant = (S.variant + 1) % (S.n === 4 ? 3 : 2);
           M.sfx.tap();
           drawShape();
           return;
         }
-        const b = e.target.closest('[data-eq]');
+        const b = M.closest(e, '[data-eq]');
         if (b) {
           S.eq = b.dataset.eq === '1';
           M.sfx.tap();
@@ -558,17 +562,17 @@
 
       // --- Fraction d'une collection
       const C = { t: 8, n: 2 };
-      const res = M.$('.nb-cres', el);
-      let share = null;
+      const res = M.$('.nb-cres', el)!;
+      let share: ReturnType<typeof NB.share> | null = null;
       function drawColl() {
         on(M.$$('.nb-ctot [data-t]', el), C.t, 't');
-        M.$$('.nb-cn [data-n]', el).forEach((b) => {
-          b.disabled = C.t % +b.dataset.n !== 0;
-          b.classList.toggle('on', +b.dataset.n === C.n);
+        M.$$<HTMLButtonElement>('.nb-cn [data-n]', el).forEach((b) => {
+          b.disabled = C.t % Number(b.dataset.n) !== 0;
+          b.classList.toggle('on', Number(b.dataset.n) === C.n);
         });
-        share = NB.share(NB.mount(M.$('.nb-coll2', el)), C.t, C.n, '🍓', {
+        share = NB.share(NB.mount(M.$('.nb-coll2', el)!), C.t, C.n, '🍓', {
           hint: `Touche une 🍓 : elle va dans l'assiette qui en a le moins. Partage les ${C.t} fraises en ${C.n} parts égales.`,
-          onChange: (left, counts) => {
+          onChange: (left: number, counts: number[]) => {
             if (left) {
               res.innerHTML = `Il reste ${left} ${pl(left, 'fraise')} à partager…`;
               return;
@@ -579,25 +583,25 @@
         });
       }
       res.onclick = (e) => {
-        const b = e.target.closest('.nb-fsay');
+        const b = M.closest(e, '.nb-fsay');
         if (b) M.say(b.dataset.say);
       };
-      M.$('.nb-ctot', el).onclick = (e) => {
-        const b = e.target.closest('[data-t]');
+      M.$('.nb-ctot', el)!.onclick = (e) => {
+        const b = M.closest(e, '[data-t]');
         if (!b) return;
-        C.t = +b.dataset.t;
+        C.t = Number(b.dataset.t);
         if (C.t % C.n) C.n = 2;
         M.sfx.tap();
         drawColl();
       };
-      M.$('.nb-cn', el).onclick = (e) => {
-        if (e.target.closest('.nb-cshow')) {
+      M.$('.nb-cn', el)!.onclick = (e) => {
+        if (M.closest(e, '.nb-cshow')) {
           if (share) share.showMe();
           return;
         }
-        const b = e.target.closest('[data-n]');
+        const b = M.closest<HTMLButtonElement>(e, '[data-n]');
         if (!b || b.disabled) return;
-        C.n = +b.dataset.n;
+        C.n = Number(b.dataset.n);
         M.sfx.tap();
         drawColl();
       };

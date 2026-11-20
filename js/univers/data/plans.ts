@@ -1,10 +1,41 @@
 /* Univers social — plans déclaratifs pour M.viz.plan (vue de dessus, nord en haut).
    Coordonnées en cases. fn = « où on peut … » (lire la légende), pour les questions de niveau 1. */
+
+/** Lieu d'un plan (M.viz.plan) : label = sans article, nom = avec l'article, fn = « où on peut … ». */
+interface UsPlace extends PlanPlace {
+  art: string;
+  emoji: string;
+  label: string;
+  fn: string;
+  nom: string;
+}
+interface UsPlan {
+  id: string;
+  titre: string;
+  cols: number;
+  rows: number;
+  roads: PlanRoad[];
+  ground?: PlanSpec['ground'];
+  water?: PlanSpec['water'];
+  places: UsPlace[];
+}
+interface DataRegistry {
+  'us-plans': UsPlan[];
+}
+
 (function () {
   'use strict';
   const M = window.M;
   // art = dessin de js/art-lib.js; emoji = ce même dessin en ligne (légende, consignes, choix)
-  const P = (id, x, y, art, label, fn, extra = {}) => ({
+  const P = (
+    id: string,
+    x: number,
+    y: number,
+    art: string,
+    label: string,
+    fn: string,
+    extra: Partial<Pick<UsPlace, 'w' | 'h' | 'color' | 'fill'>> & { nom: string },
+  ): UsPlace => ({
     id,
     x,
     y,

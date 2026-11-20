@@ -4,6 +4,13 @@
    « Autrefois » = il y a environ 100 ans (arrière-grands-parents), sans dates précises.
    Lignes du temps : personnages fictifs seulement (R5).
    ===================================================================== */
+interface UsApi {
+  /** Dessin (art) ou emoji d'un objet, à la taille size (px). */
+  pic(o: UsObjet, size?: number): string;
+  /** Html de ligne du temps d'un personnage + légende. hide = ids d'événements cachés (« ? »). */
+  timelineHtml(pers: UsPersonnage, opts?: { hide?: string[]; legend?: boolean }): string;
+}
+
 (function () {
   'use strict';
   const M = window.M;

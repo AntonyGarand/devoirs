@@ -74,20 +74,21 @@
         }),
         ui.section({ icon: '✅', title: '6. Vérifie ta compréhension', body: '<div class="us-mq"></div>' }),
       ].join('');
-      M.$('.us-felix', el).onclick = (e) => {
-        const g = e.target.closest('.tl-ev');
+      M.$('.us-felix', el)!.onclick = (e) => {
+        const g = M.closest(e, '.tl-ev');
         if (!g) return;
         const ev = felix.evenements.find((x) => x.id === g.dataset.hot);
+        if (!ev) return;
         const txt = `${ev.annee} : ${ev.emoji} ${ev.label}`;
-        M.$('.us-felix-info', el).textContent = txt;
+        M.$('.us-felix-info', el)!.textContent = txt;
         M.say(`En ${ev.annee}, ${ev.label}.`);
       };
-      ui.reading(M.$('.us-read', el), {
+      ui.reading(M.$('.us-read', el)!, {
         title: 'Chez grand-papa',
         text: "Quand grand-papa Émile était petit, il n'y avait pas de télévision dans sa maison. Le soir, la famille écoutait la radio près du poêle à bois. Pour garder le lait au froid, on mettait un gros bloc de glace dans la glacière. L'hiver, Émile marchait jusqu'à l'école de rang. Dans sa classe, il y avait des élèves de tous les âges avec une seule enseignante. Il écrivait sur une ardoise avec une craie. Aujourd'hui, Émile aime raconter ses souvenirs à ses arrière-petits-enfants.",
       });
       ui.tabs(
-        M.$('.us-tabs', el),
+        M.$('.us-tabs', el)!,
         DOM.map(([d, label]) => ({
           id: d,
           label,
@@ -105,8 +106,8 @@
       );
       // Ma ligne du temps : en mémoire seulement
       let age = 0;
-      const mine = [];
-      const ctl = ui.stepper(M.$('.us-my-ctl', el), {
+      const mine: TimelineEvent[] = [];
+      const ctl = ui.stepper(M.$('.us-my-ctl', el)!, {
         label: 'À quel âge ? ',
         value: 0,
         min: 0,
@@ -116,13 +117,14 @@
         },
       });
       const draw = () => {
-        M.$('.us-mytl-out', el).innerHTML =
+        M.$('.us-mytl-out', el)!.innerHTML =
           `<div class="plan-title" style="text-align:center">Ma vie</div><div class="us-swipe">👉 Glisse la ligne du temps pour tout voir 👈</div><div class="us-tl">${M.viz.timeline({ from: 0, to: 8, title: '', events: mine, tickLabel: (v) => `${v} an${v > 1 ? 's' : ''}` })}</div>`;
       };
       M.$$('.us-me', el).forEach(
         (b) =>
           (b.onclick = () => {
             const m = MES.find((x) => x.id === b.dataset.id);
+            if (!m) return;
             const i = mine.findIndex((x) => x.id === m.id);
             if (i >= 0) mine.splice(i, 1);
             mine.push({ at: m.id === 'nais' ? 0 : age, emoji: m.emoji, label: m.label, id: m.id });
@@ -130,14 +132,14 @@
             draw();
           }),
       );
-      M.$('.us-my-clear', el).onclick = () => {
+      M.$('.us-my-clear', el)!.onclick = () => {
         mine.length = 0;
         ctl.set(0, true);
         age = 0;
         draw();
       };
       draw();
-      ui.miniQuiz(M.$('.us-mq', el), [
+      ui.miniQuiz(M.$('.us-mq', el)!, [
         () => M.skillById['us-ligne-temps'].gen({ lvl: 0 }),
         () => M.skillById['us-ligne-temps'].gen({ lvl: 1 }),
         () => M.skillById['us-avant-maintenant'].gen({ lvl: 0 }),

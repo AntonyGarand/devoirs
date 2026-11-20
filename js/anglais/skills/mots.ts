@@ -7,19 +7,67 @@
      EN.explainWord(w)        « cat 🔊 veut dire chat 🐱 »
    Les générateurs gen() ne touchent jamais au DOM.
    ===================================================================== */
+
+/** Objet recoloriable des exercices de couleurs (M.EN.COLOR_OBJ). */
+interface EnColorObj {
+  art: string;
+  /** Description anglaise : couleur et taille (big / little). */
+  say(colour: string, size?: string): string;
+  /** Nom français, avec article (le). */
+  fr: string;
+  le: string;
+  /** Féminin, pluriel (accord de la couleur). */
+  f?: boolean;
+  pl?: boolean;
+  /** Existe en gros et en petit. */
+  sized?: boolean;
+}
+/** Accord d'une couleur française. */
+interface EnAgree {
+  f?: boolean;
+  pl?: boolean;
+}
+
+interface EnglishApi {
+  /** Audio anglais (🔊 Écoute / 🐢 Lentement) : un texte, ou une séquence. */
+  audio(x: string | string[], extra?: AudioSpec): AudioSpec;
+  /** n éléments distincts (sans conflit deux à deux) de pool; target est inclus. clash : défaut EN.clash (mots). */
+  pickSet<T extends { id: string }>(pool: readonly T[], n: number, target?: T | null, clash?: (a: T, b: T) => boolean): T[];
+  /** Choix-image pour un mot. */
+  picChoice(w: EnWord, size?: number): Choice<string>;
+  /** « cat 🔊 veut dire chat 🐱 ». */
+  explainWord(w: EnWord): string;
+  themeHint(w: EnWord): string;
+  /** Le choix ne contient que des mots sans conflit. */
+  checkChoices(q: Question): CheckResult;
+  /** « a red ball » / « an orange ball ». */
+  aAn(w: string): string;
+  /** Couleur accordée au nom français. */
+  frColour(fr: string, agree?: EnAgree): string;
+  /** « maison blanche », « gros ballon rouge ». */
+  frObjColour(o: EnAgree & { fr: string }, c: EnWord, size?: string): string;
+  COLOR_OBJ: EnColorObj[];
+}
+
 (function () {
   'use strict';
   const M = window.M;
   const EN = M.EN;
   const LANG = EN.LANG;
-  const NEEDS = ['speech:en'];
+  const NEEDS: SkillNeed[] = ['speech:en'];
 
   /* ------------------------------ aides partagées ------------------------------ */
   EN.audio = (x, extra = {}) => (Array.isArray(x) ? { seq: x, lang: LANG, pause: 900, ...extra } : { text: x, lang: LANG, ...extra });
   /** n éléments distincts (sans conflit deux à deux) de pool; target est inclus. clash(a, b) facultatif. */
-  EN.pickSet = (pool, n, target, clash = EN.clash) => {
+  EN.pickSet = <T extends { id: string }>(
+    pool: readonly T[],
+    n: number,
+    target?: T | null,
+    // défaut : EN.clash (pool de mots, ou d'objets { id } comparés comme des mots)
+    clash: (a: T, b: T) => boolean = EN.clash as (a: unknown, b: unknown) => boolean,
+  ): T[] => {
     for (let guard = 0; guard < 40; guard++) {
-      const out = target ? [target] : [];
+      const out: T[] = target ? [target] : [];
       for (const c of M.shuffle(pool)) {
         if (out.length >= n) break;
         if (out.some((o) => clash(o, c))) continue;
@@ -31,7 +79,7 @@
   };
   EN.picChoice = (w, size = 64) => ({ label: `<span class="en-pic-lbl">${EN.wordPic(w, size)}</span>`, value: w.id });
   EN.explainWord = (w) => `${EN.ear(w.word, w.say)} veut dire <b>${M.esc(w.fr)}</b> ${EN.wordPic(w, 30)}.`;
-  const THEME_HINT = {
+  const THEME_HINT: Record<string, string> = {
     animals: "C'est un animal.",
     food: 'Ça se mange ou ça se boit.',
     clothes: "C'est un vêtement.",
@@ -46,17 +94,18 @@
     colours: "C'est une couleur.",
   };
   EN.themeHint = (w) => THEME_HINT[w.theme] || '';
-  const listenHint = (w) => `Écoute encore avec 🐢. ${EN.themeHint(w)}${w.cognate ? ' Ça ressemble à un mot français !' : ''}`;
+  const listenHint = (w: EnWord): string =>
+    `Écoute encore avec 🐢. ${EN.themeHint(w)}${w.cognate ? ' Ça ressemble à un mot français !' : ''}`;
   /** Le choix ne doit contenir que des valeurs sans conflit (sameAs, homophones, même image). */
   EN.checkChoices = (q) => {
-    const ids = (q.choices || []).map((c) => c.value).filter((v) => EN.word[v]);
+    const ids = (('choices' in q && q.choices) || []).map((c) => c.value).filter((v): v is string => !!EN.word[v]);
     for (let i = 0; i < ids.length; i++)
       for (let j = i + 1; j < ids.length; j++) if (EN.clash(ids[i], ids[j])) return `conflit entre ${ids[i]} et ${ids[j]}`;
   };
 
   /* Mots imageables pour l'écoute (pas les nombres, couleurs, actions, ni les images « en contexte »). */
   const LISTEN_THEMES = ['animals', 'food', 'clothes', 'family', 'school', 'body', 'weather', 'seasons', 'feelings', 'toys', 'things'];
-  const imageable = (maxLvl, themes = LISTEN_THEMES) =>
+  const imageable = (maxLvl: number, themes = LISTEN_THEMES): EnWord[] =>
     EN.VOCAB.filter((w) => w.picture === 'ok' && w.lvl <= maxLvl && themes.includes(w.theme));
 
   /* ------------------------------ 1. Écoute et touche l'image ------------------------------ */
@@ -104,16 +153,16 @@
 
   /* ------------------------------ 2. Les couleurs ------------------------------ */
   /** « a red ball » / « an orange ball » : an devant un son voyelle. */
-  const aAn = (w) => (/^[aeiou]/i.test(w) ? 'an ' : 'a ') + w;
+  const aAn = (w: string): string => (/^[aeiou]/i.test(w) ? 'an ' : 'a ') + w;
   EN.aAn = aAn;
   /** Couleur accordée au nom français : « maison blanche », « mitaines grises », « chandail vert ». */
-  const FEM = { bleu: 'bleue', vert: 'verte', brun: 'brune', noir: 'noire', gris: 'grise', blanc: 'blanche' };
+  const FEM: Record<string, string> = { bleu: 'bleue', vert: 'verte', brun: 'brune', noir: 'noire', gris: 'grise', blanc: 'blanche' };
   EN.frColour = (fr, { f = false, pl = false } = {}) => {
     let w = f ? FEM[fr] || fr : fr;
-    if (pl && fr !== 'orange' && !/s$/.test(w)) w += 's';
+    if (pl && fr !== 'orange' && !w.endsWith('s')) w += 's';
     return w;
   };
-  const COLOR_OBJ = [
+  const COLOR_OBJ: EnColorObj[] = [
     { art: 'en-ball', say: (c, b) => aAn(`${b ? b + ' ' : ''}${c} ball`), fr: 'ballon', le: 'le ballon', sized: true },
     { art: 'en-car', say: (c, b) => aAn(`${b ? b + ' ' : ''}${c} car`), fr: 'auto', le: "l'auto", f: true, sized: true },
     { art: 'en-house', say: (c, b) => aAn(`${b ? b + ' ' : ''}${c} house`), fr: 'maison', le: 'la maison', f: true, sized: true },
@@ -125,7 +174,7 @@
   EN.frObjColour = (o, c, size) =>
     `${size ? (size === 'big' ? (o.f ? 'grosse' : 'gros') : o.f ? 'petite' : 'petit') + (o.pl ? 's' : '') + ' ' : ''}${o.fr} ${EN.frColour(c.fr, o)}`;
   EN.COLOR_OBJ = COLOR_OBJ;
-  const colourWords = (maxLvl) => EN.ofTheme('colours', maxLvl);
+  const colourWords = (maxLvl: number): EnWord[] => EN.ofTheme('colours', maxLvl);
   M.registerSkill({
     id: 'en-couleurs',
     domain: 'en-mots',
@@ -175,7 +224,7 @@
       // lvl 2 : taille + couleur + objet (6 choix : 3 couleurs × gros/petit)
       const obj = M.pick(COLOR_OBJ.filter((o) => o.sized));
       const cols = EN.pickSet(pool, 3);
-      const all = [];
+      const all: { c: EnWord; b: string; value: string }[] = [];
       cols.forEach((c) => ['big', 'little'].forEach((b) => all.push({ c, b, value: b + '-' + c.id })));
       const t = M.pick(all);
       return {
@@ -195,7 +244,7 @@
   });
 
   /* ------------------------------ 3. Les nombres ------------------------------ */
-  const COUNT_OBJ = [
+  const COUNT_OBJ: [emoji: string, plural: string][] = [
     ['🍎', 'apples'],
     ['🦆', 'ducks'],
     ['⭐', 'stars'],
@@ -205,7 +254,7 @@
     ['🌲', 'trees'],
     ['🧦', 'socks'],
   ];
-  const collection = (emoji, n) =>
+  const collection = (emoji: string, n: number): string =>
     `<span class="en-coll" role="img" aria-label="${n}">${Array(n).fill(`<span>${emoji}</span>`).join('')}</span>`;
   M.registerSkill({
     id: 'en-nombres',
@@ -217,7 +266,7 @@
     desc: 'Écoute un nombre et écris-le en chiffres.',
     pda: 'ALS 1er cycle — Repertoire; routines (counting)',
     gen({ lvl = 0 }) {
-      const nums = EN.ofTheme('numbers', 2);
+      const nums = EN.ofTheme('numbers', 2).filter((w): w is EnWord & { n: number } => w.n !== undefined); // tous les nombres ont n
       // niveaux 0–1 : surtout la dictée de nombres, parfois « Show me … » (collections plus petites)
       const showMe = lvl === 2 ? Math.random() >= 0.4 : Math.random() < 0.35;
       if (!showMe) {
@@ -354,7 +403,7 @@
       ][lvl];
       const themes = M.shuffle(SORT_THEMES).slice(0, nb);
       const per = Math.floor(ni / nb);
-      const items = [];
+      const items: (SortItem & { say: string })[] = [];
       themes.forEach((t) => {
         const pool = EN.ofTheme(t, Math.max(1, lvl)).filter((w) => w.picture === 'ok' && !SORT_SKIP.includes(w.id));
         EN.pickSet(pool, per).forEach((w) =>

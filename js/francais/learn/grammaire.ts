@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const M = window.M;
-  const gen = (id, lvl) => () => M.skillById[id].gen({ lvl });
+  const gen = (id: string, lvl: number) => () => M.skillById[id].gen({ lvl });
   try {
     M.css(`
     .fr-gn { display: flex; gap: 10px; justify-content: center; align-items: flex-end; flex-wrap: wrap; font-size: 2rem; font-weight: 900; margin: 10px 0 }
@@ -13,7 +13,7 @@
     `);
   } catch (e) {}
 
-  const T = (arr) => M.ui.tagged(arr.map(([w, tag]) => ({ w, tag })));
+  const T = (arr: [string, string][]) => M.ui.tagged(arr.map(([w, tag]) => ({ w, tag })));
   M.registerLearn({
     id: 'fr-sortes-de-mots',
     domain: 'fr-grammaire',
@@ -26,7 +26,7 @@
       el.innerHTML =
         M.ui.section({ icon: '🏷️', title: 'Choisis une sorte de mot', body: '<div class="fr-cls-tabs"></div>' }) +
         M.ui.section({ icon: '✅', title: 'Vérifie ta compréhension', body: '<div class="fr-mq"></div>' });
-      M.ui.tabs(M.$('.fr-cls-tabs', el), [
+      M.ui.tabs(M.$('.fr-cls-tabs', el)!, [
         {
           id: 'nom',
           label: '🔵 Nom',
@@ -83,7 +83,7 @@
           },
         },
       ]);
-      M.ui.miniQuiz(M.$('.fr-mq', el), [gen('fr-classes-mots', 0), gen('fr-classes-mots', 1), gen('fr-classes-mots', 2)]);
+      M.ui.miniQuiz(M.$('.fr-mq', el)!, [gen('fr-classes-mots', 0), gen('fr-classes-mots', 1), gen('fr-classes-mots', 2)]);
     },
   });
 
@@ -143,7 +143,7 @@
             ),
         }) +
         M.ui.section({ icon: '✅', title: 'Vérifie ta compréhension', body: '<div class="fr-mq"></div>' });
-      const EX = [
+      const EX: { em: string; s: [string, string][]; p: [string, string][] }[] = [
         {
           em: '🐱',
           s: [
@@ -186,26 +186,26 @@
       ];
       let k = 0,
         many = false;
-      const box = M.$('.fr-nb', el);
+      const box = M.$('.fr-nb', el)!;
       const draw = () => {
         const ex = EX[k];
         const parts = many ? ex.p : ex.s;
         box.innerHTML = `<div class="fr-gn-pic">${many ? ex.em.repeat(3) : ex.em}</div><div class="fr-gn">${parts.map(([a, b]) => `<span>${M.esc(a)}${b ? `<span class="add">${b}</span>` : ''}</span>`).join('')}</div>
           <div class="row-center"><button class="btn primary fr-nb-t">${many ? '1️⃣ Un seul' : '🔢 Plusieurs'}</button><button class="btn fr-nb-n">Autre exemple ➜</button></div>`;
-        M.$('.fr-nb-t', box).onclick = () => {
+        M.$('.fr-nb-t', box)!.onclick = () => {
           many = !many;
           M.sfx.pop();
           draw();
           M.say(parts.length && (many ? ex.p : ex.s).map(([a, b]) => a + b).join(' '));
         };
-        M.$('.fr-nb-n', box).onclick = () => {
+        M.$('.fr-nb-n', box)!.onclick = () => {
           k = (k + 1) % EX.length;
           many = false;
           draw();
         };
       };
       draw();
-      M.ui.miniQuiz(M.$('.fr-mq', el), [gen('fr-genre-nombre', 0), gen('fr-accords-gn', 1), gen('fr-accords-gn', 2)]);
+      M.ui.miniQuiz(M.$('.fr-mq', el)!, [gen('fr-genre-nombre', 0), gen('fr-accords-gn', 1), gen('fr-accords-gn', 2)]);
     },
   });
 })();

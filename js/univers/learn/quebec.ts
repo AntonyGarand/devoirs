@@ -11,7 +11,7 @@
       '<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true"><circle cx="50" cy="16" r="12" fill="#fff" stroke="#c7c2b4" stroke-width="2"/><path d="M18 72 C18 34 82 34 82 72 Z" fill="#ef476f"/><path d="M30 46 h40 M24 58 h52" stroke="#fff" stroke-width="5"/><rect x="14" y="70" width="72" height="16" rx="6" fill="#118ab2"/></svg>',
     '🧢',
   );
-  const tile = (f) =>
+  const tile = (f: UsFete) =>
     `<div class="us-tile" data-say="${M.esc(`${f.nom}. ${f.geste} ${f.pourquoi}`)}"><span class="em">${f.emoji}</span><b>${U.cap(f.court)}</b><small>${f.geste}</small></div>`;
 
   M.registerLearn({
@@ -26,7 +26,7 @@
     render(el) {
       const F = U.d('fetes'),
         E = U.d('emblemes');
-      const SAISONS = [
+      const SAISONS: [UsSaison | null, string][] = [
         ['hiver', '❄️ Hiver'],
         ['printemps', '🌷 Printemps'],
         ['été', '☀️ Été'],
@@ -80,7 +80,7 @@
         ui.section({ icon: '✅', title: '5. Vérifie ta compréhension', body: '<div class="us-mq"></div>' }),
       ].join('');
       ui.tabs(
-        M.$('.us-tabs', el),
+        M.$('.us-tabs', el)!,
         SAISONS.map(([s, label]) => ({
           id: s || 'annee',
           label,
@@ -94,7 +94,7 @@
         })),
       );
       ui.flashcards(
-        M.$('.us-emb', el),
+        M.$('.us-emb', el)!,
         E.list.map((e) => ({
           front: e.art
             ? M.art.html(e.art, { size: 110, alt: e.nom })
@@ -105,7 +105,7 @@
           say: M.text(e.fait),
         })),
       );
-      ui.miniQuiz(M.$('.us-mq', el), [
+      ui.miniQuiz(M.$('.us-mq', el)!, [
         () => M.skillById['us-fetes'].gen({ lvl: 0 }),
         () => M.skillById['us-fetes'].gen({ lvl: 1 }),
         () => M.skillById['us-emblemes'].gen({ lvl: 0 }),

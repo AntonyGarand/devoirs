@@ -12,10 +12,53 @@
               r=clé de rime  gr=graphèmes séparés par « . » (son:override, « x: » = muette)
    L'emoji n'est donné que s'il est sans ambiguïté (sert aux questions à image).
    ===================================================================== */
+
+/** Classe d'une ligne de la banque (nm, nf, nmf = nom épicène…). */
+type FrClasseCode = 'nm' | 'nf' | 'nmf' | 'adj' | 'v' | 'det' | 'pron' | 'adv' | 'prep' | 'conj' | 'int';
+/** Classe de mots (cls). */
+type FrClasse = 'nom' | 'adj' | 'verbe' | 'det' | 'pron' | 'adv' | 'prep' | 'conj' | 'int';
+/** Graphème : lettres g, son s ('' = lettre muette). */
+interface FrGrapheme {
+  g: string;
+  s: string;
+}
+/** Mot de la banque (M.FR.MOTS). */
+interface FrMot {
+  w: string;
+  c: FrClasseCode;
+  cls: FrClasse;
+  /** Liste orthographique : 1re année (1), 2e année (2), mot d'appui (0). */
+  lo: number;
+  /** Phrase de dictée. */
+  phrase: string;
+  /** Genre d'un nom. */
+  g?: 'm' | 'f' | 'mf';
+  em?: string;
+  fem?: string;
+  pl?: string;
+  /** Lettre muette finale, et le mot où on l'entend. */
+  mu?: string;
+  why?: string;
+  /** Syllabes orales sûres. */
+  syl?: string[];
+  /** Clé de rime. */
+  r?: string;
+  gr?: FrGrapheme[];
+}
+interface FrancaisApi {
+  MOTS: FrMot[];
+  /** Graphème → son (notation de gr). */
+  SND: Record<string, string>;
+  mot(w: string): FrMot | undefined;
+}
+interface DataRegistry {
+  'fr.mots': FrMot[];
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  M.FR = M.FR || {};
+  M.FR = M.FR || ({} as FrancaisApi);
 
   const RAW = `
 à|prep|1||Je vais à l'école à pied.|
@@ -470,7 +513,7 @@ mouche|nf|0|🪰|La mouche vole autour de moi.|gr=m.ou.ch.e:
 jupe|nf|0||Sa jupe est bleue.|
 `;
 
-  const CLS = {
+  const CLS: Record<FrClasseCode, FrClasse> = {
     nm: 'nom',
     nf: 'nom',
     nmf: 'nom',
@@ -483,7 +526,7 @@ jupe|nf|0||Sa jupe est bleue.|
     conj: 'conj',
     int: 'int',
   };
-  const SND = {
+  const SND: Record<string, string> = {
     a: 'a',
     à: 'a',
     â: 'a',
@@ -548,9 +591,11 @@ jupe|nf|0||Sa jupe est bleue.|
     v: 'v',
     w: 'w',
   };
-  const parse = (line) => {
+  const isCode = (x: string): x is FrClasseCode => Object.prototype.hasOwnProperty.call(CLS, x);
+  const parse = (line: string): FrMot => {
     const [w, cls, lo, em, phrase, extra] = line.split('|');
-    const o = { w, c: cls, cls: CLS[cls], lo: +lo, phrase };
+    if (!isCode(cls)) throw new Error('mots.js : classe inconnue « ' + cls + ' » (' + w + ')');
+    const o: FrMot = { w, c: cls, cls: CLS[cls], lo: Number(lo), phrase };
     if (cls === 'nm') o.g = 'm';
     if (cls === 'nf') o.g = 'f';
     if (cls === 'nmf') o.g = 'mf';
@@ -571,7 +616,7 @@ jupe|nf|0||Sa jupe est bleue.|
           const [l, why] = v.split(':');
           o.mu = l;
           if (why) o.why = why;
-        } else o[k] = v;
+        } else if (k === 'fem' || k === 'pl' || k === 'r') o[k] = v;
       });
     return o;
   };

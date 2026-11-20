@@ -3,7 +3,7 @@
   'use strict';
   const M = window.M;
   const FR = M.FR;
-  const gen = (id, lvl) => () => M.skillById[id].gen({ lvl });
+  const gen = (id: string, lvl: number) => () => M.skillById[id].gen({ lvl });
   try {
     M.css(
       '.fr-abc .vocab-tile b { font-size: 1.6rem } .fr-v { background: #ffe1e8 } .fr-c { background: #dff3fb } .fr-lt-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center } .fr-lt-row span { width: 2.2em; height: 2.2em; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; font-weight: 900; font-size: 1.3rem }',
@@ -85,7 +85,7 @@
             .join(''),
         }) +
         M.ui.section({ icon: '✅', title: 'Vérifie ta compréhension', body: '<div class="fr-mq"></div>' });
-      M.ui.miniQuiz(M.$('.fr-mq', el), [gen('fr-alphabet', 0), gen('fr-alphabet', 1), gen('fr-familles-mots', 0)]);
+      M.ui.miniQuiz(M.$('.fr-mq', el)!, [gen('fr-alphabet', 0), gen('fr-alphabet', 1), gen('fr-familles-mots', 0)]);
     },
   });
 })();

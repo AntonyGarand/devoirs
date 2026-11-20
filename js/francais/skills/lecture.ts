@@ -62,7 +62,7 @@
     'plus',
     'moins',
   ];
-  const sim = (a, b) => {
+  const sim = (a: string, b: string) => {
     let s = 0;
     if (a[0] === b[0]) s += 2;
     if (a.slice(-2) === b.slice(-2)) s += 2;
@@ -119,7 +119,7 @@
 
   /* ---------------- 🖼️ Je lis une phrase ---------------- */
   const S = () => FR.SCENES;
-  const relPhrase = (suj, rel, obj) => {
+  const relPhrase = (suj: FrSceneSujet, rel: FrSceneRelation, obj: FrSceneObjet) => {
     if (rel.id === 'cote') {
       const de = obj.le.startsWith('le ') ? 'du ' + obj.le.slice(3) : 'de ' + obj.le;
       return `${suj.le} est à côté ${de}.`;
@@ -138,7 +138,7 @@
     'Le soleil dort dans mon sac.',
     'La table mange une soupe.',
   ];
-  const phraseText = (ph) => {
+  const phraseText = (ph: FrPhrase) => {
     const ws = FR.phraseWords(ph).map((x) => x.w);
     ws[0] = M.fr.cap(ws[0]);
     return ws.join(' ') + '.';
@@ -190,7 +190,7 @@
         };
       }
       // la bonne scène + des scènes qui changent UN seul élément (sujet, relation ou objet)
-      const okRel = (r, o) => r.id !== 'dans' || o.dans;
+      const okRel = (r: FrSceneRelation, o: FrSceneObjet) => r.id !== 'dans' || o.dans;
       const vS = M.shuffle(sujs.filter((x) => x.id !== suj.id)).map((x) => ({ v: 'suj', html: FR.sceneHtml(x, rel, obj) }));
       const vR = M.shuffle(rels.filter((r) => r.id !== rel.id && okRel(r, obj))).map((r) => ({
         v: 'rel',
@@ -218,7 +218,7 @@
 
   /* ---------------- 🔍 Je comprends un texte ---------------- */
   /** Les 3 premiers mots de la phrase du texte qui contient la preuve. */
-  const sentenceStart = (texte, preuve) => {
+  const sentenceStart = (texte: string, preuve: string) => {
     const before = texte.slice(0, texte.indexOf(preuve));
     const cut = Math.max(before.lastIndexOf('. '), before.lastIndexOf('! '), before.lastIndexOf('? '), before.lastIndexOf('\n'));
     return texte
@@ -228,8 +228,8 @@
       .slice(0, 3)
       .join(' ');
   };
-  const TYPE_ORDER = { qui: 0, quoi: 0, ou: 0, quand: 0, substitution: 1, inference: 1, vocabulaire: 2 };
-  M.registerSkill({
+  const TYPE_ORDER: Record<FrQuestionType, number> = { qui: 0, quoi: 0, ou: 0, quand: 0, substitution: 1, inference: 1, vocabulaire: 2 };
+  M.registerSkill<QuestionOf<'steps'>>({
     id: 'fr-comprendre-texte',
     domain: D,
     title: 'Je comprends un texte',
@@ -285,7 +285,8 @@
       };
     },
     check(q) {
-      const t = FR.TEXTES.find((x) => x.titre === q.passage.title);
+      const title = typeof q.passage === 'object' ? q.passage.title : undefined;
+      const t = FR.TEXTES.find((x) => x.titre === title);
       if (!t) return 'texte introuvable';
       for (const s of q.steps) {
         const src = t.questions.find((x) => x.q === s.prompt);
@@ -472,25 +473,27 @@
     desc: "Remets l'histoire dans l'ordre.",
     pda: "Lire A.2 a (début, milieu, fin d'un récit, ★ 2e); A.4 c.ii (marqueurs d'abord, ensuite, enfin)",
     gen({ lvl }) {
-      let seq,
-        passage = null;
+      type Seq = { em: string; t: string }[];
+      type AvecSeq = FrTexte & { sequence: Seq };
+      let seq: Seq,
+        passage: Passage | null = null;
       if (lvl === 0 || (lvl === 1 && Math.random() < 0.3)) seq = M.pick(SEQ0).map(([em, t]) => ({ em, t }));
       else {
-        const t = M.pick(
+        const t = M.pick<{ titre: string; texte: string; sequence: Seq }>(
           lvl === 1
-            ? FR.TEXTES.filter((x) => x.sequence && x.niveau <= 1)
-            : FR.TEXTES.filter((x) => x.sequence && x.niveau === 2 && x.sequence.length === 4).concat(SEQ4),
+            ? FR.TEXTES.filter((x): x is AvecSeq => !!x.sequence && x.niveau <= 1)
+            : [...FR.TEXTES.filter((x): x is AvecSeq => !!x.sequence && x.niveau === 2 && x.sequence.length === 4), ...SEQ4],
         );
         seq = t.sequence;
         passage = { title: t.titre, tokens: M.tokenize(t.texte) };
       }
       const names = PROPRES();
-      const low = (x) => M.esc(M.fr.uncap(x, names));
+      const low = (x: string) => M.esc(M.fr.uncap(x, names));
       if (lvl === 2 && Math.random() < 0.45) {
         // Qu'est-ce qui arrive juste après… ?
         const k = M.rnd(0, seq.length - 2);
         return {
-          passage,
+          passage: passage ?? undefined,
           prompt: `Qu'est-ce qui arrive juste <b>après</b> ?<div class="fr-ord" style="text-align:center">${seq[k].em} ${M.esc(seq[k].t)}</div>`,
           say: `Qu'est-ce qui arrive juste après ? ${seq[k].t}`,
           format: 'choice',
@@ -505,7 +508,7 @@
         label: `<span class="fr-ord"><span style="font-size:1.6rem">${s.em}</span><br>${M.esc(s.t)}</span>`,
         value: 'e' + i,
       }));
-      const q = {
+      const q: QuestionOf<'order'> = {
         prompt: passage ? "Relis le texte. Remets les événements dans l'ordre." : "Remets l'histoire dans l'ordre : début, milieu, fin.",
         format: 'order',
         choices: M.shuffle(choices),

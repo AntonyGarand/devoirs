@@ -66,11 +66,11 @@
     .st-hist { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center }
     .st-hist span { border: 2px solid var(--line); border-radius: 8px; padding: 2px 6px; font-weight: 800; background: #fff; font-size: .9rem }
     `);
-  } catch (e) {
+  } catch {
     /* hors navigateur */
   }
 
-  const castor = (html, cls = '') => `<div class="callout ${cls}">🦫 <b>Castor :</b> ${html}</div>`;
+  const castor = (html: string, cls = '') => `<div class="callout ${cls}">🦫 <b>Castor :</b> ${html}</div>`;
 
   /* ==================================================================
      Page 1 : Les diagrammes — « Le vote de la classe »
@@ -85,7 +85,7 @@
       'On fait une enquête dans la classe ! On pose une question, on compte les votes, puis on montre les résultats dans un tableau et dans des diagrammes.',
     render(el) {
       const topics = S.VOTES;
-      const st = { t: 0, counts: [] };
+      const st: { t: number; counts: number[] } = { t: 0, counts: [] };
       const cats = () => topics[st.t].cats.slice(0, 4).map((c, i) => ({ ...c, color: S.PAL[i], value: st.counts[i] || 0 }));
       const resetCounts = () => {
         st.counts = S.distinct(4, 1, 7);
@@ -134,7 +134,8 @@
           ${castor('Pour « combien de plus », on cherche les deux nombres, puis on fait une soustraction : le plus grand moins le plus petit.')}
         </section>`;
 
-      const $ = (s) => M.$(s, el);
+      /** Élément de la page (rendu juste au-dessus). */
+      const $ = (s: string) => M.$(s, el)!;
 
       /* --- 1. sujets --- */
       function drawTopics() {
@@ -143,9 +144,9 @@
           .join('');
       }
       $('.st-topics').onclick = (e) => {
-        const b = e.target.closest('[data-t]');
+        const b = M.closest(e, '[data-t]');
         if (!b) return;
-        st.t = +b.dataset.t;
+        st.t = Number(b.dataset.t);
         resetCounts();
         M.sfx.tap();
         drawTopics();
@@ -166,12 +167,13 @@
           .join('');
       }
       $('.st-vote').onclick = (e) => {
-        const b = e.target.closest('button[data-i]');
+        const b = M.closest<HTMLButtonElement>(e, 'button[data-i]');
         if (!b || b.disabled) return;
-        const i = +b.dataset.i,
+        const i = Number(b.dataset.i),
           d = b.classList.contains('st-plus') ? 1 : -1;
         st.counts[i] = Math.max(0, Math.min(20, (st.counts[i] || 0) + d));
-        d > 0 ? M.sfx.pop() : M.sfx.tap();
+        if (d > 0) M.sfx.pop();
+        else M.sfx.tap();
         drawAll();
       };
       $('.st-rand').onclick = () => {
@@ -199,7 +201,7 @@
       }
 
       /* --- 4. parties --- */
-      const PARTS = [
+      const PARTS: [string, string, string][] = [
         ['title', '🏷️ Titre', 'Le <b>titre</b> dit de quoi parle le diagramme. On le lit en premier !'],
         [
           'cats',
@@ -218,7 +220,7 @@
         ],
         ['leg', '🖼️ Légende', 'Dans un pictogramme, la <b>légende</b> dit combien vaut une image. Ici, 🙂 = 2 élèves.'],
       ];
-      let part = null;
+      let part: string | null | undefined = null;
       const partData = [
         { label: 'Hockey', icon: '🏒', value: 6, color: S.PAL[0] },
         { label: 'Soccer', icon: '⚽', value: 4, color: S.PAL[1] },
@@ -242,7 +244,7 @@
         $('.st-part-txt').innerHTML = p ? p[2] : 'Touche un bouton ☝️';
       }
       $('.st-partbtns').onclick = (e) => {
-        const b = e.target.closest('[data-p]');
+        const b = M.closest(e, '[data-p]');
         if (!b) return;
         part = part === b.dataset.p ? null : b.dataset.p;
         M.sfx.tap();
@@ -259,7 +261,7 @@
         { label: 'Poisson', icon: '🐠', value: 4 },
       ];
       function drawLeg() {
-        M.$$('[data-per]', el).forEach((b) => b.classList.toggle('on', +b.dataset.per === per));
+        M.$$('[data-per]', el).forEach((b) => b.classList.toggle('on', Number(b.dataset.per) === per));
         $('.st-legpicto').innerHTML =
           S.picto({
             title: 'Notre animal préféré',
@@ -272,10 +274,10 @@
           `<p class="muted" style="font-weight:700">Les nombres ne changent pas : il y a toujours 8 votes pour le chien, 6 pour le chat, 2 pour le lapin et 4 pour le poisson.</p>`;
       }
       $('.st-legbtns').onclick = (e) => {
-        const b = e.target.closest('button');
+        const b = M.closest(e, 'button');
         if (!b) return;
         if (b.dataset.per) {
-          per = +b.dataset.per;
+          per = Number(b.dataset.per);
           counting = false;
         } else counting = !counting;
         M.sfx.tap();
@@ -283,15 +285,15 @@
       };
 
       /* --- 6. questions --- */
-      function answers() {
+      function answers(): [string, string][] | null {
         const cs = cats(),
           vals = cs.map((c) => c.value),
           tot = vals.reduce((a, b) => a + b, 0);
         if (!tot) return null;
         const max = Math.max(...vals),
           min = Math.min(...vals);
-        const named = (v) => cs.filter((c) => c.value === v).map((c) => `${c.icon} ${c.label}`);
-        const one = (v, word) => {
+        const named = (v: number) => cs.filter((c) => c.value === v).map((c) => `${c.icon} ${c.label}`);
+        const one = (v: number, word: string) => {
           const n = named(v);
           return n.length === 1
             ? `${n[0]}, avec ${v} ${M.plural(v, 'vote')}.`
@@ -316,18 +318,16 @@
         $('.st-qa').innerHTML = !a
           ? '<p class="muted">Personne n\'a encore voté ! Ajoute des votes plus haut. ✋</p>'
           : a
-              .map(
-                ([q, r], i) => `<div><button class="btn st-q" data-q="${i}">❓ ${q}</button><div class="st-ans" data-a="${i}"></div></div>`,
-              )
+              .map(([q], i) => `<div><button class="btn st-q" data-q="${i}">❓ ${q}</button><div class="st-ans" data-a="${i}"></div></div>`)
               .join('');
       }
       $('.st-qa').onclick = (e) => {
-        const b = e.target.closest('[data-q]');
+        const b = M.closest(e, '[data-q]');
         if (!b) return;
         const a = answers(),
           box = M.$(`[data-a="${b.dataset.q}"]`, el);
         if (!a || !box) return;
-        box.innerHTML = box.innerHTML ? '' : '👉 ' + a[+b.dataset.q][1];
+        box.innerHTML = box.innerHTML ? '' : '👉 ' + a[Number(b.dataset.q)][1];
         M.sfx.tap();
       };
 
@@ -409,10 +409,21 @@
           ${castor("Même si « face » est sorti 3 fois de suite, au prochain lancer, pile et face ont <b>autant de chances</b> l'un que l'autre. La pièce ne se souvient pas de ce qui est sorti avant !")}
         </section>`;
 
-      const $ = (s) => M.$(s, el);
+      /** Élément de la page (rendu juste au-dessus). */
+      const $ = (s: string) => M.$(s, el)!;
 
       /* --- 2. laboratoire --- */
-      const L = {
+      const L: {
+        type: string;
+        sectors: StColorKey[];
+        bag: Record<StColorKey, number>;
+        counts: Record<string, number>;
+        n: number;
+        pred: string | null;
+        tok: number;
+        busy: boolean;
+        dev: StDevice | null;
+      } = {
         type: 'spinner',
         sectors: ['rouge', 'bleu', 'jaune', 'vert'],
         bag: { rouge: 3, bleu: 2, vert: 1, jaune: 0 },
@@ -424,11 +435,11 @@
         dev: null,
       };
       const BAGCOLS = ['rouge', 'bleu', 'vert', 'jaune'];
-      const spec = () =>
+      const spec = (): StDeviceSpec =>
         L.type === 'spinner'
           ? { type: 'spinner', sectors: L.sectors }
           : L.type === 'bag'
-            ? { type: 'bag', marbles: BAGCOLS.flatMap((k) => Array(L.bag[k]).fill(k)) }
+            ? { type: 'bag', marbles: BAGCOLS.flatMap((k) => Array<string>(L.bag[k]).fill(k)) }
             : { type: 'die' };
 
       function drawCfg() {
@@ -453,19 +464,19 @@
         $('.st-cfg').innerHTML = h;
       }
       $('.st-cfg').onclick = (e) => {
-        const b = e.target.closest('button');
+        const b = M.closest<HTMLButtonElement>(e, 'button');
         if (!b || b.disabled) return;
         if (b.dataset.sn) {
-          const d = +b.dataset.sn;
+          const d = Number(b.dataset.sn);
           if (d > 0 && L.sectors.length < 8) L.sectors.push(S.COLOR_KEYS[L.sectors.length % S.COLOR_KEYS.length]);
           if (d < 0 && L.sectors.length > 2) L.sectors.pop();
         } else if (b.dataset.s) {
-          const i = +b.dataset.s,
+          const i = Number(b.dataset.s),
             keys = S.COLOR_KEYS;
           L.sectors[i] = keys[(keys.indexOf(L.sectors[i]) + 1) % keys.length];
         } else if (b.dataset.b) {
           const k = b.dataset.b,
-            d = +b.dataset.bd;
+            d = Number(b.dataset.bd);
           const tot = BAGCOLS.reduce((a, c) => a + L.bag[c], 0);
           if (d > 0 && tot >= S.BAG_MAX) {
             setMsg(`Le sac est plein ! (${S.BAG_MAX} billes au maximum)`);
@@ -481,15 +492,15 @@
         rebuild();
       };
       $('.st-devtabs').onclick = (e) => {
-        const b = e.target.closest('[data-d]');
+        const b = M.closest(e, '[data-d]');
         if (!b) return;
-        L.type = b.dataset.d;
+        L.type = b.dataset.d ?? '';
         M.$$('[data-d]', el).forEach((x) => x.classList.toggle('on', x === b));
         M.sfx.tap();
         rebuild();
       };
 
-      const setMsg = (h) => {
+      const setMsg = (h: string) => {
         const m = $('.st-msg');
         if (m) m.innerHTML = h;
       };
@@ -508,32 +519,34 @@
         setMsg("🤔 Fais d'abord ta prédiction !");
       }
       function drawPred() {
+        if (!L.dev) return;
         const cats = L.dev.cats;
         $('.st-pred').innerHTML = `<b>Ma prédiction :</b> ce qui va sortir le plus souvent, c'est…
           <div class="row">${cats.map((c) => `<span class="chip${String(L.pred) === String(c.key) ? ' on' : ''}" data-k="${c.key}">${c.icon} ${c.label}</span>`).join('')}</div>`;
       }
       $('.st-pred').onclick = (e) => {
-        const c = e.target.closest('[data-k]');
+        const c = M.closest(e, '[data-k]');
         if (!c) return;
         if (L.n > 0) {
           setMsg('On a déjà commencé ! Touche ↺ Recommencer pour faire une nouvelle prédiction.');
           return;
         }
-        L.pred = c.dataset.k;
+        L.pred = c.dataset.k ?? null;
         M.sfx.tap();
         drawPred();
         setMsg("Parfait ! Maintenant, fais l'expérience. ▶");
       };
-      function chartCats() {
-        return L.dev.cats.map((c, i) =>
+      function chartCats(dev: StDevice): StChartCat[] {
+        return dev.cats.map((c, i) =>
           L.type === 'die'
             ? { label: c.label, icon: '🎲', value: L.counts[c.key] || 0, color: S.PAL[i % S.PAL.length] }
             : { label: c.label, icon: S.COL[c.key].emo, value: L.counts[c.key] || 0, color: S.COL[c.key].hex },
         );
       }
       function drawRes() {
+        if (!L.dev) return;
         $('.st-labtable').innerHTML = S.resultsTable(L.dev.cats, L.counts, { caption: `Résultats : ${L.n} ${M.plural(L.n, 'essai')}` });
-        const cc = chartCats(),
+        const cc = chartCats(L.dev),
           mx = Math.max(1, ...cc.map((c) => c.value));
         const max = mx <= 10 ? 10 : mx <= 20 ? 20 : Math.ceil(mx / 10) * 10;
         $('.st-labchart').innerHTML = S.barChart({
@@ -545,21 +558,23 @@
         });
       }
       function verdict() {
+        if (!L.dev) return;
         const cats = L.dev.cats,
           vals = cats.map((c) => L.counts[c.key] || 0),
           mx = Math.max(...vals);
         const top = cats.filter((c, i) => vals[i] === mx);
         const topTxt = top.map((c) => `${c.icon} ${c.label}`).join(' et ');
         let h = `${L.n} ${M.plural(L.n, 'essai')}. Le plus souvent : ${topTxt}${top.length > 1 ? ' (égalité)' : ''}.`;
-        if (L.pred != null) {
-          const p = cats.find((c) => String(c.key) === String(L.pred));
+        const p = L.pred != null ? cats.find((c) => String(c.key) === String(L.pred)) : undefined;
+        if (p) {
           const hit = top.length === 1 && String(top[0].key) === String(L.pred);
           h += `<br>Ta prédiction : ${p.icon} ${p.label}. ${hit ? '🎉 Ta prédiction est pareille au résultat !' : "🎲 Le résultat est différent de ta prédiction… c'est ça, le hasard !"}`;
         }
         setMsg(h);
       }
-      async function run(times) {
-        if (L.busy) return;
+      async function run(times: number) {
+        const dev = L.dev;
+        if (!dev || L.busy) return;
         if (L.n >= 100) {
           setMsg('Wow, 100 essais ! Touche ↺ Recommencer pour une nouvelle expérience.');
           return;
@@ -569,7 +584,7 @@
           sp = spec();
         for (let i = 0; i < times; i++) {
           const k = S.drawOutcome(sp);
-          await L.dev.play(k, times === 1 ? 900 : 300);
+          await dev.play(k, times === 1 ? 900 : 300); // L.dev change seulement avec L.tok
           if (my !== L.tok || !el.isConnected) return;
           L.counts[k] = (L.counts[k] || 0) + 1;
           L.n++;
@@ -587,7 +602,7 @@
       rebuild();
 
       /* --- 3. ligne des probabilités --- */
-      const DEV_EVENTS = [
+      const DEV_EVENTS: [StLikelihood, string, string][] = [
         ['certain', '🔴', 'Piger une bille rouge dans un sac où toutes les billes sont rouges.'],
         ['impossible', '🎲', 'Obtenir 7 avec un dé ordinaire.'],
         ['possible', '🎲', 'Obtenir 3 avec un dé ordinaire.'],
@@ -595,9 +610,9 @@
         ['possible', '🎒', 'Piger une bille bleue dans un sac de billes bleues et jaunes.'],
         ['certain', '🎡', "La flèche s'arrête sur le jaune, sur une roulette toute jaune."],
       ];
-      const LB = { st: [], sel: -1 };
+      const LB: { st: { z: StLikelihood; e: string; t: string; placed: boolean }[]; sel: number } = { st: [], sel: -1 };
       function newCards() {
-        const pick = (z, n) =>
+        const pick = (z: StLikelihood, n: number) =>
           M.shuffle(S.EVENTS[z])
             .slice(0, n)
             .map(([e, t]) => ({ z, e, t }));
@@ -613,7 +628,7 @@
         $('.st-linemsg').innerHTML = '';
       }
       function drawLine() {
-        const card = (c, i) =>
+        const card = (c: (typeof LB.st)[number], i: number) =>
           `<button class="st-card${LB.sel === i ? ' sel' : ''}" data-c="${i}"><span class="e">${c.e}</span><span>${c.t}</span></button>`;
         const left = LB.st.map((c, i) => (c.placed ? '' : card(c, i))).join('');
         $('.st-cards').innerHTML = left || '<b>🎉 Bravo, toutes les cartes sont placées !</b>';
@@ -629,15 +644,15 @@
         });
       }
       $('.st-cards').onclick = (e) => {
-        const b = e.target.closest('[data-c]');
+        const b = M.closest(e, '[data-c]');
         if (!b) return;
-        LB.sel = +b.dataset.c;
+        LB.sel = Number(b.dataset.c);
         M.sfx.tap();
         drawLine();
         $('.st-linemsg').innerHTML = 'Maintenant, touche : impossible, possible ou certain ? 👇';
       };
-      M.$('.st-zones', el).onclick = (e) => {
-        const z = e.target.closest('.st-zone');
+      $('.st-zones').onclick = (e) => {
+        const z = M.closest(e, '.st-zone');
         if (!z) return;
         if (LB.sel < 0) {
           $('.st-linemsg').innerHTML = "☝️ Touche d'abord une carte.";
@@ -653,7 +668,7 @@
           if (LB.st.every((x) => x.placed)) M.confetti(40);
         } else {
           M.sfx.bad();
-          const tip = {
+          const tip: Record<StLikelihood, string> = {
             certain: 'Est-ce que ça va arriver à coup sûr ?',
             possible: 'Est-ce que ça peut arriver… ou pas ?',
             impossible: 'Est-ce que ça peut vraiment arriver ?',
@@ -674,7 +689,7 @@
       newCards();
 
       /* --- 4. pièce --- */
-      const coin = { hist: [], busy: false };
+      const coin: { hist: string[]; busy: boolean } = { hist: [], busy: false };
       $('.st-flipbtn').onclick = async () => {
         if (coin.busy) return;
         coin.busy = true;
@@ -689,11 +704,11 @@
         c.textContent = r;
         coin.hist.push(r);
         if (coin.hist.length > 16) coin.hist.shift();
-        let run = 1;
-        for (let i = coin.hist.length - 2; i >= 0 && coin.hist[i] === r; i--) run++;
+        let streak = 1;
+        for (let i = coin.hist.length - 2; i >= 0 && coin.hist[i] === r; i--) streak++;
         $('.st-coinmsg').innerHTML =
-          run >= 2
-            ? `« ${r} » ${run} fois de suite ! Au prochain lancer, pile et face ont encore <b>autant de chances</b>.`
+          streak >= 2
+            ? `« ${r} » ${streak} fois de suite ! Au prochain lancer, pile et face ont encore <b>autant de chances</b>.`
             : `C'est « ${r} ».`;
         $('.st-hist').innerHTML = coin.hist.map((x) => `<span>${x}</span>`).join('');
         await M.sleep(300);

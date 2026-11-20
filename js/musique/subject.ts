@@ -10,10 +10,104 @@
    Les générateurs gen() ne touchent jamais au DOM : les sons sont des données (q._mu), le visuel les joue.
    Pendant une page de musique, la musique d'ambiance se tait (app.js → M.music.hold).
    ===================================================================== */
+
+interface MApi {
+  /** Aides partagées de la matière Musique (subject.ts, data.ts et skills/*.ts y ajoutent leurs membres). */
+  MU: MusiqueApi;
+  /** Vrais sons (js/musique/samples.js, généré par tools/mu-samples.ts) : base64 par instrument; null une fois décodés. */
+  MU_SAMPLES?: MuSamples | null;
+}
+
+/** Un instrument de js/musique/samples.js : un son (data) ou plusieurs zones de hauteur (zones). */
+interface MuSample {
+  gain: number;
+  data?: string;
+  zones?: { midi: number; data: string }[];
+}
+type MuSamples = { [inst: string]: MuSample };
+
+/** Un son : instrument (clé de la synthèse : 'piano', 'tambour'…), moment t (s), hauteur midi, durée (s), force vel (0 à 1). */
+interface MuEvent {
+  inst: string;
+  t?: number;
+  midi?: number;
+  dur?: number;
+  vel?: number;
+  /** Case du rythme (MU.rhythm; -1 = clic de départ). */
+  cell?: number;
+}
+/** Son dont le moment et la durée sont connus (MU.tune, MU.phrase). */
+type MuTimedEvent = MuEvent & { t: number; dur: number };
+/** Rythmes : noire (ta), deux croches (titi), soupir (chut), blanche (taa). */
+type MuBeat = 'ta' | 'titi' | 'chut' | 'taa';
+/** Un bouton du lecteur (MU.player). fig : html montré sous le bouton. */
+interface MuPlayerItem {
+  label: string;
+  events: MuEvent[];
+  color?: string;
+  fig?: string;
+}
+/** Sons d'une question (q._mu) : vérifiés par le lint de la matière. */
+interface MuMeta {
+  items?: { events: MuEvent[] }[];
+  pattern?: MuBeat[];
+}
+
+interface MuPlayOpts {
+  onStep?: ((i: number, ev: MuEvent) => void) | null;
+}
+interface MuPlayerOpts {
+  /** Joue tout à la suite une première fois, quand le lecteur est visible (défaut true). */
+  autoplay?: boolean;
+  /** onStep(itemIdx, evIdx, ev) quand chaque son commence. */
+  onStep?: (item: number, k: number, ev: MuEvent) => void;
+  big?: boolean;
+}
+
+interface MusiqueApi {
+  /** [0, 1, …, n-1]. */
+  seq(n: number): number[];
+  /** Couleur du son i (même couleur sur le bouton et dans les choix). */
+  color(i: number): string;
+  reduced(): boolean;
+  /** Noms des instruments de la synthèse. */
+  INSTS: string[];
+  /** Charge et décode les vrais sons (false si impossible). */
+  load(): Promise<boolean>;
+  realSounds(): boolean;
+  /** Joue un son tout de suite (ou au moment at du contexte audio). */
+  snd(ev: MuEvent, at?: number): void;
+  /** Arrête tous les sons (services.ts l'appelle avant de parler). */
+  stop?(): void;
+  /** Joue une suite de sons; onStep(i, ev) quand chaque son commence. Résolue à true si la suite a joué jusqu'au bout. */
+  play(events: readonly MuEvent[], opts?: MuPlayOpts): Promise<boolean>;
+  /** Durée d'une suite de sons (s). */
+  dur(events: readonly MuEvent[]): number;
+  /** Moments des sons dans un temps (0 = début du temps). */
+  BEATS: Record<MuBeat, number[]>;
+  /** Nombre de temps d'un rythme. */
+  beatsOf(p: MuBeat): number;
+  /** Sons d'un rythme. countIn : 4 clics avant; pulse : un clic à chaque temps. */
+  rhythm(pattern: readonly MuBeat[], opts?: { bpm?: number; inst?: string; countIn?: boolean; pulse?: boolean }): MuEvent[];
+  SYL: Record<MuBeat, string>;
+  NAME: Record<MuBeat, string>;
+  /** Notation en SVG (une case par temps). hi : case surlignée. */
+  rhythmSvg(pattern: readonly MuBeat[], opts?: { labels?: boolean; hi?: number; w?: number; cls?: string }): string;
+  /** Boutons d'écoute animés. */
+  player(
+    el: HTMLElement,
+    items: readonly MuPlayerItem[],
+    opts?: MuPlayerOpts,
+  ): { playOne(i: number): Promise<boolean>; playAll(): Promise<void> };
+  /** Pastille de couleur + nom du son, pour les choix de réponse. */
+  tag(i: number, label: string): string;
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  const MU = (M.MU = M.MU || {});
+  // premier fichier de la matière : crée M.MU (les autres fichiers y ajoutent leurs membres)
+  const MU = (M.MU = M.MU || ({} as MusiqueApi));
 
   M.registerSubject({
     id: 'musique',
@@ -25,7 +119,9 @@
     /** Règles propres à la matière (tools/check-skills.js). */
     lint(q) {
       if (/[ÉE]coute/.test(q.prompt) && !q.viz && !q.audio) return "question d'écoute sans son (q.viz manquant)";
-      if (q._mu && q._mu.items && q._mu.items.some((it) => !it.events || !it.events.length)) return 'son vide';
+      // q._mu est déclaré unknown par le cadre (question.d.ts); les habiletés de musique y mettent un MuMeta
+      const mu = q._mu as MuMeta | undefined;
+      if (mu && mu.items && mu.items.some((it) => !it.events || !it.events.length)) return 'son vide';
       const t = JSON.stringify([q.prompt, q.explain]);
       if (/aigu/.test(t) && /plus fort/.test(t) && !/doux/.test(t)) return 'ne pas confondre aigu (hauteur) et fort (intensité)';
     },
@@ -81,16 +177,17 @@
   MU.reduced = () => {
     try {
       return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-    } catch (e) {
+    } catch {
       return false;
     }
   };
-  const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
-  let bus = null,
-    live = [],
+  const hz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
+  // bus (et noise) sont créés par out() : tone, burst et playBuf ne sont appelés qu'après out() (snd, play)
+  let bus: GainNode | null = null,
+    live: AudioScheduledSourceNode[] = [],
     tok = 0,
-    noise = null;
-  const C = () => (M.sfx && M.sfx.ctx ? M.sfx.ctx() : null);
+    noise: AudioBuffer | null = null;
+  const C = (): AudioContext | null => (M.sfx && M.sfx.ctx ? M.sfx.ctx() : null);
   function out() {
     const c = C();
     if (!c) return null;
@@ -106,14 +203,29 @@
     }
     return c;
   }
-  function track(n) {
+  function track(n: AudioScheduledSourceNode) {
     live.push(n);
     n.onended = () => {
       live = live.filter((x) => x !== n);
     };
   }
+  interface ToneOpts {
+    f: number;
+    type?: OscillatorType;
+    a?: number;
+    peak?: number;
+    hold?: number;
+    d?: number;
+    dest?: AudioNode;
+    vib?: number;
+    glideTo?: number;
+  }
   /** Oscillateur avec enveloppe : attaque a, maintien jusqu'à t+hold, chute d. */
-  function tone(c, t, { f, type = 'sine', a = 0.005, peak = 0.3, hold = 0, d = 0.3, dest = bus, vib = 0, glideTo = 0 }) {
+  function tone(
+    c: BaseAudioContext,
+    t: number,
+    { f, type = 'sine', a = 0.005, peak = 0.3, hold = 0, d = 0.3, dest = bus!, vib = 0, glideTo = 0 }: ToneOpts,
+  ) {
     const o = c.createOscillator(),
       g = c.createGain();
     o.type = type;
@@ -138,12 +250,22 @@
     o.stop(t + a + hold + d + 0.05);
     track(o);
   }
-  function burst(c, t, { lo = 0, hi = 0, bp = 0, q = 1, a = 0.002, peak = 0.3, hold = 0, d = 0.1 }) {
+  interface BurstOpts {
+    lo?: number;
+    hi?: number;
+    bp?: number;
+    q?: number;
+    a?: number;
+    peak?: number;
+    hold?: number;
+    d?: number;
+  }
+  function burst(c: BaseAudioContext, t: number, { lo = 0, hi = 0, bp = 0, q = 1, a = 0.002, peak = 0.3, hold = 0, d = 0.1 }: BurstOpts) {
     const s = c.createBufferSource(),
       g = c.createGain();
     s.buffer = noise;
     s.loop = true; // le tampon fait 1 s : sans boucle, le souffle s'arrêtait avant le son
-    let node = s;
+    let node: AudioNode = s;
     if (hi) {
       const f = c.createBiquadFilter();
       f.type = 'highpass';
@@ -170,13 +292,14 @@
     g.gain.exponentialRampToValueAtTime(peak, t + a);
     if (hold) g.gain.setValueAtTime(peak, t + a + hold);
     g.gain.exponentialRampToValueAtTime(0.0001, t + a + hold + d);
-    node.connect(g).connect(bus);
+    node.connect(g).connect(bus!);
     s.start(t, Math.random() * 0.5);
     s.stop(t + a + hold + d + 0.05);
     track(s);
   }
   /** Instruments : (c, t, {midi, dur, vel}). vel de 0 à 1. */
-  const INST = {
+  type InstFn = (c: BaseAudioContext, t: number, ev: MuEvent) => void;
+  const INST: Record<string, InstFn | undefined> = {
     piano: (c, t, { midi = 60, dur = 0.5, vel = 0.7 }) => {
       [
         [1, 0.32],
@@ -262,18 +385,24 @@
 
   /* ---- Vrais sons enregistrés (js/musique/samples.js, généré par tools/mu-samples.js; CC0 / domaine public).
      Chargés à la demande sur les pages de musique; tant qu'ils ne sont pas prêts, la synthèse ci-dessus prend le relais. */
-  const SMP = {};
+  interface SmpZone {
+    midi: number;
+    buf: AudioBuffer;
+    off: number;
+  }
+  type Smp = { gain: number; buf: AudioBuffer; off: number; zones?: undefined } | { gain: number; zones: SmpZone[] };
+  const SMP: Record<string, Smp | undefined> = {};
   const LEVEL = 0.75;
-  const MIDI0 = { piano: 60, flute: 72, xylo: 72 };
-  let loading = null;
-  const b64 = (s) => {
+  const MIDI0: Record<string, number | undefined> = { piano: 60, flute: 72, xylo: 72 };
+  let loading: Promise<boolean> | null = null;
+  const b64 = (s: string) => {
     const bin = atob(s),
       u = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
     return u.buffer;
   };
-  const decode = (c, s) =>
-    new Promise((res) => {
+  const decode = (c: BaseAudioContext, s: string) =>
+    new Promise<AudioBuffer | null>((res) => {
       try {
         const p = c.decodeAudioData(
           b64(s),
@@ -281,12 +410,12 @@
           () => res(null),
         );
         if (p && p.catch) p.catch(() => res(null));
-      } catch (e) {
+      } catch {
         res(null);
       }
     });
   /** Début réel du son (le MP3 ajoute un court silence d'encodage selon le navigateur). */
-  const onset = (b) => {
+  const onset = (b: AudioBuffer) => {
     const d = b.getChannelData(0);
     let pk = 0;
     const n = Math.min(d.length, b.sampleRate * 0.3);
@@ -299,7 +428,7 @@
     if (loading) return loading;
     const c = C();
     if (!c || typeof document === 'undefined' || typeof atob !== 'function') return (loading = Promise.resolve(false));
-    loading = new Promise((res) => {
+    loading = new Promise<void>((res) => {
       if (M.MU_SAMPLES) return res();
       const s = document.createElement('script');
       s.src = 'js/musique/samples.js';
@@ -319,9 +448,10 @@
                 return buf && { midi: q.midi, buf, off: onset(buf) };
               }),
             );
-            if (z.every(Boolean)) SMP[k] = { gain: d.gain, zones: z };
+            if (z.every((x) => !!x)) SMP[k] = { gain: d.gain, zones: z };
           } else {
-            const buf = await decode(c, d.data);
+            // sans data, atob échouait : même résultat (pas de vrai son)
+            const buf = d.data ? await decode(c, d.data) : null;
             if (buf) SMP[k] = { gain: d.gain, buf, off: onset(buf) };
           }
         }),
@@ -332,13 +462,19 @@
     return loading;
   };
   MU.realSounds = () => Object.keys(SMP).length > 0;
-  function playBuf(c, t, buf, off, { rate = 1, gain = 1, dur = 0, rel = 0.3 }) {
+  function playBuf(
+    c: BaseAudioContext,
+    t: number,
+    buf: AudioBuffer,
+    off: number,
+    { rate = 1, gain = 1, dur = 0, rel = 0.3 }: { rate?: number; gain?: number; dur?: number; rel?: number },
+  ) {
     const s = c.createBufferSource(),
       g = c.createGain();
     s.buffer = buf;
     s.playbackRate.value = rate;
     g.gain.setValueAtTime(gain, t);
-    s.connect(g).connect(bus);
+    s.connect(g).connect(bus!);
     const len = (buf.duration - off) / rate;
     s.start(t, off);
     if (dur && dur + rel < len) {
@@ -349,7 +485,7 @@
     track(s);
   }
   /** Joue l'événement avec un vrai son s'il est prêt. Hauteur : zone la plus proche + playbackRate. */
-  function sampled(c, t, ev) {
+  function sampled(c: BaseAudioContext, t: number, ev: MuEvent) {
     const d = SMP[ev.inst];
     if (!d) return false;
     const gain = d.gain * (ev.vel ?? 0.75) * LEVEL;
@@ -364,8 +500,10 @@
     playBuf(c, t, z.buf, z.off, { rate: Math.pow(2, (midi - z.midi) / 12), gain, dur, rel: ev.inst === 'flute' ? 0.08 : 0.35 });
     return true;
   }
-  const fire = (c, t, ev) => {
-    if (!sampled(c, t, ev) && INST[ev.inst]) INST[ev.inst](c, t, ev);
+  const fire = (c: BaseAudioContext, t: number, ev: MuEvent) => {
+    if (sampled(c, t, ev)) return;
+    const play = INST[ev.inst];
+    if (play) play(c, t, ev);
   };
   MU.snd = (ev, at) => {
     const c = out();
@@ -373,24 +511,26 @@
     MU.load();
     fire(c, at ?? c.currentTime + 0.02, ev);
   };
-  MU.stop = () => {
+  // MU.stop est facultatif dans MusiqueApi (services.ts vérifie qu'il existe) : on garde la fonction ici
+  const stop = () => {
     tok++;
     live.forEach((n) => {
       try {
         n.stop();
-      } catch (e) {}
+      } catch {}
     });
     live = [];
   };
+  MU.stop = stop;
   /** Joue une suite d'événements {t, inst, midi, dur, vel}. onStep(i) au moment où chaque son commence. */
-  MU.play = (events, { onStep } = {}) => {
-    MU.stop();
+  MU.play = (events, { onStep }: MuPlayOpts = {}) => {
+    stop();
     if (M.hush) M.hush();
     const c = out();
     const my = ++tok;
     if (!c) return Promise.resolve(false);
     const go = () => {
-      if (my !== tok) return false;
+      if (my !== tok) return Promise.resolve(false);
       const t0 = c.currentTime + 0.08;
       events.forEach((ev, i) => {
         if (INST[ev.inst]) fire(c, t0 + (ev.t || 0), ev);
@@ -403,7 +543,7 @@
           );
       });
       const end = events.reduce((m, e) => Math.max(m, (e.t || 0) + (e.dur || 0.3)), 0) + 0.25;
-      return new Promise((res) => setTimeout(() => res(my === tok), end * 1000));
+      return new Promise<boolean>((res) => setTimeout(() => res(my === tok), end * 1000));
     };
     // premiers sons : on attend (au plus 1,5 s) que les vrais sons soient décodés
     return MU.realSounds() ? go() : Promise.race([MU.load(), new Promise((r) => setTimeout(r, 1500))]).then(go);
@@ -438,9 +578,10 @@
     const H = labels ? 104 : 80,
       W = total * w + 8;
     const ink = '#2b2d42';
-    const head = (x, y, hollow) =>
+    const head = (x: number, y: number, hollow?: boolean) =>
       `<ellipse cx="${x}" cy="${y}" rx="9" ry="6.6" transform="rotate(-22 ${x} ${y})" fill="${hollow ? '#fff' : ink}" stroke="${ink}" stroke-width="2.6"/>`;
-    const stem = (x, y) => `<path d="M${x + 8} ${y - 2} V${y - 44}" stroke="${ink}" stroke-width="3" stroke-linecap="round"/>`;
+    const stem = (x: number, y: number) =>
+      `<path d="M${x + 8} ${y - 2} V${y - 44}" stroke="${ink}" stroke-width="3" stroke-linecap="round"/>`;
     let x = 4,
       body = '';
     pattern.forEach((p, i) => {
@@ -468,25 +609,25 @@
   };
 
   /* ================================================================ lecteur */
-  const wave = (col) =>
+  const wave = (col: string) =>
     `<svg viewBox="0 0 48 40" class="mu-spk" aria-hidden="true"><path d="M6 15 H14 L24 6 V34 L14 25 H6 Z" fill="${col}" stroke="#2b2d42" stroke-width="2.5" stroke-linejoin="round"/><path class="w1" d="M30 13 Q35 20 30 27" fill="none" stroke="#2b2d42" stroke-width="3" stroke-linecap="round"/><path class="w2" d="M35 8 Q43 20 35 32" fill="none" stroke="#2b2d42" stroke-width="3" stroke-linecap="round"/></svg>`;
   /**
    * Boutons d'écoute. items : [{ label, events, color?, fig? }] — fig : html montré sous le bouton (ex. notation).
    * opts.autoplay : joue tout à la suite une première fois (après un court délai). opts.onStep(itemIdx, evIdx, ev).
    */
-  MU.player = (el, items, { autoplay = true, onStep, big = false } = {}) => {
+  MU.player = (el, items, { autoplay = true, onStep, big = false }: MuPlayerOpts = {}) => {
     MU.load();
     el.innerHTML = `<div class="mu-player${big ? ' big' : ''}">${items.map((it, i) => `<div class="mu-pl-item"><button class="mu-pl-btn" data-i="${i}" style="--c:${it.color || MU.color(i)}" aria-label="Écouter ${M.esc(M.text ? M.text(it.label) : it.label)}">${wave(it.color || MU.color(i))}<b>${it.label}</b></button>${it.fig ? `<div class="mu-pl-fig">${it.fig}</div>` : ''}</div>`).join('')}</div>`;
     const btns = M.$$('.mu-pl-btn', el);
     let seq = 0;
-    const playOne = async (i) => {
+    const playOne = async (i: number) => {
       const my = ++seq;
-      btns.forEach((b) => b.classList.toggle('playing', +b.dataset.i === i));
+      btns.forEach((b) => b.classList.toggle('playing', Number(b.dataset.i) === i));
       await MU.play(items[i].events, { onStep: onStep ? (k, ev) => onStep(i, k, ev) : null });
       if (my === seq) btns.forEach((b) => b.classList.remove('playing'));
       return my === seq;
     };
-    btns.forEach((b) => (b.onclick = () => playOne(+b.dataset.i)));
+    btns.forEach((b) => (b.onclick = () => playOne(Number(b.dataset.i))));
     const playAll = async () => {
       for (let i = 0; i < items.length; i++) {
         if (!el.isConnected) return;
@@ -525,7 +666,7 @@
         if (M.onCleanup) M.onCleanup(() => io.disconnect());
       } else go();
     }
-    if (M.onCleanup) M.onCleanup(() => MU.stop());
+    if (M.onCleanup) M.onCleanup(() => stop());
     return { playOne, playAll };
   };
   /** Pastille de couleur + nom du son, pour les choix de réponse. */
@@ -579,7 +720,7 @@
     .mu-code i { display: block; background: #2b2d42; border-radius: 999px }
     @media (prefers-reduced-motion: reduce) { .mu-pl-btn.playing .w1, .mu-pl-btn.playing .w2, .mu-pl-btn.playing .mu-spk, .mu-beat-ball.hop, .mu-card.hit { animation: none } .mu-pl-btn.playing .w1, .mu-pl-btn.playing .w2 { opacity: 1 } }
     `);
-  } catch (e) {
+  } catch {
     /* hors navigateur */
   }
 })();

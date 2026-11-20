@@ -7,10 +7,86 @@
    emoji : fid 'ok' fidèle · 'approx' approximatif (le nom est toujours écrit) · 'none' → dessin art.
    recent : emoji Unicode 13–15 (repli si non affiché).
    ===================================================================== */
+
+/** Fidélité de l'emoji : 'ok' fidèle · 'approx' approximatif · 'none' → dessin art. */
+type ScFid = 'ok' | 'approx' | 'none';
+/** Animal sauvage du Québec (M.SC.ANIMAUX). */
+interface ScAnimal extends ScPic {
+  id: string;
+  nom: string;
+  emoji: string;
+  fid: ScFid;
+  /** Clés de M.SC.HABITATS. */
+  hab: string[];
+  /** Clé de M.SC.MANGE. */
+  mange: string;
+  /** Clé de M.SC.COUV. */
+  couv: string;
+  /** Clés de M.SC.BOUGE. */
+  bouge: string[];
+  /** Clé de M.SC.HIVER. */
+  hiver: string;
+  faits: string[];
+  fait: string;
+  /** Drapeaux : la fiche n'est tirée pour une notion que si son drapeau est vrai. */
+  foodQ: boolean;
+  coverQ: boolean;
+  moveQ: boolean;
+  habitatQ: boolean;
+  hiverQ: boolean;
+  art?: string;
+  domestique?: undefined;
+}
+/** Animal domestique (M.SC.DOMESTIQUES). */
+interface ScDomestique extends ScPic {
+  id: string;
+  nom: string;
+  emoji: string;
+  fid: ScFid;
+  /** Ce qu'on lui donne (texte). */
+  nourri: string;
+  /** Clé de M.SC.NOURRITURE. */
+  cat: string;
+  domestique: true;
+}
+/** Animal sauvage ou domestique (M.SC.animal) : les champs propres à l'autre sorte sont absents. */
+type ScBete =
+  | (ScAnimal & { [K in Exclude<keyof ScDomestique, keyof ScAnimal>]?: undefined })
+  | (ScDomestique & { [K in Exclude<keyof ScAnimal, keyof ScDomestique>]?: undefined });
+interface ScLabelIcon {
+  label: string;
+  icon: string;
+}
+/** Déplacement : réponses sûres seulement. */
+interface ScMoveQ {
+  verbe: string;
+  oui: string[];
+  non: string[];
+}
+interface ScApi {
+  HABITATS: Record<string, ScLabelIcon>;
+  MANGE: Record<string, ScLabelIcon & { mot: string }>;
+  COUV: Record<string, ScLabelIcon>;
+  BOUGE: Record<string, string>;
+  HIVER: Record<string, ScLabelIcon>;
+  ANIMAUX: ScAnimal[];
+  DOMESTIQUES: ScDomestique[];
+  NOURRITURE: Record<string, string>;
+  MOVE_Q: Record<string, ScMoveQ>;
+  /** Animal sauvage ou domestique par id. */
+  animal(id: string): ScBete | undefined;
+  /** Erreurs du schéma des animaux ('' si aucune). */
+  checkAnimals(): string;
+}
+interface DataRegistry {
+  'sc.animaux': ScAnimal[];
+  'sc.domestiques': ScDomestique[];
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  const SC = (M.SC = M.SC || {});
+  const SC = (M.SC = M.SC || ({} as ScApi));
 
   SC.HABITATS = {
     foret: { label: 'la forêt', icon: '🌲' },
@@ -55,7 +131,20 @@
   };
 
   // a(id, nom, emoji, fid, habitats, mange, couverture, bouge, hiver, faits, drapeaux {food, cover, move, habitat, hiver}, extra)
-  const A = (id, nom, emoji, fid, hab, mange, couv, bouge, hiver, faits, Q = {}, extra = {}) => ({
+  const A = (
+    id: string,
+    nom: string,
+    emoji: string,
+    fid: ScFid,
+    hab: string[],
+    mange: string,
+    couv: string,
+    bouge: string[],
+    hiver: string,
+    faits: string[],
+    Q: { food?: boolean; cover?: boolean; move?: boolean; habitat?: boolean; hiver?: boolean } = {},
+    extra: { recent?: boolean; art?: string } = {},
+  ): ScAnimal => ({
     id,
     nom,
     emoji,
@@ -542,7 +631,7 @@
   SC.animal = (id) => SC.ANIMAUX.find((a) => a.id === id) || SC.DOMESTIQUES.find((a) => a.id === id);
 
   /** Déplacements : seulement des réponses SÛRES (oui / non). Les autres animaux ne sont pas tirés pour ce mot. */
-  const ids = (f) => SC.ANIMAUX.filter(f).map((a) => a.id);
+  const ids = (f: (a: ScAnimal) => boolean): string[] => SC.ANIMAUX.filter(f).map((a) => a.id);
   SC.MOVE_Q = {
     vole: { verbe: 'volent', oui: ids((a) => a.bouge.includes('vole')), non: ids((a) => !a.bouge.includes('vole')) },
     rampe: {
@@ -577,7 +666,15 @@
   };
 
   /** Animaux domestiques (UV B.1.a) — nourris par l'humain. */
-  const D = (id, nom, emoji, nourri, cat, fid = 'ok') => ({ id, nom, emoji, fid, nourri, cat, domestique: true });
+  const D = (id: string, nom: string, emoji: string, nourri: string, cat: string, fid: ScFid = 'ok'): ScDomestique => ({
+    id,
+    nom,
+    emoji,
+    fid,
+    nourri,
+    cat,
+    domestique: true,
+  });
   SC.DOMESTIQUES = [
     D('chat', 'le chat', '🐱', 'des croquettes pour chat', 'croquettes'),
     D('chien', 'le chien', '🐶', 'des croquettes pour chien', 'croquettes'),
@@ -592,7 +689,7 @@
 
   /** Vérification du schéma (appelée par skill.check, une seule fois). */
   SC.checkAnimals = function () {
-    const err = [];
+    const err: string[] = [];
     const seen = new Set();
     SC.ANIMAUX.forEach((a) => {
       if (seen.has(a.id)) err.push('id en double ' + a.id);

@@ -11,15 +11,15 @@
   const D = 'fr-verbes';
   // Une personne (k) = un pronom représentatif choisi au hasard
   const REP = [['je'], ['tu'], ['il', 'elle', 'on'], ['nous'], ['vous'], ['ils', 'elles']];
-  const pronOf = (k) => M.pick(REP[k]);
-  const elided = (v, k) => k === 0 && /^[aeiouéêh]/.test(FR.VERBES[v].f[0]);
-  const pronLabel = (v, k, p) => (elided(v, k) ? "j'" : p);
-  const CAP = (s) => M.fr.cap(s);
+  const pronOf = (k: number) => M.pick(REP[k]);
+  const elided = (v: FrVerbeId, k: number) => k === 0 && /^[aeiouéêh]/.test(FR.VERBES[v].f[0]);
+  const pronLabel = (v: FrVerbeId, k: number, p: string) => (elided(v, k) ? "j'" : p);
+  const CAP = (s: string) => M.fr.cap(s);
 
   /** match pronom ↔ forme (formes toutes différentes). */
-  function matchQ(v, ks) {
+  function matchQ(v: FrVerbeId, ks: number[]): QuestionOf<'match'> {
     const V = FR.VERBES[v];
-    const seen = new Set();
+    const seen = new Set<string>();
     const ok = ks.filter((k) => {
       const f = V.f[k];
       if (seen.has(f)) return false;
@@ -39,7 +39,7 @@
     };
   }
   /** Phrase à trous : « Nous {0} au parc. » — banque : bonne forme + autres personnes / autre verbe. */
-  function clozeQ(v, k, others) {
+  function clozeQ(v: FrVerbeId, k: number, others: string[]): QuestionOf<'cloze'> {
     const V = FR.VERBES[v];
     const p = pronOf(k);
     const good = V.f[k];
@@ -59,7 +59,7 @@
     };
   }
   /** Dictée d'une forme : on entend « vous êtes », on écrit « êtes » après le pronom affiché. */
-  function textQ(v, k) {
+  function textQ(v: FrVerbeId, k: number): QuestionOf<'text'> {
     const V = FR.VERBES[v];
     const p = pronOf(k);
     const g = FR.conj(v, p);
@@ -75,8 +75,8 @@
       explain: `On écrit <b>${g}</b>.${/^(êtes|faites|dites)$/.test(V.f[k]) ? ' Attention : avec <b>vous</b>, ce verbe ne finit pas par <b>-ez</b> !' : ''}${V.f[k] === 'vont' || V.f[k] === 'font' || V.f[k] === 'sont' || V.f[k] === 'ont' ? ' Avec <b>ils</b> et <b>elles</b>, ce verbe finit par <b>-ont</b>.' : ''}`,
     };
   }
-  const distinct = (v, n, pool) => {
-    const out = [];
+  const distinct = (v: FrVerbeId, n: number, pool: number[]) => {
+    const out: number[] = [];
     for (const k of M.shuffle(pool)) {
       if (out.length >= n) break;
       if (!out.some((j) => FR.VERBES[v].f[j] === FR.VERBES[v].f[k])) out.push(k);
@@ -98,14 +98,14 @@
         return Math.random() < 0.5 ? matchQ(v, [0, 1, 2]) : clozeQ(v, M.pick([0, 1, 2]), FR.VERBES.etre.f.slice(0, 3));
       }
       if (lvl === 1) {
-        const v = M.pick(['etre', 'avoir']);
+        const v = M.pick<FrVerbeId>(['etre', 'avoir']);
         if (Math.random() < 0.5) return matchQ(v, distinct(v, 4, [0, 1, 2, 3, 4, 5]));
         const k = M.rnd(0, 5);
         const other = v === 'etre' ? 'avoir' : 'etre';
         // banque : même personne de l'autre verbe + une autre personne du même verbe
         return clozeQ(v, k, [FR.VERBES[other].f[k], M.pick(FR.VERBES[v].f.filter((f) => f !== FR.VERBES[v].f[k]))]);
       }
-      const v = M.pick(['etre', 'avoir']);
+      const v = M.pick<FrVerbeId>(['etre', 'avoir']);
       return Math.random() < 0.6
         ? textQ(v, M.rnd(0, 5))
         : clozeQ(v, M.rnd(0, 5), [FR.VERBES[v === 'etre' ? 'avoir' : 'etre'].f[M.rnd(0, 5)], M.pick(FR.VERBES[v].f)]);
@@ -126,17 +126,17 @@
     pda: "Conjugaison C.1 — formes mémorisées de aimer, aller, dire, faire à l'indicatif présent (→ 1re, ★ 2e)",
     gen({ lvl }) {
       if (lvl === 0) {
-        const v = M.pick(['aimer', 'aller']);
+        const v = M.pick<FrVerbeId>(['aimer', 'aller']);
         return Math.random() < 0.5 ? matchQ(v, distinct(v, 3, [0, 1, 2])) : clozeQ(v, M.pick([0, 1, 2]), FR.VERBES[v].f.slice(0, 3));
       }
-      const v = M.pick(['aimer', 'aller', 'dire', 'faire']);
+      const v = M.pick<FrVerbeId>(['aimer', 'aller', 'dire', 'faire']);
       if (lvl === 1) {
         if (Math.random() < 0.5) return matchQ(v, distinct(v, 4, [0, 1, 2, 3, 4, 5]));
         const k = M.rnd(0, 5);
         return clozeQ(v, k, M.shuffle(FR.VERBES[v].f.filter((f) => f !== FR.VERBES[v].f[k])));
       }
       // lvl 2 : formes difficiles
-      const HARD = [
+      const HARD: [FrVerbeId, number][] = [
         ['faire', 4],
         ['dire', 4],
         ['aller', 5],
@@ -164,7 +164,7 @@
       return clozeQ(
         hv,
         hk,
-        M.shuffle([trap, ...V.f.filter((f) => f !== V.f[hk])].filter(Boolean)).sort((a) => (a === trap ? -1 : 1)),
+        M.shuffle([trap, ...V.f.filter((f) => f !== V.f[hk])].filter((x): x is string => !!x)).sort((a) => (a === trap ? -1 : 1)),
       );
     },
     check(q) {

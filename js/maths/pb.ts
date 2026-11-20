@@ -13,6 +13,249 @@
           situation:[a, op, b, '=', c] (null = inconnue), solve:{a, op, b, r} | {terms, r},
           fam, barSpec(reveal), reply, seekChoices, explain, hint, noNum? }
    ===================================================================== */
+
+type PbKind = 'ajout' | 'retrait' | 'reunion' | 'comparaison' | 'groupes' | 'partage' | 'deux';
+/** Inconnue : ajout/retrait (fin, change, debut), réunion (tout, partie), comparaison (ecart, petit, grand),
+ *  groupes/partage (total, parPart, nb). */
+type PbUnknown = 'fin' | 'change' | 'debut' | 'tout' | 'partie' | 'ecart' | 'petit' | 'grand' | 'total' | 'parPart' | 'nb';
+/** Famille de schéma : sum (tout), part (partie), cmp, grp (groupes), shr (partage), cnt (contenance), deux. */
+type PbFam = 'sum' | 'part' | 'cmp' | 'grp' | 'shr' | 'cnt' | 'deux';
+type PbOp = '+' | '-';
+/** Deux étapes : deux ajouts, deux retraits, ou un de chaque. */
+type PbSub = 'positive' | 'negative' | 'mixte';
+type PbRole = 'data' | 'story' | 'question' | 'distractor';
+interface PbSentence {
+  text: string;
+  role: PbRole;
+}
+/** Jeton du texte : data = rôle de la donnée, q = dans la question, x = donnée inutile. */
+interface PbToken extends Token {
+  data?: string;
+  q?: boolean;
+  x?: boolean;
+}
+/** Équation-situation [a, op, b, '=', c] : null = inconnue. */
+type PbEq = [number | null, PbOp, number | null, '=', number | null];
+/** Calcul a op b = r. */
+interface PbSolveOp {
+  a: number;
+  op: PbOp;
+  b: number;
+  r: number;
+  terms?: undefined;
+  share?: undefined;
+  count?: undefined;
+}
+/** Somme répétée (groupes, partage : share, contenance : count). */
+interface PbSolveTerms {
+  terms: number[];
+  r: number;
+  share?: true;
+  count?: true;
+}
+type PbSolve = PbSolveOp | PbSolveTerms;
+/** Ce que M.pb.expr écrit : « a op b » ou « k + k + k ». */
+type PbExprIn = { terms: readonly number[] } | { terms?: undefined; a: number | string; op: string; b: number | string };
+/** Partie-partie-tout (lx… = textes à la place des nombres). */
+interface PbToutO {
+  x: number;
+  y: number;
+  t: number;
+  unk: 'x' | 'y' | 't';
+  toneY?: BarTone;
+  lx?: string;
+  ly?: string;
+  lt?: string;
+  scale?: BarModelSpec['scale'];
+}
+/** Comparaison : G, S = prénoms; g, p, e = grand, petit, écart. */
+interface PbCmpO {
+  G?: string;
+  S?: string;
+  g: number;
+  p: number;
+  e: number;
+  unk: 'grand' | 'petit' | 'ecart';
+  swap?: boolean;
+  scale?: BarModelSpec['scale'];
+}
+/** Groupes égaux / partage : nb groupes de k, total t. */
+interface PbGrpO {
+  nb: number;
+  k: number;
+  t: number;
+  unk: 'total' | 'parPart' | 'nb';
+}
+type PbBarO = PbToutO | PbCmpO | PbGrpO;
+
+/** Champs communs (les champs propres à un genre sont optionnels ici, obligatoires dans PbCmp / PbDeux). */
+interface PbBase {
+  kind: PbKind;
+  unknown: PbUnknown;
+  sub?: PbSub;
+  ctx: PbCtx;
+  /** Personnage principal, et un autre. */
+  P: Person;
+  Q: Person;
+  emoji: string;
+  u: string;
+  uX?: string;
+  lvl: number;
+  /** Valeurs par rôle (debut, change, fin, p1, p2, tout, grand, petit, ecart, nb, k, total, a, b, c, mid). */
+  v: Record<string, number>;
+  /** Rôles connus (donnés dans le texte). */
+  known: string[];
+  knownVals: number[];
+  answer: number;
+  sentences: PbSentence[];
+  /** Phrase-réponse. */
+  reply: string;
+  /** « Que cherche-t-on ? » : phrases-réponses à trou. */
+  seekChoices?: Choice<string>[];
+  /** Histoire sans nombres (sans question) et sa question. */
+  noNum?: PbSentence[];
+  noNumQ?: PbSentence;
+  situation?: PbEq;
+  solve: PbSolve;
+  fam: PbFam;
+  barO: PbBarO;
+  explain: string;
+  hint: string;
+  /** Comparaison piège (« de plus » qui veut dire −). */
+  trap?: boolean;
+  /** Données inutiles. */
+  xVals?: number[];
+  tokens: PbToken[];
+  text: string;
+  /** Indice de la phrase-question. */
+  qIndex: number;
+  /** Indices des jetons de données, des jetons inutiles. */
+  dataTok: number[];
+  xTok: number[];
+  id: string;
+  barSpec(reveal?: boolean): BarModelSpec;
+  /* comparaison */
+  G?: Person;
+  S?: Person;
+  cmpEnsemble?(): string;
+  cmpHas?(X: Person, n: number | string): string;
+  /* deux étapes */
+  ops?: [PbOp, PbOp];
+  q1?: string;
+  solve1?: PbSolveOp;
+  barO2?: PbToutO;
+}
+interface PbCmp extends PbBase {
+  kind: 'comparaison';
+  /** Le plus grand, le plus petit. */
+  G: Person;
+  S: Person;
+  barO: PbCmpO;
+  cmpEnsemble(): string;
+  cmpHas(X: Person, n: number | string): string;
+}
+interface PbDeux extends PbBase {
+  kind: 'deux';
+  sub: PbSub;
+  ops: [PbOp, PbOp];
+  /** Question de l'étape 1. */
+  q1: string;
+  solve: PbSolveOp;
+  solve1: PbSolveOp;
+  barO: PbToutO;
+  barO2: PbToutO;
+}
+interface PbOther extends PbBase {
+  kind: 'ajout' | 'retrait' | 'reunion' | 'groupes' | 'partage';
+}
+/** Problème écrit (M.pb.make). */
+type Pb = PbCmp | PbDeux | PbOther;
+
+interface PbMakeOpts {
+  kinds?: PbKind[];
+  /** Inconnues permises par genre (défaut : UNK selon le niveau). */
+  unknowns?: Partial<Record<PbKind, PbUnknown[]>>;
+  lvl?: number;
+  /** Plafond simple des nombres. */
+  max?: number;
+  noHundreds?: boolean;
+  /** Nombre de données inutiles. */
+  distract?: number;
+  /** La 1re donnée inutile a la même unité (autre personne). */
+  near?: boolean;
+  /** Comparaison : forcer (ou interdire) le piège. */
+  trap?: boolean;
+  /** Filtre des contextes. */
+  ctx?: (c: PbCtx) => boolean;
+  /** Ids de contextes à éviter. */
+  avoid?: string[];
+  sub?: PbSub;
+}
+type PbStepFn = (pb: Pb, lvl?: number, which?: 1 | 2) => StepItem;
+type PbStepName =
+  | 'question'
+  | 'donnees'
+  | 'inutiles'
+  | 'schema'
+  | 'operation'
+  | 'equation'
+  | 'calcul'
+  | 'verifier'
+  | 'sens'
+  | 'phrase'
+  | 'plan';
+/** Étapes réutilisables (M.pb.step.<nom>(pb, lvl)). */
+type PbStepApi = Record<PbStepName, PbStepFn> & {
+  schemaChoices(pb: Pb, lvl?: number): Choice<string>[];
+  opChoices(pb: Pb, lvl?: number): Choice<string>[];
+};
+/** Recette de M.pb.toSteps : calcul1 / calcul2 = les deux calculs d'un problème à deux étapes. */
+type PbRecipeStep = PbStepName | 'calcul1' | 'calcul2';
+interface PbToStepsOpts {
+  lvl?: number;
+  /** Étapes comptées pour l'étoile. */
+  scoreSteps?: PbRecipeStep[];
+  prompt?: string;
+}
+interface PbPassage extends Passage {
+  title: string;
+  tokens: PbToken[];
+  say: string;
+}
+interface PbApi {
+  typo(s: string | number): string;
+  expr(s: PbExprIn): string;
+  eqStr(sit: readonly (number | string | null)[]): string;
+  tokensOf(sentences: readonly PbSentence[], roleOf?: Record<number, string> | null, xVals?: readonly number[]): PbToken[];
+  UNK: Record<PbKind, PbUnknown[][]>;
+  bars: {
+    tout(o: PbToutO, reveal?: boolean): BarModelSpec;
+    cmp(o: PbCmpO, reveal?: boolean): BarModelSpec;
+    grp(o: PbGrpO, reveal?: boolean): BarModelSpec;
+  };
+  /** Fabrique un problème cohérent (lève une erreur après 40 essais). */
+  make(opts?: PbMakeOpts): Pb;
+  passage(pb: Pb, sentences?: readonly PbSentence[] | null): PbPassage;
+  storyHtml(pb: Pb): string;
+  step: PbStepApi;
+  solveEq(e: PbEq): number;
+  /** Plus ou moins que la plus grande donnée ? (deux étapes : que le début) */
+  senseRef(pb: Pb): number;
+  toSteps(pb: Pb, recipe: PbRecipeStep[], opts?: PbToStepsOpts): QuestionOf<'steps'>;
+  polish(o: unknown): void;
+  /** Lie le problème à la question (_pb non énumérable) après la typographie. */
+  attach<Q extends Question>(q: Q, pb: Pb): Q;
+  check(pb: Pb): string | undefined;
+  checkQ(q: Question): string | undefined;
+}
+interface MApi {
+  pb: PbApi;
+}
+interface QuestionExtras {
+  /** Problème d'origine (M.pb.attach, non énumérable). */
+  _pb?: Pb;
+}
+
 (function () {
   'use strict';
   const M = window.M;
@@ -21,40 +264,48 @@
   const rnd = M.rnd,
     pick = M.pick,
     shuffle = M.shuffle;
-  const PB = (M.pb = {});
+  const PB = {} as PbApi;
+  M.pb = PB;
   const D = () => M.data['pb-contextes'];
 
   /* ------------------------------------------------------------------ texte */
   /** Espace insécable avant ? ! : ; et élision devant un prénom (« de Olivier » → « d'Olivier », « que Inès » → « qu'Inès »). */
-  const typo = (s) =>
+  const typo = (s: string | number) =>
     String(s)
       .replace(/ +([?!:;])/g, NB + '$1')
       .replace(/(^|[\s>(])([Dd])e (?=[AEIOUYÀÂÉÈÊÎÏÔÛ])/g, "$1$2'")
       .replace(/(^|[\s>(])([Qq])ue (?=[AEIOUYÀÂÉÈÊÎÏÔÛ])/g, "$1$2u'");
-  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-  const fill = (tpl, vars) => typo(cap(M.fr.fill(tpl, vars)));
-  const de = (w) => M.fr.de(w);
-  const pv = (P) => ({ P: P.n, il: P.il, Il: P.Il, e: P.e });
-  const opS = (op) => (op === '-' ? MINUS : op);
-  const expr = (s) => (s.terms ? s.terms.join(' + ') : `${s.a} ${opS(s.op)} ${s.b}`);
-  const eqStr = (sit) => sit.map((x) => (x === null ? '?' : opS(String(x)))).join(' ');
-  const eqHtml = (txt) => `<div class="eq">${txt}</div>`;
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  type Vars = Record<string, string | number>;
+  const fill = (tpl: string, vars: Vars) => typo(cap(M.fr.fill(tpl, vars)));
+  const de = (w: string) => M.fr.de(w);
+  const pv = (P: Person) => ({ P: P.n, il: P.il, Il: P.Il, e: P.e });
+  const opS = (op: string) => (op === '-' ? MINUS : op);
+  const expr = (s: PbExprIn) => (s.terms ? s.terms.join(' + ') : `${s.a} ${opS(s.op)} ${s.b}`);
+  const eqStr = (sit: readonly (number | string | null)[]) => sit.map((x) => (x === null ? '?' : opS(String(x)))).join(' ');
+  const eqHtml = (txt: string) => `<div class="eq">${txt}</div>`;
+  /** Nombre au début d'un mot (un jeton de donnée en a toujours un). */
+  const lead = (w: string) => {
+    const m = /^\d+/.exec(w);
+    if (!m) throw new Error(`M.pb : pas de nombre dans « ${w} »`);
+    return Number(m[0]);
+  };
   PB.typo = typo;
   PB.expr = expr;
   PB.eqStr = eqStr;
 
   /** Jetons (mots) d'une liste de phrases : on coupe aux espaces ordinaires seulement (« tout ? » reste un jeton). */
-  function tokensOf(sentences, roleOf, xVals) {
-    const toks = [];
+  function tokensOf(sentences: readonly PbSentence[], roleOf?: Record<number, string> | null, xVals?: readonly number[]) {
+    const toks: PbToken[] = [];
     sentences.forEach((s, si) =>
       s.text
         .split(' ')
         .filter(Boolean)
         .forEach((w) => {
-          const t = { w, s: si };
+          const t: PbToken = { w, s: si };
           const m = /^(\d+)/.exec(w);
           if (m) {
-            const v = +m[1];
+            const v = Number(m[1]);
             if (roleOf && roleOf[v]) t.data = roleOf[v];
             else if (xVals && xVals.includes(v)) t.x = true;
           }
@@ -68,9 +319,9 @@
 
   /* ------------------------------------------------------------------ nombres */
   /** s1 + s2 = big, valeurs distinctes ≥ 2. opts.max : plafond simple (sans dizaines rondes). */
-  function drawTriple(lvl, opts = {}) {
+  function drawTriple(lvl: number, opts: { max?: number; noHundreds?: boolean } = {}): [number, number, number] {
     for (let g = 0; g < 200; g++) {
-      let s1, s2;
+      let s1: number, s2: number;
       if (opts.max) {
         s1 = rnd(2, opts.max - 2);
         s2 = rnd(2, Math.max(2, opts.max - s1));
@@ -99,7 +350,7 @@
   }
 
   /** Inconnues permises par défaut selon le niveau (§ 3.2). */
-  const UNK = {
+  const UNK: Record<PbKind, PbUnknown[][]> = {
     ajout: [['fin'], ['fin', 'change'], ['fin', 'change', 'debut']],
     retrait: [['fin'], ['fin', 'change'], ['fin', 'change', 'debut']],
     reunion: [['tout'], ['tout', 'partie'], ['tout', 'partie']],
@@ -109,20 +360,21 @@
     deux: [['fin'], ['fin'], ['fin']],
   };
   PB.UNK = UNK;
-  const KEY = { ajout: 'aj', retrait: 're', reunion: 'un', comparaison: 'cmp' };
+  const KEY = { ajout: 'aj', retrait: 're', reunion: 'un', comparaison: 'cmp' } as const;
 
   /* ------------------------------------------------------------------ modèles en barres */
-  const seg = (v, tone, hide, reveal) => (hide ? { v, text: '?', tone: 'Q' } : { v, tone: reveal ? 'C' : tone });
+  const seg = (v: number, tone: BarTone, hide: boolean, reveal: boolean | undefined): BarSeg =>
+    hide ? { v, text: '?', tone: 'Q' } : { v, tone: reveal ? 'C' : tone };
   /** Partie-partie-tout : o = { x, y, t, unk: 'x'|'y'|'t', toneY?, lx?, ly?, lt? } (lx… = textes à la place des nombres) */
-  function toutSpec(o, reveal) {
-    const h = (k) => o.unk === k && !reveal;
+  function toutSpec(o: PbToutO, reveal?: boolean): BarModelSpec {
+    const h = (k: PbToutO['unk']) => o.unk === k && !reveal;
     const sx = seg(o.x, 'A', h('x'), reveal && o.unk === 'x'),
       sy = seg(o.y, o.toneY || 'B', h('y'), reveal && o.unk === 'y');
     if (o.lx && !h('x')) sx.text = o.lx;
     if (o.ly && !h('y')) sy.text = o.ly;
-    const total = h('t') ? { unknown: true } : { v: o.t, text: o.lt };
+    const total: BarBrace = h('t') ? { unknown: true } : { v: o.t, text: o.lt };
     if (!total.text) delete total.text;
-    const name = (k, v) => (o.unk === k && !reveal ? 'inconnu' : String(v));
+    const name = (k: PbToutO['unk'], v: number) => (o.unk === k && !reveal ? 'inconnu' : String(v));
     return {
       type: 'tout',
       scale: o.scale,
@@ -132,8 +384,8 @@
     };
   }
   /** Comparaison : o = { G, S (prénoms), g, p, e, unk: 'grand'|'petit'|'ecart', swap? } */
-  function cmpSpec(o, reveal) {
-    const h = (k) => o.unk === k && !reveal;
+  function cmpSpec(o: PbCmpO, reveal?: boolean): BarModelSpec {
+    const h = (k: PbCmpO['unk']) => o.unk === k && !reveal;
     const a = seg(o.swap ? o.p : o.g, 'A', h('grand'), reveal && o.unk === 'grand');
     const b = seg(o.swap ? o.g : o.p, 'B', h('petit'), reveal && o.unk === 'petit');
     if (o.swap) {
@@ -152,11 +404,11 @@
     };
   }
   /** Groupes égaux / partage : o = { nb, k, t, unk: 'total'|'parPart'|'nb' } */
-  function grpSpec(o, reveal) {
-    const h = (k) => o.unk === k && !reveal;
-    const segs = [];
+  function grpSpec(o: PbGrpO, reveal?: boolean): BarModelSpec {
+    const h = (k: PbGrpO['unk']) => o.unk === k && !reveal;
+    const segs: BarSeg[] = [];
     for (let i = 0; i < o.nb; i++) segs.push(seg(o.k, i % 2 ? 'B' : 'A', h('parPart'), reveal && o.unk === 'parPart'));
-    const row = { segs };
+    const row: BarRow = { segs };
     if (o.unk === 'nb') row.label = h('nb') ? '? paquets' : `${o.nb} paquets`;
     return {
       type: 'groupes',
@@ -166,11 +418,16 @@
     };
   }
   PB.bars = { tout: toutSpec, cmp: cmpSpec, grp: grpSpec };
-  const bar = (spec, scale) => M.viz.barModelHtml(spec, { scale: scale || 1 });
+  const bar = (spec: BarModelSpec, scale?: number) => M.viz.barModelHtml(spec, { scale: scale || 1 });
 
   /* ------------------------------------------------------------------ réalisation */
-  function finish(pb) {
-    const roleOf = {};
+  /** Problème en construction (les champs sont remplis l'un après l'autre, puis vérifiés par PB.check). */
+  type PbDraft = PbBase;
+  type PbInit = Pick<PbBase, 'kind' | 'unknown' | 'sub' | 'ctx' | 'P' | 'Q' | 'emoji' | 'u' | 'uX' | 'lvl'>;
+  /** Début d'un problème : champs de départ vérifiés, les autres remplis ensuite (puis vérifiés par PB.check). */
+  const draft = (init: PbInit) => init as PbDraft;
+  function finish(pb: PbDraft) {
+    const roleOf: Record<number, string> = {};
     pb.known.forEach((r) => (roleOf[pb.v[r]] = r));
     pb.tokens = tokensOf(pb.sentences, roleOf, pb.xVals || []);
     pb.text = pb.sentences.map((s) => s.text).join(' ');
@@ -182,22 +439,23 @@
     return pb;
   }
   /** Ajoute des données inutiles (nombre sans rapport) : near = même unité, autre personne. */
-  function addDistractors(pb, n, near) {
+  function addDistractors(pb: PbDraft, n: number, near: boolean | undefined) {
     const DD = D().DISTRACT;
     const used = new Set([...Object.values(pb.v), pb.answer]);
-    pb.xVals = [];
+    const xVals: number[] = (pb.xVals = []);
     const personal = pb.sentences.some((s) => s.text.includes(pb.P.n));
-    const usedTpl = new Set(); // un même gabarit (même sujet, même attribut) une seule fois : jamais « 4 ans » puis « 5 ans »
+    const usedTpl = new Set<string>(); // un même gabarit (même sujet, même attribut) une seule fois : jamais « 4 ans » puis « 5 ans »
     for (let k = 0; k < n; k++) {
-      let tplUsed = null;
-      let text = null,
+      let tplUsed: string | null = null;
+      let text: string | null = null,
         x = 0;
       for (let g = 0; g < 50 && !text; g++) {
-        const useNear = near && k === 0 && pb.ctx.cmp && pb.kind !== 'comparaison';
+        const cmp = pb.ctx.cmp;
+        const useNear = near && k === 0 && cmp && pb.kind !== 'comparaison';
         if (useNear) {
           const hi = Math.max(...pb.knownVals);
           x = rnd(Math.max(2, Math.round(hi / 2)), hi + 5);
-          text = fill(`{Q} ${pb.ctx.cmp.v} {x} ${pb.ctx.cmp.U}.`, { Q: pb.Q.n, x });
+          text = fill(`{Q} ${cmp.v} {x} ${cmp.U}.`, { Q: pb.Q.n, x });
         } else {
           const tpl = pick(DD[personal ? 'person' : 'none'].filter((t) => !usedTpl.has(t)));
           if (!tpl) break;
@@ -210,7 +468,7 @@
       if (!text) return false;
       if (tplUsed) usedTpl.add(tplUsed);
       used.add(x);
-      pb.xVals.push(x);
+      xVals.push(x);
       const pos = pb.sentences.length - 1; // juste avant la question : ne coupe jamais un pronom de son antécédent
       pb.sentences.splice(pos, 0, { text, role: 'distractor' });
     }
@@ -218,7 +476,7 @@
   }
 
   /** Problèmes additifs à une étape : ajout, retrait, réunion, comparaison. */
-  function makeAdd(kind, unknown, lvl, opts) {
+  function makeAdd(kind: 'ajout' | 'retrait' | 'reunion' | 'comparaison', unknown: PbUnknown, lvl: number, opts: PbMakeOpts) {
     const [s1, s2, big] = drawTriple(lvl, opts);
     const key = KEY[kind];
     const pool = D().ADD.filter((c) => c[key] && c.max >= big && (!opts.ctx || opts.ctx(c)) && !(opts.avoid || []).includes(c.id));
@@ -226,28 +484,41 @@
     const ctx = pick(pool);
     const P = M.people.pick(),
       Q = M.people.pick({ not: [P.n] });
-    const pb = { kind, unknown, ctx, P, Q, emoji: ctx.emoji, u: ctx.u, uX: ctx.uX, lvl };
-    const S = (text, role) => ({ text, role: role || (/\d/.test(text) ? 'data' : 'story') });
+    const pb = draft({ kind, unknown, ctx, P, Q, emoji: ctx.emoji, u: ctx.u, uX: ctx.uX, lvl });
+    const S = (text: string, role?: PbRole | null): PbSentence => ({ text, role: role || (/\d/.test(text) ? 'data' : 'story') });
     if (kind === 'ajout' || kind === 'retrait') {
-      const T = ctx[key];
+      const T = kind === 'ajout' ? ctx.aj : ctx.re;
+      if (!T || (unknown !== 'fin' && unknown !== 'change' && unknown !== 'debut')) return null; // exclus par le filtre et UNK
       pb.v = kind === 'ajout' ? { debut: s1, change: s2, fin: big } : { debut: big, change: s1, fin: s2 };
       const vars = { ...pv(P), d: pb.v.debut, c: pb.v.change, f: pb.v.fin };
-      const plan = { fin: ['d', 'c', 'qf'], change: ['d', 'c0', 'f', 'qc'], debut: ['d0', 'c', 'f', 'qd'] }[unknown];
+      type Move = typeof unknown;
+      const PLAN: Record<Move, (keyof PbMoveTpl)[]> = {
+        fin: ['d', 'c', 'qf'],
+        change: ['d', 'c0', 'f', 'qc'],
+        debut: ['d0', 'c', 'f', 'qd'],
+      };
+      const plan = PLAN[unknown];
       pb.sentences = plan.map((k) => S(fill(T[k], vars), k[0] === 'q' ? 'question' : null));
       pb.answer = pb.v[unknown];
       pb.known = ['debut', 'change', 'fin'].filter((r) => r !== unknown);
-      const rk = { fin: 'rf', change: 'rc', debut: 'rd' };
+      const rk = { fin: 'rf', change: 'rc', debut: 'rd' } as const;
       pb.reply = fill(T[rk[unknown]], { ...vars, n: pb.answer });
-      pb.seekChoices = Object.keys(rk).map((u) => ({ label: fill(T[rk[u]], { ...vars, n: '❓' }), value: u }));
+      pb.seekChoices = (Object.keys(rk) as (keyof typeof rk)[]).map((u) => ({ label: fill(T[rk[u]], { ...vars, n: '❓' }), value: u }));
       pb.noNum = [S(fill(T.d0, vars)), S(fill(T.c0, vars))];
       pb.noNumQ = S(fill(T.qf, vars), 'question');
       const { debut: d, change: c, fin: f } = pb.v;
       if (kind === 'ajout') {
-        pb.situation = { fin: [d, '+', c, '=', null], change: [d, '+', null, '=', f], debut: [null, '+', c, '=', f] }[unknown];
-        pb.solve = { fin: { a: d, op: '+', b: c, r: f }, change: { a: f, op: '-', b: d, r: c }, debut: { a: f, op: '-', b: c, r: d } }[
-          unknown
-        ];
-        pb.barO = { x: d, y: c, t: f, unk: { fin: 't', change: 'y', debut: 'x' }[unknown] };
+        pb.situation = (
+          { fin: [d, '+', c, '=', null], change: [d, '+', null, '=', f], debut: [null, '+', c, '=', f] } satisfies Record<Move, PbEq>
+        )[unknown];
+        pb.solve = (
+          {
+            fin: { a: d, op: '+', b: c, r: f },
+            change: { a: f, op: '-', b: d, r: c },
+            debut: { a: f, op: '-', b: c, r: d },
+          } satisfies Record<Move, PbSolveOp>
+        )[unknown];
+        pb.barO = { x: d, y: c, t: f, unk: ({ fin: 't', change: 'y', debut: 'x' } as const)[unknown] };
         pb.fam = unknown === 'fin' ? 'sum' : 'part';
         pb.explain = {
           fin: `On ajoute : il y en a <b>plus</b> à la fin. ${d} + ${c} = <b>${f}</b>.`,
@@ -260,11 +531,17 @@
           debut: `À la fin, il y en a ${f}. Au début, il y en avait <b>moins</b>.`,
         }[unknown];
       } else {
-        pb.situation = { fin: [d, '-', c, '=', null], change: [d, '-', null, '=', f], debut: [null, '-', c, '=', f] }[unknown];
-        pb.solve = { fin: { a: d, op: '-', b: c, r: f }, change: { a: d, op: '-', b: f, r: c }, debut: { a: f, op: '+', b: c, r: d } }[
-          unknown
-        ];
-        pb.barO = { x: f, y: c, t: d, toneY: 'X', unk: { fin: 'x', change: 'y', debut: 't' }[unknown] };
+        pb.situation = (
+          { fin: [d, '-', c, '=', null], change: [d, '-', null, '=', f], debut: [null, '-', c, '=', f] } satisfies Record<Move, PbEq>
+        )[unknown];
+        pb.solve = (
+          {
+            fin: { a: d, op: '-', b: c, r: f },
+            change: { a: d, op: '-', b: f, r: c },
+            debut: { a: f, op: '+', b: c, r: d },
+          } satisfies Record<Move, PbSolveOp>
+        )[unknown];
+        pb.barO = { x: f, y: c, t: d, toneY: 'X', unk: ({ fin: 'x', change: 'y', debut: 't' } as const)[unknown] };
         pb.fam = unknown === 'debut' ? 'sum' : 'part';
         pb.explain = {
           fin: `On enlève : il y en a <b>moins</b> à la fin. ${d} ${MINUS} ${c} = <b>${f}</b>.`,
@@ -279,9 +556,10 @@
       }
     } else if (kind === 'reunion') {
       const T = ctx.un;
+      if (!T) return null; // exclu par le filtre du contexte
       pb.v = { p1: s1, p2: s2, tout: big };
       const vars = { ...pv(P), a: s1, b: s2, t: big };
-      const plan = unknown === 'tout' ? ['a', 'b', 'qt'] : ['t', 'a2', 'b0', 'qb'];
+      const plan: (keyof PbUnionTpl)[] = unknown === 'tout' ? ['a', 'b', 'qt'] : ['t', 'a2', 'b0', 'qb'];
       pb.sentences = plan.map((k) => S(fill(T[k], vars), k[0] === 'q' ? 'question' : null));
       const ur = unknown === 'tout' ? 'tout' : 'p2';
       pb.answer = pb.v[ur];
@@ -305,6 +583,7 @@
           : `Le tout, c'est ${big}. Enlève la partie que tu connais.`;
     } else {
       const C = ctx.cmp;
+      if (!C || (unknown !== 'ecart' && unknown !== 'petit' && unknown !== 'grand')) return null; // exclus par le filtre et UNK
       const swap = Math.random() < 0.5;
       const G = swap ? Q : P,
         Sm = swap ? P : Q;
@@ -315,11 +594,12 @@
         p = s1,
         e = s2;
       const inv = C.v + (/[aeiouy]$/.test(C.v) ? '-t' : '');
-      const has = (X, n) => typo(`${X.n} ${C.v} ${n} ${C.U}.`);
-      const more = (X, n, Y, pro) => typo(`${pro ? X.Il : X.n} ${C.v} ${n} ${C.u} de plus que ${Y.n}.`);
-      const less = (X, n, Y, pro) => typo(`${pro ? X.Il : X.n} ${C.v} ${n} ${C.u} de moins que ${Y.n}.`);
-      const ask = (X, tail) => typo(`Combien ${de(C.u)} ${X.n} ${inv}-${X.il}${tail || ''} ?`);
-      const r = (X, n) => typo(`${X.n} ${C.v} ${n} ${C.u}.`);
+      type N = number | string;
+      const has = (X: Person, n: N) => typo(`${X.n} ${C.v} ${n} ${C.U}.`);
+      const more = (X: Person, n: N, Y: Person, pro?: boolean) => typo(`${pro ? X.Il : X.n} ${C.v} ${n} ${C.u} de plus que ${Y.n}.`);
+      const less = (X: Person, n: N, Y: Person, pro?: boolean) => typo(`${pro ? X.Il : X.n} ${C.v} ${n} ${C.u} de moins que ${Y.n}.`);
+      const ask = (X: Person, tail?: string) => typo(`Combien ${de(C.u)} ${X.n} ${inv}-${X.il}${tail || ''} ?`);
+      const r = (X: Person, n: N) => typo(`${X.n} ${C.v} ${n} ${C.u}.`);
       const trap = opts.trap != null ? opts.trap : Math.random() < 0.5;
       pb.trap = false;
       if (unknown === 'ecart') {
@@ -379,10 +659,11 @@
   }
 
   /** Groupes égaux, partage, contenance. */
-  function makeGroups(kind, unknown, lvl, opts) {
+  function makeGroups(kind: 'groupes' | 'partage', unknown: PbUnknown, lvl: number) {
     const c = pick(D().GROUPS);
     const P = M.people.pick();
-    let nb, k;
+    let nb = 0,
+      k = 0;
     for (let g = 0; g < 100; g++) {
       if (lvl === 0) {
         nb = rnd(2, 3);
@@ -398,7 +679,8 @@
     }
     if (nb === k) return null;
     const t = nb * k;
-    const pb = {
+    if (unknown !== 'total' && unknown !== 'parPart' && unknown !== 'nb') return null; // exclu par UNK
+    const pb = draft({
       kind,
       unknown,
       ctx: { id: 'grp-' + c.u, max: 40, ...c },
@@ -408,11 +690,11 @@
       u: c.u,
       uX: c.boxes,
       lvl,
-    };
-    const S = (text, role) => ({ text: typo(text), role: role || (/\d/.test(text) ? 'data' : 'story') });
+    });
+    const S = (text: string, role?: PbRole): PbSentence => ({ text: typo(text), role: role || (/\d/.test(text) ? 'data' : 'story') });
     pb.v = { nb, k, total: t };
     pb.barO = { nb, k, t, unk: unknown === 'total' ? 'total' : unknown };
-    const terms = Array(nb).fill(k);
+    const terms = Array<number>(nb).fill(k);
     if (kind === 'groupes') {
       pb.sentences = [
         S(`${P.n} a ${nb} ${c.boxes}.`),
@@ -470,23 +752,23 @@
   }
 
   /** Deux étapes (composition de transformations). sub : positive | negative | mixte */
-  function makeDeux(lvl, opts) {
-    const sub = opts.sub || (lvl === 0 ? 'positive' : lvl === 1 ? pick(['negative', 'mixte', 'mixte']) : 'mixte');
-    const ops =
+  function makeDeux(lvl: number, opts: PbMakeOpts) {
+    const sub: PbSub = opts.sub || (lvl === 0 ? 'positive' : lvl === 1 ? pick<PbSub>(['negative', 'mixte', 'mixte']) : 'mixte');
+    const ops: [PbOp, PbOp] =
       sub === 'positive'
         ? ['+', '+']
         : sub === 'negative'
           ? ['-', '-']
-          : pick([
+          : pick<[PbOp, PbOp]>([
               ['+', '-'],
               ['-', '+'],
             ]);
     const max = opts.max || (lvl === 2 ? 100 : 20);
-    let a,
-      b,
-      c,
-      mid,
-      fin,
+    let a = 0,
+      b = 0,
+      c = 0,
+      mid = 0,
+      fin = 0,
       ok = false;
     for (let g = 0; g < 200 && !ok; g++) {
       if (max <= 20) {
@@ -509,8 +791,19 @@
     const ctx = pick(pool);
     const P = M.people.pick();
     const vars = pv(P);
-    const ev = (op, n) => fill(op === '+' ? ctx.up : ctx.down, { ...vars, n });
-    const pb = { kind: 'deux', unknown: 'fin', sub, ctx, P, Q: M.people.pick({ not: [P.n] }), emoji: ctx.emoji, u: ctx.u, uX: ctx.uX, lvl };
+    const ev = (op: PbOp, n: number) => fill(op === '+' ? ctx.up : ctx.down, { ...vars, n });
+    const pb = draft({
+      kind: 'deux',
+      unknown: 'fin',
+      sub,
+      ctx,
+      P,
+      Q: M.people.pick({ not: [P.n] }),
+      emoji: ctx.emoji,
+      u: ctx.u,
+      uX: ctx.uX,
+      lvl,
+    });
     pb.v = { a, b, c, mid, fin };
     pb.ops = ops;
     pb.sentences = [
@@ -541,26 +834,29 @@
       const kind = pick(kinds);
       const allowed = (opts.unknowns && opts.unknowns[kind]) || UNK[kind][Math.min(2, lvl)];
       const unknown = pick(allowed);
-      let pb = null;
+      let pb: PbDraft | null = null;
       try {
         if (kind === 'deux') pb = makeDeux(lvl, opts);
-        else if (kind === 'groupes' || kind === 'partage') pb = makeGroups(kind, unknown, lvl, opts);
+        else if (kind === 'groupes' || kind === 'partage') pb = makeGroups(kind, unknown, lvl);
         else pb = makeAdd(kind, unknown, lvl, opts);
       } catch (e) {
         if (tries === 39) throw e;
         pb = null;
       }
       if (!pb) continue;
-      if (pb.knownVals === undefined) pb.knownVals = pb.known.map((r) => pb.v[r]);
-      if (opts.distract && !addDistractors(pb, opts.distract, opts.near)) continue;
-      finish(pb);
-      pb.barSpec = (reveal) =>
-        pb.fam === 'cmp'
-          ? cmpSpec(pb.barO, reveal)
-          : ['grp', 'shr', 'cnt'].includes(pb.fam)
-            ? grpSpec(pb.barO, reveal)
-            : toutSpec(pb.barO, reveal);
-      if (!PB.check(pb)) return pb;
+      const d = pb;
+      if (d.knownVals === undefined) d.knownVals = d.known.map((r) => d.v[r]);
+      if (opts.distract && !addDistractors(d, opts.distract, opts.near)) continue;
+      finish(d);
+      // le genre (kind) détermine les champs propres (G/S, ops…) et la forme de barO selon fam
+      const p = d as Pb;
+      p.barSpec = (reveal) =>
+        p.fam === 'cmp'
+          ? cmpSpec(p.barO as PbCmpO, reveal)
+          : ['grp', 'shr', 'cnt'].includes(p.fam)
+            ? grpSpec(p.barO as PbGrpO, reveal)
+            : toutSpec(p.barO as PbToutO, reveal);
+      if (!PB.check(p)) return p;
     }
     throw new Error('M.pb.make : aucun problème cohérent');
   };
@@ -574,10 +870,11 @@
   PB.storyHtml = (pb) => `<div class="pb-story"><span class="pb-em">${pb.emoji}</span>${M.esc(pb.text)}</div>`;
 
   /* ------------------------------------------------------------------ étapes */
-  const ST = (PB.step = {});
-  const wordList = (vals) =>
+  const ST = {} as PbStepApi;
+  PB.step = ST;
+  const wordList = (vals: number[]) =>
     vals.length === 2 ? `${vals[0]} et ${vals[1]}` : vals.slice(0, -1).join(', ') + ' et ' + vals[vals.length - 1];
-  const dataVals = (pb) => pb.dataTok.map((i) => +/^\d+/.exec(pb.tokens[i].w)[0]);
+  const dataVals = (pb: Pb) => pb.dataTok.map((i) => lead(pb.tokens[i].w));
 
   ST.question = (pb) => ({
     demarche: 1,
@@ -626,34 +923,37 @@
     let hi = Math.max(...kv),
       lo = Math.min(...kv);
     if (['grp', 'shr', 'cnt'].includes(pb.fam)) {
-      const o = pb.barO;
+      const o = pb.barO as PbGrpO; // familles groupes : barO de grpSpec
       hi = o.unk === 'total' ? Math.max(o.nb, o.k) : o.t;
       lo = o.unk === 'total' ? Math.min(o.nb, o.k) : o.unk === 'nb' ? o.k : o.nb;
     }
-    const fams = {
+    type FamKey = 'sum' | 'part' | 'cmp' | 'cmpR';
+    const fams: Record<FamKey, { spec: BarModelSpec | null; why: string }> = {
       sum: { spec: toutSpec({ x: hi, y: lo, t: hi + lo, unk: 't' }), why: 'Ce schéma cherche le <b>tout</b> : les deux parties ensemble.' },
       part: { spec: toutSpec({ x: lo, y: hi - lo, t: hi, unk: 'y' }), why: 'Ce schéma connaît le tout et cherche une <b>partie</b>.' },
       cmp: { spec: cmpSpec({ g: hi, p: lo, e: hi - lo, unk: 'ecart' }), why: 'Ce schéma <b>compare</b> deux quantités.' },
       cmpR: {
-        spec: pb.fam === 'cmp' ? cmpSpec({ ...pb.barO, swap: true }) : null,
+        spec: pb.kind === 'comparaison' ? cmpSpec({ ...pb.barO, swap: true }) : null,
         why: 'Regarde qui en a le plus : sa barre doit être la plus longue.',
       },
     };
-    const others = {
+    const OTHERS: Partial<Record<PbFam, FamKey[]>> = {
       sum: ['part', 'cmp'],
       part: ['sum', 'cmp'],
       cmp: ['cmpR', 'sum'],
       grp: ['sum', 'cmp'],
       shr: ['part', 'sum'],
       cnt: ['part', 'sum'],
-    }[pb.fam] || ['sum', 'part'];
-    const list = [{ label: bar(pb.barSpec(false)), value: 'ok' }];
+    };
+    const others = OTHERS[pb.fam] || ['sum', 'part'];
+    const list: Choice<string>[] = [{ label: bar(pb.barSpec(false)), value: 'ok' }];
     others.slice(0, lvl === 0 ? 1 : 2).forEach((f) => {
-      if (fams[f].spec) list.push({ label: bar(fams[f].spec), value: f, why: fams[f].why });
+      const fm = fams[f];
+      if (fm.spec) list.push({ label: bar(fm.spec), value: f, why: fm.why });
     });
     return shuffle(list);
   };
-  const SCHEMA_AFTER = {
+  const SCHEMA_AFTER: Record<PbFam, string> = {
     sum: 'Deux parties connues : on cherche le <b>tout</b>.',
     part: "Le tout et une partie sont connus : on cherche l'<b>autre partie</b>.",
     cmp: 'Deux barres face à face : on <b>compare</b>.',
@@ -695,9 +995,9 @@
     }
     const hi = Math.max(s.a, s.b),
       lo = Math.min(s.a, s.b);
-    const other = s.op === '+' ? { a: hi, op: '-', b: lo } : { a: s.a, op: '+', b: s.b };
+    const other: { a: number; op: PbOp; b: number } = s.op === '+' ? { a: hi, op: '-', b: lo } : { a: s.a, op: '+', b: s.b };
     const otherR = other.op === '+' ? other.a + other.b : other.a - other.b;
-    const list = [
+    const list: Choice<string>[] = [
       { label: expr(s), value: 'ok' },
       {
         label: expr(other),
@@ -720,19 +1020,24 @@
   });
 
   /** Équation qui raconte l'histoire (le « ? » est à la place de l'inconnue). */
-  const solveEq = (e) => {
+  const solveEq = (e: PbEq) => {
     const [A, op, B, , C] = e;
+    // null (l'inconnue) vaut 0 dans un calcul : a, b, c donnent le même résultat que A, B, C
+    const a = A ?? 0,
+      b = B ?? 0,
+      c = C ?? 0;
     let r;
-    if (C === null) r = op === '+' ? A + B : A - B;
-    else if (A === null) r = op === '+' ? C - B : C + B;
-    else r = op === '+' ? C - A : A - C;
+    if (C === null) r = op === '+' ? a + b : a - b;
+    else if (A === null) r = op === '+' ? c - b : c + b;
+    else r = op === '+' ? c - a : a - c;
     return r;
   };
   PB.solveEq = solveEq;
   ST.equation = (pb) => {
+    if (!pb.situation) throw new Error('M.pb.step.equation : problème sans équation-situation');
     const right = eqStr(pb.situation);
     const [x, y] = pb.knownVals;
-    const cands = shuffle([
+    const cands = shuffle<PbEq>([
       [x, '+', y, '=', null],
       [x, '-', y, '=', null],
       [y, '-', x, '=', null],
@@ -744,7 +1049,7 @@
       [y, '-', null, '=', x],
       [null, '-', y, '=', x],
     ]);
-    const wrong = [];
+    const wrong: string[] = [];
     for (const c of cands) {
       const r = solveEq(c),
         s = eqStr(c);
@@ -766,7 +1071,7 @@
     };
   };
 
-  function calcHint(s) {
+  function calcHint(s: PbSolve) {
     if (s.terms) return `Compte par bonds de ${s.terms[0]}.`;
     if (s.op === '+')
       return s.a + s.b <= 20
@@ -779,9 +1084,11 @@
   /** Calcul : number avec le modèle en barres en visuel d'étape. */
   ST.calcul = (pb, lvl, which) => {
     const s = which === 1 ? pb.solve1 : pb.solve;
-    const barO = which === 1 ? pb.barO : which === 2 ? pb.barO2 : null;
+    if (!s) throw new Error('M.pb.step.calcul : pas de premier calcul (deux étapes seulement)');
+    // étapes 1 et 2 d'un problème à deux étapes : schémas partie-partie-tout
+    const barO = which === 1 ? (pb.barO as PbToutO) : which === 2 ? pb.barO2 : null;
     const spec = barO ? toutSpec(barO) : pb.barSpec(false);
-    const viz = (el) => {
+    const viz = (el: HTMLElement) => {
       el.innerHTML = `<div class="bm-wrap pb-stepbar">${bar(spec)}</div>`;
     };
     if (s.share)
@@ -860,18 +1167,19 @@
     const n = String(pb.answer);
     const words = pb.reply.split(' ');
     const iN = words.indexOf(n);
-    if (lvl >= 2) {
-      const set = new Map();
+    if ((lvl ?? 0) >= 2) {
+      const set = new Map<string, string>();
       set.set(pb.reply, 'ok');
       const swapNum = words.map((w, i) => (i === iN ? String(pb.knownVals[0]) : w)).join(' ');
       set.set(swapNum, 'num');
       const unitW = (words[iN + 1] || '').replace(/[.,!?]+$/, '');
-      if (unitW && pb.uX && unitW !== pb.uX) set.set(words.map((w, i) => (i === iN + 1 ? w.replace(unitW, pb.uX) : w)).join(' '), 'unit');
-      const names = [pb.P, pb.Q, pb.G, pb.S].filter(Boolean).map((p) => p.n);
+      const uX = pb.uX;
+      if (unitW && uX && unitW !== uX) set.set(words.map((w, i) => (i === iN + 1 ? w.replace(unitW, uX) : w)).join(' '), 'unit');
+      const names = [pb.P, pb.Q, pb.G, pb.S].filter((p): p is Person => Boolean(p)).map((p) => p.n);
       const who = names.find((nm) => pb.reply.includes(nm));
       const other = who && names.find((nm) => nm !== who);
       // échange les deux prénoms (jamais « Emma a 16 billes de plus que Emma »)
-      if (other) {
+      if (who && other) {
         const t = pb.reply
           .split(who)
           .map((part) => part.split(other).join(who))
@@ -880,16 +1188,17 @@
       }
       const qtxt = pb.sentences[pb.qIndex].text;
       if (set.size < 4 && !set.has(qtxt)) set.set(qtxt, 'q');
+      const WHY: Partial<Record<string, string>> = {
+        num: "Vérifie le <b>nombre</b> : c'est le résultat du calcul ?",
+        unit: 'Vérifie le <b>mot</b> après le nombre.',
+        who: 'Vérifie <b>qui</b> : relis la question.',
+        q: "Une réponse n'est pas une question !",
+      };
       const choices = [...set.entries()].slice(0, 4).map(([label, value]) => ({
         label: M.esc(label),
         value,
         say: label,
-        why: {
-          num: "Vérifie le <b>nombre</b> : c'est le résultat du calcul ?",
-          unit: 'Vérifie le <b>mot</b> après le nombre.',
-          who: 'Vérifie <b>qui</b> : relis la question.',
-          q: "Une réponse n'est pas une question !",
-        }[value],
+        why: WHY[value],
       }));
       return {
         demarche: 5,
@@ -902,13 +1211,13 @@
       };
     }
     const nums = [n, ...pb.knownVals.map(String)].filter((x, i, a) => a.indexOf(x) === i).slice(0, 3);
-    const blanks = [{ choices: shuffle(nums), answer: n }];
+    const blanks: ClozeBlank[] = [{ choices: shuffle(nums), answer: n }];
     const w2 = words.slice();
     w2[iN] = '{0}';
     if (lvl === 1 && words[iN + 1]) {
-      const m = /^(.+?)([.,!?]*)$/.exec(words[iN + 1]);
-      const unitW = m[1];
-      if (pb.uX && unitW !== pb.uX) {
+      const m = /^(.+?)([.,!?]*)$/.exec(words[iN + 1]); // toujours trouvé : le mot n'est pas vide
+      const unitW = m ? m[1] : '';
+      if (m && pb.uX && unitW !== pb.uX) {
         w2[iN + 1] = '{1}' + m[2];
         blanks.push({ choices: shuffle([unitW, pb.uX]), answer: unitW });
       }
@@ -925,9 +1234,10 @@
 
   /** Premier calcul d'un problème à deux étapes. */
   ST.plan = (pb) => {
+    if (pb.kind !== 'deux') throw new Error('M.pb.step.plan : problème à deux étapes seulement');
     const { a, b, c } = pb.v;
-    const flip = (op) => (op === '+' ? '-' : '+');
-    const list = [
+    const flip = (op: PbOp) => (op === '+' ? '-' : '+');
+    const list: Choice<string>[] = [
       { label: expr(pb.solve1), value: 'ok' },
       { label: expr({ a, op: flip(pb.ops[0]), b }), value: 'w1', why: "Relis la 2e phrase : est-ce qu'on en ajoute ou qu'on en enlève ?" },
       { label: expr({ a, op: flip(pb.ops[1]), b: c }), value: 'w2', why: "Que se passe-t-il <b>d'abord</b> ?" },
@@ -938,45 +1248,48 @@
       format: 'choice',
       cols: 3,
       answer: 'ok',
-      choices: shuffle(list).map((c) => ({ ...c, label: `<span class="pb-op">${c.label}</span>` })),
+      choices: shuffle(list).map((ch) => ({ ...ch, label: `<span class="pb-op">${ch.label}</span>` })),
       hint: "Suis l'ordre de l'histoire : que se passe-t-il d'abord ?",
       after: `D'abord ${expr(pb.solve1)}, ensuite on continue avec le résultat.`,
     };
   };
 
   /** Typographie française sur les textes de chaque étape (espace insécable avant ? ! : ;). */
-  const fx = (st) => {
-    ['prompt', 'hint', 'after'].forEach((k) => {
-      if (typeof st[k] === 'string') st[k] = typo(st[k]);
+  const fx = (st: StepItem) => {
+    (['prompt', 'hint', 'after'] as const).forEach((k) => {
+      const v = st[k];
+      if (typeof v === 'string') st[k] = typo(v);
     });
-    (st.choices || []).forEach((c) => {
+    const choices: Choice[] | undefined = 'choices' in st ? st.choices : undefined;
+    (choices || []).forEach((c) => {
       if (c.why) c.why = typo(c.why);
     });
     return st;
   };
-  Object.keys(ST)
-    .filter((k) => !/Choices$/.test(k))
+  (Object.keys(ST) as (keyof PbStepApi)[])
+    .filter((k): k is PbStepName => !k.endsWith('Choices'))
     .forEach((k) => {
       const f = ST[k];
       ST[k] = (...a) => fx(f(...a));
     });
 
   /** Recette → question steps. Les étapes calcul2 reportent la réponse de calcul1 ({sK}). */
-  PB.toSteps = function (pb, recipe, { lvl = 0, scoreSteps, prompt } = {}) {
-    const steps = [];
+  PB.toSteps = function (pb, recipe, { lvl = 0, scoreSteps, prompt }: PbToStepsOpts = {}) {
+    const steps: StepItem[] = [];
     let c1 = -1;
     recipe.forEach((name) => {
-      let s;
+      let s: StepItem;
       if (name === 'calcul1') {
         s = ST.calcul(pb, lvl, 1);
         c1 = steps.length;
       } else if (name === 'calcul2') {
         s = ST.calcul(pb, lvl, 2);
-        if (c1 >= 0) s.prompt = eqHtml(`{s${c1 + 1}} ${opS(pb.solve.op)} ${pb.solve.b} = {?}`);
+        const s2 = pb.solve as PbSolveOp; // calcul2 : deux étapes, toujours « a op b »
+        if (c1 >= 0) s.prompt = eqHtml(`{s${c1 + 1}} ${opS(s2.op)} ${s2.b} = {?}`);
       } else s = ST[name](pb, lvl);
       steps.push(s);
     });
-    const q = {
+    const q: QuestionOf<'steps'> = {
       prompt: prompt || 'Résous le problème, une étape à la fois.',
       passage: PB.passage(pb),
       format: 'steps',
@@ -989,16 +1302,18 @@
   /** Lie le problème à la question (non énumérable : pas de JSON). */
   /** Élision et typographie sur tous les textes affichés ou lus (explications, choix, étapes…) : « de Amira » → « d'Amira ». */
   const TXT = ['prompt', 'say', 'hint', 'explain', 'after', 'label', 'why', 'left', 'right', 'sayLeft', 'sayRight'];
-  const polish = (o) => {
+  const polish = (o: unknown): void => {
     if (Array.isArray(o)) {
       o.forEach(polish);
       return;
     }
     if (!o || typeof o !== 'object') return;
+    const r = o as Record<string, unknown>;
     TXT.forEach((k) => {
-      if (typeof o[k] === 'string') o[k] = typo(o[k]);
+      const v = r[k];
+      if (typeof v === 'string') r[k] = typo(v);
     });
-    ['steps', 'choices', 'pairs', 'check'].forEach((k) => polish(o[k]));
+    ['steps', 'choices', 'pairs', 'check'].forEach((k) => polish(r[k]));
   };
   PB.polish = polish;
   PB.attach = (q, pb) => {
@@ -1009,7 +1324,7 @@
 
   /* ------------------------------------------------------------------ contrôles (G13) */
   const BADTYPO = / [?!:;]/;
-  const strip = (h) =>
+  const strip = (h: string) =>
     String(h)
       .replace(/<[^>]*>/g, '')
       .replace(/&amp;/g, '&')
@@ -1022,11 +1337,12 @@
     if (!vals.every((x) => Number.isInteger(x) && x > 0)) return 'valeurs non entières ou ≤ 0';
     if (pb.ctx.max && Math.max(...vals) > pb.ctx.max) return `valeur > max du contexte (${pb.ctx.id})`;
     // recalcul
+    const byUnk = (o: Partial<Record<PbUnknown, number>>) => o[pb.unknown];
     let r;
-    if (pb.kind === 'ajout') r = { fin: v.debut + v.change, change: v.fin - v.debut, debut: v.fin - v.change }[pb.unknown];
-    else if (pb.kind === 'retrait') r = { fin: v.debut - v.change, change: v.debut - v.fin, debut: v.fin + v.change }[pb.unknown];
+    if (pb.kind === 'ajout') r = byUnk({ fin: v.debut + v.change, change: v.fin - v.debut, debut: v.fin - v.change });
+    else if (pb.kind === 'retrait') r = byUnk({ fin: v.debut - v.change, change: v.debut - v.fin, debut: v.fin + v.change });
     else if (pb.kind === 'reunion') r = pb.unknown === 'tout' ? v.p1 + v.p2 : v.tout - v.p1;
-    else if (pb.kind === 'comparaison') r = { ecart: v.grand - v.petit, petit: v.grand - v.ecart, grand: v.petit + v.ecart }[pb.unknown];
+    else if (pb.kind === 'comparaison') r = byUnk({ ecart: v.grand - v.petit, petit: v.grand - v.ecart, grand: v.petit + v.ecart });
     else if (pb.kind === 'groupes') r = v.nb * v.k;
     else if (pb.kind === 'partage') {
       if (v.total % v.nb !== 0) return 'partage inexact';
@@ -1062,7 +1378,7 @@
     if (BADTYPO.test(pb.reply) || /[{}❓]/.test(pb.reply)) return 'phrase-réponse invalide';
     if (pb.reply.split(' ').indexOf(String(pb.answer)) < 0) return 'phrase-réponse sans la réponse';
     // jetons : chaque donnée exactement une fois, l'inconnue jamais
-    const nums = pb.tokens.filter((t) => /^\d/.test(t.w)).map((t) => +/^\d+/.exec(t.w)[0]);
+    const nums = pb.tokens.filter((t) => /^\d/.test(t.w)).map((t) => lead(t.w));
     for (const k of pb.known) if (nums.filter((x) => x === v[k]).length !== 1) return `donnée ${k}=${v[k]} absente ou répétée`;
     if (nums.includes(pb.answer)) return 'la réponse apparaît dans le texte';
     if (nums.some((x) => !kv.includes(x) && !(pb.xVals || []).includes(x))) return 'nombre inattendu dans le texte';
@@ -1082,7 +1398,7 @@
       if (e) return e;
     }
     const subs = q.format === 'steps' ? q.steps : [q];
-    const answers = {};
+    const answers: Record<string, string> = {};
     for (let i = 0; i < subs.length; i++) {
       const s = subs[i];
       let prompt = String(s.prompt || '').replace(/\{s(\d+)\}/g, (m, k) => (answers[k] !== undefined ? answers[k] : m));
@@ -1093,8 +1409,8 @@
         const m = /(\d+(?: [+−-] \d+)+) = §/.exec(txt);
         if (m) {
           const parts = m[1].split(' ');
-          let r = +parts[0];
-          for (let k = 1; k < parts.length; k += 2) r = parts[k] === '+' ? r + +parts[k + 1] : r - +parts[k + 1];
+          let r = Number(parts[0]);
+          for (let k = 1; k < parts.length; k += 2) r = parts[k] === '+' ? r + Number(parts[k + 1]) : r - Number(parts[k + 1]);
           if (r !== s.answer) return `étape ${i} : ${m[1]} = ${r} ≠ ${s.answer}`;
         }
         answers[i + 1] = String(s.answer);
@@ -1107,10 +1423,12 @@
         const want = s.mark === 'q' ? [pb.qIndex] : s.mark === 'x' ? pb.xTok : pb.dataTok;
         if (s.answer.join() !== want.join()) return `étape ${i} : marques incohérentes`;
       }
-      if (pb && s.format === 'cloze' && /^\d+$/.test(String(s.blanks[0].answer)) && +s.blanks[0].answer !== pb.answer)
+      if (pb && s.format === 'cloze' && /^\d+$/.test(String(s.blanks[0].answer)) && Number(s.blanks[0].answer) !== pb.answer)
         return `étape ${i} : phrase-réponse ≠ réponse`;
     }
-    if (q.passage && q.passage.tokens && q.passage.tokens.some((t) => BADTYPO.test(' ' + t.w))) return 'passage : ponctuation détachée';
+    const pas = q.passage;
+    if (pas && typeof pas !== 'string' && pas.tokens && pas.tokens.some((t) => BADTYPO.test(' ' + t.w)))
+      return 'passage : ponctuation détachée';
     return undefined;
   };
 })();

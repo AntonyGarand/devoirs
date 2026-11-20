@@ -3,10 +3,162 @@
    M.mesure : dessins réutilisables (crayons, règle, unités, horloge,
               calendrier, animations) — aussi utilisés par learn/mesure.js
    ===================================================================== */
+
+/* ---------- types de M.mesure (scripts globaux : fusion avec MApi) ---------- */
+interface MApi {
+  mesure: MesureApi;
+}
+interface MesureSeason {
+  id: string;
+  em: string;
+  /** « le printemps », « l'été »… */
+  the: string;
+  /** Mois (0 = janvier). */
+  months: number[];
+  start: string;
+}
+interface MesureEvent {
+  name: string;
+  em: string;
+  /** Mois (si non ambigu). */
+  m?: number;
+  /** Saison. */
+  s?: string;
+  when: string;
+}
+interface MesureSign {
+  t: string;
+  em: string;
+  s: string;
+}
+interface MesureColor {
+  n: string;
+  c: string;
+}
+type MesureObjKind = 'crayon' | 'ruban' | 'paille' | 'baton';
+interface MesureObj {
+  the: string;
+  same: string;
+  pr: string;
+  a: string;
+}
+/** Unités non conventionnelles. */
+type MesureUnitKind = 'cube' | 'trombone' | 'gomme' | 'carte';
+interface MesureUnit {
+  w: number;
+  h: number;
+  sing: string;
+  pl: string;
+  fem: boolean;
+}
+interface MesureSvgOpts {
+  cls?: string;
+  x?: number;
+  y?: number;
+  max?: number;
+}
+/** Horloge à aiguilles : ring (couronne des minutes), minutes (visible), ha / ma (angles forcés), hl (aiguille surlignée). */
+interface MesureClockOpts {
+  ring?: boolean;
+  minutes?: boolean;
+  ha?: number;
+  ma?: number;
+  size?: number;
+  cls?: string;
+  hl?: 'h' | 'm';
+}
+interface MesureClockWidgetOpts {
+  /** Minutes depuis minuit. */
+  t?: number;
+  /** Horloge de 24 h. */
+  day?: boolean;
+  /** Boutons (± minutes). */
+  buttons?: number[];
+  step?: number;
+  ring?: boolean;
+  size?: number;
+  digital?: boolean;
+  onChange?: (h: number, m: number, t: number) => void;
+}
+interface MesureClockWidget {
+  get(): number;
+  set(t: number): void;
+  /** Avance (ou recule) les aiguilles jusqu'à target, en animation. */
+  animateTo(target: number, alive: () => boolean, dur?: number | 'auto'): Promise<void>;
+  svg: SVGSVGElement;
+}
+interface MesureCalOpts {
+  today?: number | null;
+  hl?: number | null;
+  title?: string;
+}
+/** Tuile d'une bande (jours, mois, saisons). */
+interface MesureTile {
+  t: string;
+  sub?: string;
+  em?: string;
+  cls?: string;
+}
+interface MesureApi {
+  DAYS: string[];
+  DAYS_AB: string[];
+  MONTHS: string[];
+  SEASONS: MesureSeason[];
+  EVENTS: MesureEvent[];
+  SIGNS: MesureSign[];
+  COLORS: MesureColor[];
+  OBJ: Record<MesureObjKind, MesureObj>;
+  NU: Record<MesureUnitKind, MesureUnit>;
+  cap(s: string): string;
+  svg(w: number, h: number, inner: string, o?: MesureSvgOpts): string;
+  /** Réserve el pour une nouvelle animation : les anciennes s'arrêtent. Retourne « encore vivante ? ». */
+  claim(el: Element): () => boolean;
+  tween(alive: () => boolean, dur: number, step: (k: number) => void): Promise<boolean>;
+  wait(alive: () => boolean, ms: number): Promise<boolean>;
+  addSvg(parent: Element, html: string): SVGGElement;
+  status(el: HTMLElement, html: string): void;
+  objSvg(kind: MesureObjKind, x: number, y: number, len: number, color: string, h?: number): string;
+  unitSvg(k: MesureUnitKind, x: number, y: number, i?: number): string;
+  unitRow(k: MesureUnitKind, x: number, y: number, count: number, gap?: number, numbers?: boolean): string;
+  miniUnit(k: MesureUnitKind): string;
+  rulerSvg(x0: number, y: number, n: number, px: number): string;
+  fmt(h: number, m: number): string;
+  h12(h: number): number;
+  hourWords(h: number): string;
+  timeWords(h: number, m: number): string;
+  phrase(h: number, m: number, period?: boolean): string;
+  clockSvg(h: number, m: number, o?: MesureClockOpts): string;
+  setHands(root: ParentNode, t: number): void;
+  clockWidget(host: HTMLElement, o?: MesureClockWidgetOpts): MesureClockWidget;
+  svgPoint(svgEl: SVGSVGElement, e: { clientX: number; clientY: number }): DOMPoint | null;
+  calHtml(y: number, mo: number, o?: MesureCalOpts): string;
+  calMark(root: ParentNode, col: number | null, d: number | null): void;
+  dateHtml(d: number): string;
+  dateSay(d: number): string;
+  stripHtml(items: MesureTile[], cols?: number): string;
+  badge(tile: Element | null | undefined, txt: string): void;
+  scaleSvg(): string;
+  rodsSvg(n: number, numbered?: number): string;
+}
+/**
+ * Question en construction (les générateurs remplissent q champ par champ selon le format choisi).
+ * Validée à l'exécution par tools/check-skills.ts.
+ */
+type MesureDraft = Partial<QuestionBase> & {
+  input?: 'choice' | 'number' | 'order';
+  choices?: Choice[];
+  answer?: Value | Value[];
+  unit?: string;
+  cols?: number;
+};
+
 (function () {
   'use strict';
   const M = window.M;
   const D = 'mesure';
+  /** Question terminée (voir MesureDraft). */
+  const done = (q: MesureDraft): Question => q as Question;
+  type Alive = () => boolean;
 
   /* try : tools/check-skills.js simule un élément dont textContent est en lecture seule */
   try {
@@ -59,17 +211,30 @@
   } catch (e) {}
 
   /* ======================= Données ======================= */
-  const DAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-  const DAYS_AB = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
-  const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-  const SEASONS = [
+  const DAYS: string[] = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+  const DAYS_AB: string[] = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
+  const MONTHS: string[] = [
+    'janvier',
+    'février',
+    'mars',
+    'avril',
+    'mai',
+    'juin',
+    'juillet',
+    'août',
+    'septembre',
+    'octobre',
+    'novembre',
+    'décembre',
+  ];
+  const SEASONS: MesureSeason[] = [
     { id: 'printemps', em: '🌷', the: 'le printemps', months: [2, 3, 4], start: 'vers le 20 mars' },
     { id: 'été', em: '☀️', the: "l'été", months: [5, 6, 7], start: 'vers le 21 juin' },
     { id: 'automne', em: '🍁', the: "l'automne", months: [8, 9, 10], start: 'vers le 22 septembre' },
     { id: 'hiver', em: '❄️', the: "l'hiver", months: [11, 0, 1], start: 'vers le 21 décembre' },
   ];
   /* Fêtes et moments de l'année au Québec. m = mois (si non ambigu), s = saison */
-  const EVENTS = [
+  const EVENTS: MesureEvent[] = [
     { name: "le Jour de l'An", em: '🥳', m: 0, s: 'hiver', when: 'le 1<sup>er</sup> janvier' },
     { name: 'la Saint-Valentin', em: '❤️', m: 1, s: 'hiver', when: 'le 14 février' },
     { name: 'la semaine de relâche', em: '⛷️', s: 'hiver', when: 'au début du mois de mars' },
@@ -82,7 +247,7 @@
     { name: "l'Halloween", em: '🎃', m: 9, s: 'automne', when: 'le 31 octobre' },
     { name: 'Noël', em: '🎄', m: 11, s: 'hiver', when: 'le 25 décembre' },
   ];
-  const SIGNS = [
+  const SIGNS: MesureSign[] = [
     { t: 'On fait un bonhomme de neige.', em: '⛄', s: 'hiver' },
     { t: 'On patine dehors sur la glace.', em: '⛸️', s: 'hiver' },
     { t: 'Les feuilles changent de couleur et tombent.', em: '🍂', s: 'automne' },
@@ -92,23 +257,25 @@
     { t: "C'est les grandes vacances d'école.", em: '🏖️', s: 'été' },
   ];
 
-  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-  const f1 = (v) => Math.round(v * 10) / 10;
+  const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+  const f1 = (v: number): number => Math.round(v * 10) / 10;
   const NS = 'http://www.w3.org/2000/svg';
-  const svg = (w, h, inner, o = {}) =>
+  const svg = (w: number, h: number, inner: string, o: MesureSvgOpts = {}): string =>
     `<svg class="me-svg ${o.cls || ''}" viewBox="${o.x || 0} ${o.y || 0} ${w} ${h}" style="max-width:${o.max || w}px" xmlns="${NS}">${inner}</svg>`;
 
   /* ======================= Animation ======================= */
   /** Réserve el pour une nouvelle animation : les anciennes s'arrêtent. */
-  function claim(el) {
-    el._meTok = (el._meTok || 0) + 1;
-    const tok = el._meTok;
-    return () => !!el.isConnected && el._meTok === tok;
+  function claim(el: Element): Alive {
+    const e = el as Element & { _meTok?: number };
+    e._meTok = (e._meTok || 0) + 1;
+    const tok = e._meTok;
+    return () => !!e.isConnected && e._meTok === tok;
   }
-  const raf = (f) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(f) : setTimeout(() => f(Date.now()), 16));
+  const raf = (f: (t: number) => void): unknown =>
+    typeof requestAnimationFrame === 'function' ? requestAnimationFrame(f) : setTimeout(() => f(Date.now()), 16);
   const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
-  function tween(alive, dur, step) {
-    return new Promise((res) => {
+  function tween(alive: Alive, dur: number, step: (k: number) => void): Promise<boolean> {
+    return new Promise<boolean>((res) => {
       const t0 = now();
       const f = () => {
         if (!alive()) return res(false);
@@ -120,20 +287,20 @@
       raf(f);
     });
   }
-  const wait = (alive, ms) => new Promise((r) => setTimeout(() => r(alive()), ms));
-  function addSvg(parent, html) {
+  const wait = (alive: Alive, ms: number): Promise<boolean> => new Promise<boolean>((r) => setTimeout(() => r(alive()), ms));
+  function addSvg(parent: Element, html: string): SVGGElement {
     const g = document.createElementNS(NS, 'g');
     g.innerHTML = html;
     parent.appendChild(g);
     return g;
   }
-  function status(el, html) {
+  function status(el: HTMLElement, html: string): void {
     const s = M.$('.viz-status', el);
     if (s) s.innerHTML = html;
   }
 
   /* ======================= Objets à mesurer ======================= */
-  const COLORS = [
+  const COLORS: MesureColor[] = [
     { n: 'rouge', c: '#ef476f' },
     { n: 'bleu', c: '#118ab2' },
     { n: 'vert', c: '#06a77d' },
@@ -141,14 +308,14 @@
     { n: 'mauve', c: '#9b5de5' },
     { n: 'orange', c: '#f78c40' },
   ];
-  const OBJ = {
+  const OBJ: Record<MesureObjKind, MesureObj> = {
     crayon: { the: 'le crayon', same: 'le même crayon', pr: 'il', a: 'un crayon' },
     ruban: { the: 'le ruban', same: 'le même ruban', pr: 'il', a: 'un ruban' },
     paille: { the: 'la paille', same: 'la même paille', pr: 'elle', a: 'une paille' },
     baton: { the: 'le bâton', same: 'le même bâton', pr: 'il', a: 'un bâton' },
   };
   /** Dessine un objet de longueur exacte len (px), coin haut-gauche (x, y). */
-  function objSvg(kind, x, y, len, color, h = 24) {
+  function objSvg(kind: MesureObjKind, x: number, y: number, len: number, color: string, h = 24): string {
     if (kind === 'crayon') {
       const tip = Math.min(24, len * 0.3),
         body = len - tip,
@@ -182,15 +349,15 @@
   }
 
   /* ======================= Unités non conventionnelles ======================= */
-  const NU = {
+  const NU: Record<MesureUnitKind, MesureUnit> = {
     cube: { w: 30, h: 30, sing: 'cube', pl: 'cubes', fem: false },
     trombone: { w: 45, h: 20, sing: 'trombone', pl: 'trombones', fem: false },
     gomme: { w: 60, h: 24, sing: 'gomme', pl: 'gommes', fem: true },
     carte: { w: 90, h: 30, sing: 'carte', pl: 'cartes', fem: true },
   };
-  const longAdj = (u) => (u.fem ? 'longues' : 'longs');
-  const smallAdj = (u) => (u.fem ? 'petites' : 'petits');
-  function unitSvg(k, x, y, i = 0) {
+  const longAdj = (u: MesureUnit): string => (u.fem ? 'longues' : 'longs');
+  const smallAdj = (u: MesureUnit): string => (u.fem ? 'petites' : 'petits');
+  function unitSvg(k: MesureUnitKind, x: number, y: number, i = 0): string {
     const u = NU[k];
     if (k === 'cube')
       return `<rect x="${x}" y="${y}" width="30" height="30" fill="${i % 2 ? '#3fd3a7' : '#06a77d'}" stroke="#04805f" stroke-width="1.5"/>`;
@@ -213,7 +380,7 @@
     );
   }
   /** Rangée d'unités bout à bout. gap/overlap négatif = chevauchement. */
-  function unitRow(k, x, y, count, gap = 0, numbers = false) {
+  function unitRow(k: MesureUnitKind, x: number, y: number, count: number, gap = 0, numbers = false): string {
     const u = NU[k];
     let s = '';
     for (let i = 0; i < count; i++) {
@@ -223,10 +390,10 @@
     }
     return s;
   }
-  const miniUnit = (k) => svg(NU[k].w + 4, 34, unitSvg(k, 2, 2 + (30 - NU[k].h) / 2), { max: NU[k].w + 4 });
+  const miniUnit = (k: MesureUnitKind): string => svg(NU[k].w + 4, 34, unitSvg(k, 2, 2 + (30 - NU[k].h) / 2), { max: NU[k].w + 4 });
 
   /* ======================= Règle ======================= */
-  function rulerSvg(x0, y, n, px) {
+  function rulerSvg(x0: number, y: number, n: number, px: number): string {
     let s = `<rect x="${x0 - 16}" y="${y}" width="${n * px + 32}" height="58" rx="8" fill="#ffe7a3" stroke="#d9b54a" stroke-width="2"/>`;
     for (let i = 0; i <= n; i++) {
       const x = x0 + i * px;
@@ -237,11 +404,11 @@
   }
 
   /* ======================= Horloge ======================= */
-  const pad2 = (m) => String(m).padStart(2, '0');
+  const pad2 = (m: number): string => String(m).padStart(2, '0');
   /** Écriture québécoise : 3 h, 3 h 30, 10 h 05 */
-  const fmt = (h, m) => (m ? `${h} h ${pad2(m)}` : `${h} h`);
-  const h12 = (h) => ((h % 12) + 12) % 12 || 12;
-  function hourWords(h) {
+  const fmt = (h: number, m: number): string => (m ? `${h} h ${pad2(m)}` : `${h} h`);
+  const h12 = (h: number): number => ((h % 12) + 12) % 12 || 12;
+  function hourWords(h: number): string {
     h = ((h % 24) + 24) % 24;
     if (h === 12) return 'midi';
     if (h === 0) return 'minuit';
@@ -249,10 +416,10 @@
     return n === 1 ? 'une heure' : M.frNum(n) + ' heures';
   }
   /** Heure juste sur 24 h, lue comme elle s'écrit : 13 h → « treize heures », 12 h → « midi ». */
-  const h24Words = (h) => (h === 12 ? 'midi' : h === 1 ? 'une heure' : M.frNum(h) + ' heures');
+  const h24Words = (h: number): string => (h === 12 ? 'midi' : h === 1 ? 'une heure' : M.frNum(h) + ' heures');
   /** « trois heures et quart », « quatre heures moins le quart »… */
-  function timeWords(h, m) {
-    const noon = (x) => {
+  function timeWords(h: number, m: number): string {
+    const noon = (x: number): boolean => {
       x = ((x % 24) + 24) % 24;
       return x === 12 || x === 0;
     };
@@ -264,7 +431,7 @@
     return hourWords(h + 1) + ' moins ' + M.frNum(60 - m);
   }
   /** Phrase complète. period = ajoute « du matin / de l'après-midi / du soir » (h sur 24). */
-  function phrase(h, m, period) {
+  function phrase(h: number, m: number, period?: boolean): string {
     let s = 'Il est ' + timeWords(h, m);
     if (period) {
       const wh = (m > 30 ? h + 1 : h) % 24;
@@ -276,11 +443,11 @@
    * Horloge à aiguilles. o: { ring (réserve la couronne des minutes), minutes (visible),
    *   ha / ma (angles forcés), size, cls, hl:'h'|'m' }
    */
-  function clockSvg(h, m, o = {}) {
+  function clockSvg(h: number, m: number, o: MesureClockOpts = {}): string {
     const ha = o.ha != null ? o.ha : ((h % 12) + m / 60) * 30;
     const ma = o.ma != null ? o.ma : m * 6;
     const P = o.ring ? 34 : 4;
-    const rad = (d) => (d * Math.PI) / 180;
+    const rad = (d: number): number => (d * Math.PI) / 180;
     let s = `<circle cx="100" cy="100" r="96" fill="#fff" stroke="#2b2d42" stroke-width="6"/>`;
     for (let i = 0; i < 60; i++) {
       const big = i % 5 === 0,
@@ -307,7 +474,7 @@
     s += `<circle cx="100" cy="100" r="7" fill="#2b2d42"/>`;
     return svg(200 + 2 * P, 200 + 2 * P, s, { x: -P, y: -P, cls: 'me-clock ' + (o.cls || ''), max: o.size || 260 });
   }
-  function setHands(root, t) {
+  function setHands(root: ParentNode, t: number): void {
     const h = Math.floor(t / 60),
       m = t - h * 60;
     const hh = M.$('.me-hh', root),
@@ -315,12 +482,13 @@
     if (hh) hh.setAttribute('transform', `rotate(${f1(((h % 12) + m / 60) * 30)} 100 100)`);
     if (mh) mh.setAttribute('transform', `rotate(${f1(m * 6)} 100 100)`);
   }
-  function svgPoint(svgEl, e) {
+  function svgPoint(svgEl: SVGSVGElement, e: { clientX: number; clientY: number }): DOMPoint | null {
     try {
       const p = svgEl.createSVGPoint();
       p.x = e.clientX;
       p.y = e.clientY;
-      return p.matrixTransform(svgEl.getScreenCTM().inverse());
+      // getScreenCTM() null (élément détaché) : l'erreur est attrapée → null
+      return p.matrixTransform(svgEl.getScreenCTM()!.inverse());
     } catch (err) {
       return null;
     }
@@ -329,15 +497,16 @@
    * Horloge manipulable : boutons et grande aiguille à glisser.
    * o: { t (minutes depuis minuit), day (24 h), buttons:[minutes...], step, ring, size, onChange(h, m, t) }
    */
-  function clockWidget(host, o = {}) {
+  function clockWidget(host: HTMLElement, o: MesureClockWidgetOpts = {}): MesureClockWidget {
     const mod = o.day ? 1440 : 720,
       step = o.step || 5;
     const btns = o.buttons || [-60, 60, 15, 5];
-    const lbl = (d) => (Math.abs(d) >= 60 ? `${d > 0 ? '+' : '−'}${Math.abs(d) / 60} h` : `${d > 0 ? '+' : '−'}${Math.abs(d)} min`);
+    const lbl = (d: number): string =>
+      Math.abs(d) >= 60 ? `${d > 0 ? '+' : '−'}${Math.abs(d) / 60} h` : `${d > 0 ? '+' : '−'}${Math.abs(d)} min`;
     host.innerHTML = `<div class="me-cw">${clockSvg(0, 0, { ring: o.ring, size: o.size || 260 })}
       ${o.digital === false ? '' : '<div class="me-digbox me-cw-dig"></div>'}
       <div class="me-cw-btns">${btns.map((d) => `<button class="btn" data-d="${d}">${lbl(d)}</button>`).join('')}</div></div>`;
-    const svgEl = M.$('svg', host),
+    const svgEl = M.$('svg', host)!,
       dig = M.$('.me-cw-dig', host);
     let t = (((o.t || 0) % mod) + mod) % mod;
     function draw() {
@@ -347,25 +516,25 @@
       if (dig) dig.textContent = fmt(o.day ? h : h12(h), m);
       if (o.onChange) o.onChange(o.day ? h : h12(h), m, t);
     }
-    const set = (nt) => {
+    const set = (nt: number): void => {
       t = ((Math.round(nt) % mod) + mod) % mod;
       draw();
     };
-    M.$('.me-cw-btns', host).onclick = (e) => {
-      const b = e.target.closest('button[data-d]');
+    M.$('.me-cw-btns', host)!.onclick = (e) => {
+      const b = M.closest(e, 'button[data-d]');
       if (!b) return;
       M.sfx.tap();
-      set(t + +b.dataset.d);
+      set(t + Number(b.dataset.d));
     };
     let drag = false;
-    const angleMin = (e) => {
+    const angleMin = (e: PointerEvent): number | null => {
       const p = svgPoint(svgEl, e);
       if (!p) return null;
       let a = (Math.atan2(p.x - 100, -(p.y - 100)) * 180) / Math.PI;
       if (a < 0) a += 360;
       return (Math.round(a / 6 / step) * step) % 60;
     };
-    const move = (e) => {
+    const move = (e: PointerEvent): void => {
       const mm = angleMin(e);
       if (mm == null) return;
       let d = mm - (t % 60);
@@ -394,7 +563,7 @@
       get: () => t,
       set,
       /** Avance (ou recule) les aiguilles jusqu'à target, en animation. */
-      async animateTo(target, alive, dur = 1400) {
+      async animateTo(target: number, alive: Alive, dur: number | 'auto' = 1400) {
         target = ((target % mod) + mod) % mod;
         let d = target - t;
         if (!o.day) {
@@ -414,10 +583,10 @@
   }
 
   /* ======================= Calendrier ======================= */
-  const dateHtml = (d) => (d === 1 ? '1<sup>er</sup>' : String(d));
-  const dateSay = (d) => (d === 1 ? 'premier' : String(d));
+  const dateHtml = (d: number): string => (d === 1 ? '1<sup>er</sup>' : String(d));
+  const dateSay = (d: number): string => (d === 1 ? 'premier' : String(d));
   /** Grille d'un mois (semaine commençant le dimanche). o: { today, hl, title } */
-  function calHtml(y, mo, o = {}) {
+  function calHtml(y: number, mo: number, o: MesureCalOpts = {}): string {
     const first = new Date(y, mo, 1).getDay(),
       nd = new Date(y, mo + 1, 0).getDate();
     let h = `<table class="me-cal"><caption>${o.title != null ? o.title : cap(MONTHS[mo]) + ' ' + y}</caption><thead><tr>${DAYS_AB.map((d, i) => `<th data-c="${i}">${d}</th>`).join('')}</tr></thead><tbody>`;
@@ -437,7 +606,7 @@
     return h + '</tr></tbody></table>';
   }
   /** Surligne une colonne (jour de la semaine) et éventuellement une date. */
-  function calMark(root, col, d) {
+  function calMark(root: ParentNode, col: number | null, d: number | null): void {
     M.$$('.me-cal .col, .me-cal .on', root).forEach((x) => x.classList.remove('col', 'on'));
     if (col != null)
       M.$$(`.me-cal [data-c="${col}"]`, root).forEach((x) => {
@@ -452,10 +621,10 @@
     }
   }
   /** Bande de tuiles (jours, mois, saisons). items: [{t, sub?, em?, cls?}] */
-  function stripHtml(items, cols) {
+  function stripHtml(items: MesureTile[], cols?: number): string {
     return `<div class="me-strip" style="grid-template-columns:repeat(${cols || items.length},minmax(0,1fr))">${items.map((it, i) => `<button class="me-tile ${it.cls || ''}" data-i="${i}">${it.em ? `<span class="me-em">${it.em}</span>` : ''}<span class="me-lbl">${it.t}</span>${it.sub ? `<small>${it.sub}</small>` : ''}</button>`).join('')}</div>`;
   }
-  function badge(tile, txt) {
+  function badge(tile: Element | null | undefined, txt: string): void {
     if (!tile) return;
     let b = M.$('.me-badge', tile);
     if (!b) {
@@ -482,7 +651,7 @@
     return svg(x + 100 * k + 12, 142, s, { max: 640 });
   }
   /** Réglettes de 1 dm faites de 10 cubes de 1 cm. */
-  function rodsSvg(n, numbered = 0) {
+  function rodsSvg(n: number, numbered = 0): string {
     const cw = 22,
       ch = 15,
       gap = 10,
@@ -550,7 +719,13 @@
   const CU = 30,
     CX = 20,
     ROW = 44;
-  function cmpSvg(items, kind, grid) {
+  interface CmpItem {
+    n: string;
+    c: string;
+    len: number;
+    off: number;
+  }
+  function cmpSvg(items: CmpItem[], kind: MesureObjKind, grid: boolean): string {
     const H = items.length * ROW + 14,
       W = CX + 17 * CU + 80;
     let s = '';
@@ -567,8 +742,8 @@
     });
     return svg(W, H, s, { max: W });
   }
-  function cmpGen(lvl) {
-    const kind = M.pick(['crayon', 'ruban']);
+  function cmpGen(lvl: number): MesureDraft {
+    const kind = M.pick<MesureObjKind>(['crayon', 'ruban']);
     const noun = kind,
       nouns = kind + 's';
     const types =
@@ -577,8 +752,8 @@
     const n = type === 'cmp' ? 2 : lvl === 0 ? 2 : 3;
     const equal = type === 'cmp' && Math.random() < (lvl === 2 ? 0.5 : 0.35);
     const cols = M.shuffle(COLORS).slice(0, n);
-    let lens = [],
-      offs = [];
+    let lens: number[] = [],
+      offs: number[] = [];
     for (let g = 0; g < 400; g++) {
       lens = M.shuffle(M.range(3, 13)).slice(0, n);
       if (equal) lens[1] = lens[0];
@@ -604,17 +779,17 @@
       }
       break;
     }
-    const items = cols.map((c, i) => ({ n: c.n, c: c.c, len: lens[i], off: offs[i] }));
+    const items: CmpItem[] = cols.map((c, i) => ({ n: c.n, c: c.c, len: lens[i], off: offs[i] }));
     const grid = lvl === 2;
-    const sw = (it) => `<span class="me-sw" style="background:${it.c}"></span>`;
+    const sw = (it: CmpItem): string => `<span class="me-sw" style="background:${it.c}"></span>`;
     const warn = grid ? '<div class="me-warn">⚠️ Attention, ils ne commencent pas au même endroit !</div>' : '';
     const sizes = items.map((it) => `${it.n} : ${it.len} carreaux`).join(', ');
-    const q = {
+    const q: MesureDraft = {
       hint: grid
         ? 'Compte les carreaux de chaque ' + noun + ", du début jusqu'au bout."
         : 'Ils partent tous de la ligne verte. Regarde lequel dépasse le plus.',
     };
-    let ansIdx = [];
+    let ansIdx: number[] = [];
     if (type === 'long' || type === 'short') {
       const target = type === 'long' ? Math.max(...lens) : Math.min(...lens);
       const ai = lens.indexOf(target);
@@ -714,15 +889,23 @@
     desc: 'Plus long, plus court, même longueur : compare et place en ordre.',
     pda: 'Mesure — Longueurs A.1 : comparer des longueurs',
     learn: 'mesurer',
-    gen: ({ lvl }) => cmpGen(lvl),
+    gen: ({ lvl }) => done(cmpGen(lvl)),
   });
 
   /* =====================================================================
      2. Mesurer avec des unités non conventionnelles
      ===================================================================== */
   const NX = 70;
-  function ncSvg(kind, color, L, rows, extraH = 0) {
-    // rows: [{label, unit, count, gap, start, numbers, sample}]
+  interface NcRow {
+    label?: string;
+    unit: MesureUnitKind;
+    count: number;
+    gap?: number;
+    start?: number;
+    numbers?: boolean;
+    after?: string;
+  }
+  function ncSvg(kind: MesureObjKind, color: string, L: number, rows: NcRow[], extraH = 0): string {
     const H = 50 + rows.length * 48 + extraH,
       W = NX + 560;
     let s = `<line x1="${NX}" y1="4" x2="${NX}" y2="${H - 4}" stroke="#c7c2b4" stroke-width="2" stroke-dasharray="5 5"/>`;
@@ -737,16 +920,16 @@
     });
     return svg(W, H, s, { max: W });
   }
-  function ncGen(lvl) {
-    const kind = M.pick(['crayon', 'ruban', 'baton', 'paille']);
+  function ncGen(lvl: number): MesureDraft {
+    const kind = M.pick<MesureObjKind>(['crayon', 'ruban', 'baton', 'paille']);
     const o = OBJ[kind],
       color = M.pick(COLORS).c;
     const types =
       lvl === 0 ? ['count'] : lvl === 1 ? ['count', 'place', 'place', 'who', 'who'] : ['predict', 'why', 'most', 'who', 'place'];
     const type = M.pick(types);
-    const q = {};
+    const q: MesureDraft = {};
     if (type === 'count' || type === 'place') {
-      const uk = M.pick(['cube', 'trombone', 'gomme']),
+      const uk = M.pick<MesureUnitKind>(['cube', 'trombone', 'gomme']),
         u = NU[uk];
       const max = Math.floor(540 / u.w);
       const n = M.rnd(lvl === 0 ? 3 : 4, Math.min(max, lvl === 0 ? 8 : 12));
@@ -760,7 +943,7 @@
           ? `Touche « Place ${u.fem ? 'une' : 'un'} ${u.sing} » jusqu'au bout ${kind === 'paille' ? 'de la paille' : 'du ' + (kind === 'baton' ? 'bâton' : kind)}, puis compte.`
           : `Compte les ${u.pl} un par un, en les touchant du doigt.`;
       q.explain = `Les ${u.pl} sont ${u.fem ? 'placées' : 'placés'} bout à bout, sans espace, du début jusqu'à la fin : ${o.the} mesure ${n} ${M.plural(n, u.sing, u.pl)}.`;
-      const full = (num) => ncSvg(kind, color, L, [{ unit: uk, count: n, numbers: num }]);
+      const full = (num: boolean): string => ncSvg(kind, color, L, [{ unit: uk, count: n, numbers: num }]);
       if (type === 'count') {
         q.viz = (el) => {
           claim(el);
@@ -773,7 +956,7 @@
           const draw = () => {
             el.innerHTML = `<div class="viz-hint">Place les ${u.pl} bout à bout, sans espace.</div>${ncSvg(kind, color, L, [{ unit: uk, count: c }])}
               <div class="row"><button class="btn primary me-add">➕ Place ${u.fem ? 'une' : 'un'} ${u.sing}</button></div><div class="viz-status"></div>`;
-            const b = M.$('.me-add', el);
+            const b = M.$<HTMLButtonElement>('.me-add', el)!;
             if (c >= n) {
               b.disabled = true;
               status(el, 'Tu es au bout ! Compte tes ' + u.pl + '.');
@@ -808,7 +991,7 @@
       return q;
     }
     if (type === 'who') {
-      const uk = M.pick(['cube', 'trombone', 'gomme']),
+      const uk = M.pick<MesureUnitKind>(['cube', 'trombone', 'gomme']),
         u = NU[uk];
       const n = M.rnd(4, Math.floor(450 / u.w)),
         L = n * u.w;
@@ -821,9 +1004,9 @@
         ]),
       );
       const err = M.pick(['gap', 'start', 'overlap']);
-      const rows = [];
-      const goodRow = { label: good, unit: uk, count: n };
-      let badRow;
+      const rows: NcRow[] = [];
+      const goodRow: NcRow = { label: good, unit: uk, count: n };
+      let badRow: NcRow;
       if (err === 'gap') {
         const g = 14;
         badRow = { label: bad, unit: uk, gap: g, count: Math.floor((L + g) / (u.w + g)) };
@@ -834,18 +1017,19 @@
       }
       const goodFirst = Math.random() < 0.5;
       rows.push(goodFirst ? goodRow : badRow, goodFirst ? badRow : goodRow);
-      const why = {
+      const whys: Record<string, string> = {
         gap: `${bad} a laissé des espaces entre les ${u.pl}.`,
         start: `${bad} n'a pas commencé au début ${kind === 'paille' ? 'de la paille' : 'du ' + (kind === 'baton' ? 'bâton' : kind)}.`,
         overlap: `Les ${u.pl} de ${bad} sont ${u.fem ? 'placées les unes sur les autres' : 'placés les uns sur les autres'}.`,
-      }[err];
+      };
+      const why = whys[err];
       q.prompt = `<b>${goodFirst ? good : bad}</b> et <b>${goodFirst ? bad : good}</b> mesurent ${o.the} avec des ${u.pl}. Qui a bien mesuré ?`;
       q.input = 'choice';
-      q.choices = rows.map((r) => ({ label: r.label, value: r.label }));
+      q.choices = rows.map((r) => ({ label: String(r.label), value: String(r.label) }));
       q.answer = good;
       q.hint = 'Pour bien mesurer : on commence au début, et les unités se touchent, sans espace et sans se chevaucher.';
       q.explain = `${why} ${good} a bien mesuré : ses ${u.pl} commencent au début et sont bout à bout, sans espace.`;
-      const draw = (el) => {
+      const draw = (el: HTMLElement): void => {
         el.innerHTML = `<div class="viz-hint">Regarde bien chaque rangée.</div>${ncSvg(kind, color, L, rows)}<div class="viz-status"></div>`;
       };
       q.viz = (el) => {
@@ -865,7 +1049,7 @@
     // Niveau 2 : unités différentes → nombres différents
     const L = M.pick([180, 360]);
     if (type === 'most') {
-      const ks = M.shuffle(['cube', 'trombone', 'gomme', 'carte']).slice(0, 3);
+      const ks = M.shuffle<MesureUnitKind>(['cube', 'trombone', 'gomme', 'carte']).slice(0, 3);
       const most = Math.random() < 0.6;
       const sorted = ks.slice().sort((a, b) => NU[a].w - NU[b].w);
       const ans = most ? sorted[0] : sorted[2];
@@ -899,7 +1083,7 @@
       };
       return q;
     }
-    const pair = M.shuffle(['cube', 'trombone', 'gomme', 'carte']).slice(0, 2);
+    const pair = M.shuffle<MesureUnitKind>(['cube', 'trombone', 'gomme', 'carte']).slice(0, 2);
     const [ak, bk] = pair,
       a = NU[ak],
       b = NU[bk];
@@ -918,7 +1102,7 @@
       q.answer = bSmaller ? 'plus' : 'moins';
       q.hint = "Si l'unité est plus petite, il en faut plus. Si elle est plus longue, il en faut moins.";
       q.explain = `Théo trouve ${nb} ${b.pl}. ${bSmaller ? `Les ${b.pl} sont plus ${smallAdj(b)} : il en faut plus` : `Les ${b.pl} sont plus ${longAdj(b)} : il en faut moins`}. ${cap(o.the)} n'a pas changé : seule l'unité a changé !`;
-      const rowsStart = [
+      const rowsStart: NcRow[] = [
         { label: 'Léa', unit: ak, count: na },
         { label: 'Théo', unit: bk, count: 1, after: '…?' },
       ];
@@ -983,7 +1167,7 @@
     desc: 'Mesure avec des trombones, des cubes ou des gommes placés bout à bout.',
     pda: "Mesure — Longueurs A.3 : mesurer à l'aide d'unités non conventionnelles",
     learn: 'mesurer',
-    gen: ({ lvl }) => ncGen(lvl),
+    gen: ({ lvl }) => done(ncGen(lvl)),
   });
 
   /* =====================================================================
@@ -993,7 +1177,7 @@
     PX = 40,
     RN = 15,
     RY = 66;
-  function rcmSvg(kind, color, s0, L, guides) {
+  function rcmSvg(kind: MesureObjKind, color: string, s0: number, L: number, guides: boolean): string {
     const W = RX * 2 + RN * PX,
       H = RY + 64;
     let s = '';
@@ -1007,7 +1191,7 @@
     for (let i = 0; i < RN; i++) s += `<rect class="me-hit" data-c="${i}" x="${RX + i * PX}" y="${RY - 40}" width="${PX}" height="100"/>`;
     return svg(W, H, s, { max: W });
   }
-  function rcmMark(el, set) {
+  function rcmMark(el: HTMLElement, set: Set<number>): void {
     const g = M.$('.me-marks', el);
     if (!g) return;
     const cs = [...set].sort((a, b) => a - b);
@@ -1018,12 +1202,12 @@
       )
       .join('');
   }
-  function rcmGen(lvl) {
-    const kind = M.pick(['crayon', 'ruban', 'paille']),
+  function rcmGen(lvl: number): MesureDraft {
+    const kind = M.pick<MesureObjKind>(['crayon', 'ruban', 'paille']),
       o = OBJ[kind],
       color = M.pick(COLORS).c;
     let s0 = 0,
-      L;
+      L: number;
     if (lvl === 0) L = M.rnd(2, 10);
     else if (lvl === 1) L = M.rnd(4, 15);
     else {
@@ -1031,7 +1215,7 @@
       L = M.rnd(2, RN - s0);
     }
     const guides = s0 > 0;
-    const q = {
+    const q: MesureDraft = {
       prompt: s0
         ? `<div class="me-warn">⚠️ ${cap(o.the)} ne commence pas à 0 !</div><div>Combien de centimètres mesure-t-${o.pr} ?</div>`
         : `Combien de centimètres mesure ${o.the} ?`,
@@ -1052,14 +1236,15 @@
     q.viz = (el) => {
       claim(el);
       el.innerHTML = `<div class="viz-hint">${hintTxt}</div>${rcmSvg(kind, color, s0, L, guides)}<div class="viz-status"></div>`;
-      const set = new Set();
+      const set = new Set<number>();
       const svgEl = M.$('svg', el);
       if (svgEl)
         svgEl.onclick = (e) => {
-          const r = e.target.closest('.me-hit');
+          const r = M.closest<SVGElement>(e, '.me-hit');
           if (!r) return;
-          const c = +r.dataset.c;
-          set.has(c) ? set.delete(c) : set.add(c);
+          const c = Number(r.dataset.c);
+          if (set.has(c)) set.delete(c);
+          else set.add(c);
           M.sfx.tap();
           rcmMark(el, set);
           status(el, set.size ? `Tu as compté ${set.size} ${M.plural(set.size, 'centimètre')}.` : '');
@@ -1068,7 +1253,7 @@
     q.showMe = async (el) => {
       const alive = claim(el);
       el.innerHTML = `<div class="viz-hint">On compte les centimètres sous ${o.the}.</div>${rcmSvg(kind, color, s0, L, true)}<div class="viz-status"></div>`;
-      const set = new Set();
+      const set = new Set<number>();
       for (let i = 0; i < L; i++) {
         if (!(await wait(alive, 350))) return;
         set.add(s0 + i);
@@ -1088,13 +1273,13 @@
     desc: 'Lis la règle pour trouver la longueur en centimètres.',
     pda: 'Mesure — Longueurs A.4a : mesurer en centimètres avec une règle',
     learn: 'mesurer',
-    gen: ({ lvl }) => rcmGen(lvl),
+    gen: ({ lvl }) => done(rcmGen(lvl)),
   });
 
   /* =====================================================================
      4. Les unités de longueur : cm, dm, m
      ===================================================================== */
-  const SMALL = [
+  const SMALL: [string, string][] = [
     ['un crayon', '✏️'],
     ['une gomme à effacer', '🩷'],
     ['un trombone', '📎'],
@@ -1104,7 +1289,7 @@
     ['une clé', '🔑'],
     ['une fourchette', '🍴'],
   ];
-  const BIG = [
+  const BIG: [string, string][] = [
     ["la hauteur d'une porte", '🚪'],
     ['un autobus scolaire', '🚌'],
     ["la cour d'école", '🏫'],
@@ -1114,7 +1299,8 @@
     ['un grand arbre', '🌳'],
     ['une baleine', '🐋'],
   ];
-  const EST = [
+  /** [phrase, emoji, bonne réponse, distracteur, distracteur, niveau minimal] */
+  const EST: [string, string, string, string, string, number][] = [
     ["La porte de ta chambre est haute d'environ…", '🚪', '2 m', '2 cm', '20 m', 0],
     ['Un crayon neuf mesure environ…', '✏️', '15 cm', '15 m', '150 m', 0],
     ['Ton lit mesure environ…', '🛏️', '2 m', '2 cm', '20 m', 0],
@@ -1127,12 +1313,12 @@
     ["Ta main est large d'environ…", '✋', '1 dm', '1 m', '10 m', 2],
     ['Une fourchette mesure environ…', '🍴', '2 dm', '2 m', '20 m', 2],
   ];
-  const UNIT_LBL = { cm: ['cm', 'centimètre'], dm: ['dm', 'décimètre'], m: ['m', 'mètre'] };
-  function ulGen(lvl) {
+  const UNIT_LBL: Record<string, [string, string]> = { cm: ['cm', 'centimètre'], dm: ['dm', 'décimètre'], m: ['m', 'mètre'] };
+  function ulGen(lvl: number): MesureDraft {
     const types = lvl === 0 ? ['unit', 'unit', 'rel', 'est'] : lvl === 1 ? ['unit', 'rel', 'rel', 'est'] : ['rel', 'cmp', 'cmp', 'est'];
     const type = M.pick(types);
-    const q = {};
-    const scaleViz = (el) => {
+    const q: MesureDraft = {};
+    const scaleViz = (el: HTMLElement): void => {
       claim(el);
       el.innerHTML = `<div class="viz-hint">Les unités, à la même échelle :</div>${scaleSvg()}<div class="viz-status"></div>`;
     };
@@ -1166,11 +1352,11 @@
       return q;
     }
     if (type === 'rel') {
-      let pr,
-        ans,
+      let pr: string,
+        ans: number,
         rods = 0,
         meters = 0,
-        ex;
+        ex: string;
       const lv =
         lvl === 0 ? M.pick(['dmcm', 'mcm']) : lvl === 1 ? M.pick(['ndm', 'ndm', 'mdm', 'cmdm1']) : M.pick(['cmdm', 'cmdm', 'mcmn', 'cmm']);
       const n = M.rnd(2, 9);
@@ -1229,7 +1415,7 @@
       q.hint = '1 dm = 10 cm et 1 m = 100 cm. Regarde les réglettes : chacune mesure 10 cm.';
       q.explain = ex;
       if (meters) {
-        const barSvg = (shown) => {
+        const barSvg = (shown: number): string => {
           let s = '';
           for (let i = 0; i < meters; i++) {
             const y = 10 + i * 34;
@@ -1256,7 +1442,7 @@
         q.viz = (el) => {
           claim(el);
           el.innerHTML = `<div class="viz-hint">Touche les réglettes pour compter par 10.${lbl ? ' ' + lbl + '.' : ''}</div>${rodsSvg(rods)}<div class="viz-status"></div>`;
-          wireRods(el, rods);
+          wireRods(el);
         };
         q.showMe = async (el) => {
           const alive = claim(el);
@@ -1270,7 +1456,7 @@
       return q;
     }
     // cmp : le plus long / le plus court entre 3 longueurs écrites dans des unités différentes
-    let opts;
+    let opts: { t: string; v: number }[] = [];
     for (let g = 0; g < 100; g++) {
       const mN = M.rnd(1, 2),
         dN = M.rnd(3, 9),
@@ -1303,18 +1489,18 @@
     };
     return q;
   }
-  function wireRods(el, n) {
+  function wireRods(el: HTMLElement): void {
     const svgEl = M.$('svg', el);
     if (!svgEl) return;
     let c = 0;
     svgEl.onclick = (e) => {
-      const r = e.target.closest('.me-rod');
+      const r = M.closest<SVGGElement>(e, '.me-rod');
       if (!r || r.dataset.done) return;
       r.dataset.done = '1';
       c++;
       M.sfx.pop();
       const rect = r.querySelector('rect');
-      const x = rect ? +rect.getAttribute('x') + 11 : 0;
+      const x = rect ? Number(rect.getAttribute('x')) + 11 : 0;
       addSvg(svgEl, `<text x="${x}" y="18" class="me-t mid small">${c * 10}</text>`);
       M.$$('rect', r).forEach((x2) => x2.setAttribute('opacity', '.6'));
       status(el, `${c} dm = ${c * 10} cm`);
@@ -1328,15 +1514,16 @@
     desc: 'Choisis la bonne unité, estime et trouve les liens entre cm, dm et m.',
     pda: 'Mesure — Longueurs A.4a et A.5 : unités conventionnelles (m, dm, cm), relations et estimation',
     learn: 'mesurer',
-    gen: ({ lvl }) => ulGen(lvl),
+    gen: ({ lvl }) => done(ulGen(lvl)),
   });
 
   /* =====================================================================
      5. Lire l'heure
      ===================================================================== */
-  const key = (h, m) => `${h}:${m}`;
-  function timeDistractors(h, m, lvl) {
-    const c = [];
+  type HM = [number, number];
+  const key = (h: number, m: number): string => `${h}:${m}`;
+  function timeDistractors(h: number, m: number, lvl: number): HM[] {
+    const c: HM[] = [];
     const nx = h12(h + 1),
       pv = h12(h - 1);
     if (m >= 30) c.push([nx, m]);
@@ -1347,7 +1534,7 @@
     if (m && lvl > 0 && m / 5 !== m) c.push([h, m / 5]); // « 3 h 06 » : on lit le chiffre pointé
     if (m === 15 || m === 45) c.push([h, 60 - m]);
     const seen = new Set([key(h, m)]),
-      out = [];
+      out: HM[] = [];
     c.forEach(([a, b]) => {
       const k = key(a, b);
       if (!seen.has(k)) {
@@ -1367,25 +1554,25 @@
     }
     return [out[0], ...M.shuffle(out.slice(1))].slice(0, 3);
   }
-  function pickTime(lvl) {
+  function pickTime(lvl: number): HM {
     const h = M.rnd(1, 12);
     if (lvl === 0) return [h, 0];
     if (lvl === 1) return [h, Math.random() < 0.7 ? 30 : 0];
     const r = Math.random();
     return [h, r < 0.3 ? 15 : r < 0.6 ? 45 : r < 0.7 ? 30 : M.pick([5, 10, 20, 25, 35, 40, 50, 55])];
   }
-  function readExplain(h, m) {
+  function readExplain(h: number, m: number): string {
     const hand =
       m === 0 ? `La petite aiguille est sur le ${h}` : `La petite aiguille a dépassé le ${h} (elle est entre le ${h} et le ${h12(h + 1)})`;
     const mm = m === 0 ? "la grande aiguille est sur le 12 : c'est l'heure juste" : `la grande aiguille est sur le ${m / 5} : ${m} minutes`;
     return `${hand} et ${mm}. Il est <b>${fmt(h, m)}</b>. ${phrase(h, m)} !`;
   }
-  function clockReadViz(h, m) {
+  function clockReadViz(h: number, m: number): (el: HTMLElement) => void {
     return (el) => {
       claim(el);
       el.innerHTML = `<div class="viz-hint">Petite aiguille 🔴 = les heures. Grande aiguille 🔵 = les minutes.</div>${clockSvg(h, m, { ring: true, size: 300 })}<div class="row" style="justify-content:center"><button class="btn me-tog">🔢 Les minutes autour</button></div><div class="viz-status"></div>`;
       const b = M.$('.me-tog', el),
-        g = M.$('.me-mins', el);
+        g = M.$<SVGGElement>('.me-mins', el);
       if (b && g)
         b.onclick = () => {
           g.style.display = g.style.display === 'none' ? '' : 'none';
@@ -1393,12 +1580,12 @@
         };
     };
   }
-  function clockReadShow(h, m) {
+  function clockReadShow(h: number, m: number): (el: HTMLElement) => Promise<void> {
     return async (el) => {
       const alive = claim(el);
       el.innerHTML = `<div class="viz-hint">Regarde bouger les aiguilles.</div>${clockSvg(h, 0, { ring: true, minutes: false, size: 300 })}<div class="viz-status"></div>`;
-      const mins = M.$$('.me-min', el);
-      const g = M.$('.me-mins', el);
+      const mins = M.$$<SVGGElement>('.me-min', el);
+      const g = M.$<SVGGElement>('.me-mins', el);
       if (g) g.style.display = '';
       mins.forEach((x) => x.setAttribute('opacity', '.15'));
       status(el, `Il est ${fmt(h, 0)}…`);
@@ -1422,7 +1609,7 @@
       status(el, `<span class="me-dig">${fmt(h, m)}</span> — ${phrase(h, m)}.`);
     };
   }
-  function heureGen(lvl) {
+  function heureGen(lvl: number): Question {
     const [h, m] = pickTime(lvl);
     const r = Math.random();
     // lvl 2 : quelques heures aux 5 minutes = défi 🌟 (au-delà de « heures, demies, quarts »)
@@ -1445,13 +1632,13 @@
                 ? 'phrase'
                 : 'where';
     const q = heureGen2(lvl, h, m, type);
-    if (m % 15 && type !== 'where') q.say = q.say || q.prompt.replace(/<[^>]*>/g, '');
+    if (m % 15 && type !== 'where') q.say = q.say || (q.prompt ?? '').replace(/<[^>]*>/g, '');
     if (m % 15 && type !== 'where')
       q.prompt = '<span class="tag enrich" title="Défi : au-delà du programme de 2e année">🌟 Défi</span> ' + q.prompt;
-    return q;
+    return done(q);
   }
-  function heureGen2(lvl, h, m, type) {
-    const q = {};
+  function heureGen2(lvl: number, h: number, m: number, type: string): MesureDraft {
+    const q: MesureDraft = {};
     if (type === 'read') {
       q.prompt = 'Quelle heure est-il ?';
       q.input = 'choice';
@@ -1471,8 +1658,8 @@
     }
     if (type === 'phrase') {
       const ts = [[h, m], ...timeDistractors(h, m, lvl)];
-      const seen = new Set(),
-        ch = [];
+      const seen = new Set<string>(),
+        ch: Choice[] = [];
       ts.forEach(([a, b]) => {
         const p = phrase(a, b);
         if (!seen.has(p)) {
@@ -1506,20 +1693,21 @@
       ]);
       q.answer = 'ok';
       q.hint = "Pendant une heure, la petite aiguille avance doucement d'un nombre au suivant.";
-      q.explain = {
+      const whereEx: Record<number, string> = {
         15: `À ${fmt(h, mm)}, un quart d'heure est passé : la petite aiguille a un peu avancé, entre le ${h} et le ${nx}.`,
         30: `À ${fmt(h, mm)}, la moitié de l'heure est passée : la petite aiguille est au milieu, entre le ${h} et le ${nx}.`,
         45: `À ${fmt(h, mm)}, les trois quarts de l'heure sont passés : la petite aiguille est presque sur le ${nx}, mais encore entre le ${h} et le ${nx}.`,
-      }[mm];
+      };
+      q.explain = whereEx[mm];
       q.viz = (el) => {
         claim(el);
         el.innerHTML = `<div class="viz-hint">Essaie : avance les aiguilles et regarde la petite aiguille 🔴.</div><div class="me-w"></div><div class="viz-status"></div>`;
-        clockWidget(M.$('.me-w', el), { t: h * 60, buttons: [-15, 15, 60], size: 260 });
+        clockWidget(M.$('.me-w', el)!, { t: h * 60, buttons: [-15, 15, 60], size: 260 });
       };
       q.showMe = async (el) => {
         const alive = claim(el);
         el.innerHTML = `<div class="viz-hint">De ${fmt(h, 0)} à ${fmt(h, mm)}…</div><div class="me-w"></div><div class="viz-status"></div>`;
-        const w = clockWidget(M.$('.me-w', el), { t: h * 60, buttons: [], size: 260 });
+        const w = clockWidget(M.$('.me-w', el)!, { t: h * 60, buttons: [], size: 260 });
         if (!(await wait(alive, 500))) return;
         await w.animateTo(h * 60 + mm, alive, 1800);
         if (!alive()) return;
@@ -1530,11 +1718,11 @@
       return q;
     }
     // rev : quelle horloge montre…
-    const cands = [{ v: 'ok', h, m }];
-    const ang = (a, b) => [((a % 12) + b / 60) * 30, b * 6];
+    const cands: { v: string; h?: number; m?: number; ha?: number; ma?: number }[] = [{ v: 'ok', h, m }];
+    const ang = (a: number, b: number): HM => [((a % 12) + b / 60) * 30, b * 6];
     const [cha, cma] = ang(h, m);
     const seen = new Set([`${f1(cha % 360)}|${cma}`]);
-    const add = (v, ha, ma) => {
+    const add = (v: string, ha: number, ma: number): void => {
       const k = `${f1(((ha % 360) + 360) % 360)}|${((ma % 360) + 360) % 360}`;
       if (!seen.has(k)) {
         seen.add(k);
@@ -1568,7 +1756,7 @@
     q.viz = (el) => {
       claim(el);
       el.innerHTML = `<div class="viz-hint">Essaie de mettre l'horloge à <b>${fmt(h, m)}</b> (tu peux glisser la grande aiguille).</div><div class="me-w"></div><div class="viz-status"></div>`;
-      clockWidget(M.$('.me-w', el), {
+      clockWidget(M.$('.me-w', el)!, {
         t: 12 * 60,
         buttons: [-60, 60, 15, 5],
         size: 240,
@@ -1578,7 +1766,7 @@
     q.showMe = async (el) => {
       const alive = claim(el);
       el.innerHTML = `<div class="viz-hint">Regarde : on met l'horloge à ${fmt(h, m)}.</div><div class="me-w"></div><div class="viz-status"></div>`;
-      const w = clockWidget(M.$('.me-w', el), { t: 12 * 60, buttons: [], size: 240 });
+      const w = clockWidget(M.$('.me-w', el)!, { t: 12 * 60, buttons: [], size: 240 });
       if (!(await wait(alive, 400))) return;
       await w.animateTo(h * 60 + m, alive, 2000);
       if (alive()) status(el, phrase(h, m) + '.');
@@ -1600,8 +1788,8 @@
   /* =====================================================================
      6. Le calendrier : jours, mois, saisons, cycles
      ===================================================================== */
-  const mod = (a, n) => ((a % n) + n) % n;
-  function namesChoices(list, ans, near, n = 4) {
+  const mod = (a: number, n: number): number => ((a % n) + n) % n;
+  function namesChoices(list: string[], ans: string, near: string[], n = 4): Choice<string>[] {
     const set = new Set([ans]);
     near.forEach((x) => {
       if (set.size < n) set.add(x);
@@ -1611,24 +1799,24 @@
     });
     return M.shuffle([...set]).map((x) => ({ label: x, value: x }));
   }
-  const dayStrip = (hl) =>
+  const dayStrip = (hl: number): string =>
     stripHtml(
       DAYS.map((d, i) => ({ t: d, cls: (i === 0 || i === 6 ? 'we ' : '') + (hl === i ? 'today' : '') })),
       7,
     );
-  const monthStrip = (hl) =>
+  const monthStrip = (hl: number): string =>
     stripHtml(
       MONTHS.map((d, i) => ({ t: d, cls: hl === i ? 'today' : '' })),
       6,
     );
-  const seasonStrip = () =>
+  const seasonStrip = (): string =>
     stripHtml(
       SEASONS.map((s) => ({ t: s.id, em: s.em, sub: s.months.map((i) => MONTHS[i]).join(', ') })),
       4,
     );
   /** Démo : avance de tuile en tuile depuis `from` de `steps` pas (négatif = recule). */
-  function stepDemo(htmlFn, n, from, steps, endText) {
-    return async (el) => {
+  function stepDemo(htmlFn: (hl: number) => string, n: number, from: number, steps: number, endText: string) {
+    return async (el: HTMLElement): Promise<void> => {
       const alive = claim(el);
       el.innerHTML = `<div class="viz-hint">On avance une case à la fois.</div>${htmlFn(from)}<div class="viz-status"></div>`;
       const tiles = M.$$('.me-tile', el);
@@ -1645,14 +1833,14 @@
       status(el, endText);
     };
   }
-  function tileToggleViz(htmlFn, hl, hintTxt) {
-    return (el) => {
+  function tileToggleViz(htmlFn: (hl: number) => string, hl: number, hintTxt: string) {
+    return (el: HTMLElement): void => {
       claim(el);
       el.innerHTML = `<div class="viz-hint">${hintTxt}</div>${htmlFn(hl)}<div class="viz-status"></div>`;
       const strip = M.$('.me-strip', el);
       if (strip)
         strip.onclick = (e) => {
-          const t = e.target.closest('.me-tile');
+          const t = M.closest(e, '.me-tile');
           if (t) {
             t.classList.toggle('on');
             M.sfx.tap();
@@ -1660,8 +1848,8 @@
         };
     };
   }
-  function hiddenOrderViz(labels, cols) {
-    return (el) => {
+  function hiddenOrderViz(labels: string[], cols: number) {
+    return (el: HTMLElement): void => {
       claim(el);
       el.innerHTML = `<div class="viz-hint">Besoin d'aide ? Touche une case pour la découvrir.</div>${stripHtml(
         labels.map(() => ({ t: '?', cls: 'hidden-lbl' })),
@@ -1670,17 +1858,17 @@
       const strip = M.$('.me-strip', el);
       if (strip)
         strip.onclick = (e) => {
-          const t = e.target.closest('.me-tile');
+          const t = M.closest(e, '.me-tile');
           if (!t) return;
           const l = M.$('.me-lbl', t);
-          if (l) l.textContent = labels[+t.dataset.i];
+          if (l) l.textContent = labels[Number(t.dataset.i)];
           t.classList.remove('hidden-lbl');
           M.sfx.tap();
         };
     };
   }
-  function revealAll(labels, cols, text) {
-    return async (el) => {
+  function revealAll(labels: string[], cols: number, text: string) {
+    return async (el: HTMLElement): Promise<void> => {
       const alive = claim(el);
       el.innerHTML = `<div class="viz-hint">Dans l'ordre :</div>${stripHtml(
         labels.map(() => ({ t: '?', cls: 'hidden-lbl' })),
@@ -1698,15 +1886,15 @@
       status(el, text || '');
     };
   }
-  function calGen(lvl) {
+  function calGen(lvl: number): MesureDraft {
     const T0 = ['after', 'before', 'tomorrow', 'yesterday', 'count', 'season'];
     const T1 = ['mAfter', 'mBefore', 'orderDays', 'eventMonth', 'count', 'cycle', 'season'];
     const T2 = ['grid', 'grid', 'orderMonths', 'orderSeasons', 'inDays', 'twoDays', 'cycle', 'eventMonth'];
     const type = M.pick(lvl === 0 ? T0 : lvl === 1 ? T1 : T2);
-    const q = {};
+    const q: MesureDraft = {};
     if (['after', 'before', 'tomorrow', 'yesterday', 'inDays', 'twoDays'].includes(type)) {
       const d = M.rnd(0, 6);
-      let steps, prompt;
+      let steps: number, prompt: string;
       if (type === 'after') {
         steps = 1;
         prompt = `Quel jour vient <b>après ${DAYS[d]}</b> ?`;
@@ -1734,7 +1922,7 @@
       q.answer = ans;
       q.hint = "Récite les jours dans l'ordre : dimanche, lundi, mardi, mercredi, jeudi, vendredi, samedi… et on recommence !";
       const past = steps < 0;
-      q.explain = {
+      const dayEx: Record<string, string> = {
         after: `Après ${DAYS[d]}, c'est <b>${ans}</b>.`,
         before: `Avant ${DAYS[d]}, c'est <b>${ans}</b>.`,
         tomorrow: `Demain, ce sera <b>${ans}</b>.`,
@@ -1743,7 +1931,8 @@
           ? `Avant-hier, c'était <b>${ans}</b> (2 jours avant ${DAYS[d]}).`
           : `Après-demain, ce sera <b>${ans}</b> (2 jours après ${DAYS[d]}).`,
         inDays: `On avance de ${steps} jours après ${DAYS[d]} : ce sera <b>${ans}</b>.`,
-      }[type];
+      };
+      q.explain = dayEx[type];
       q.viz = tileToggleViz(dayStrip, d, 'La semaine (le bleu = le jour de départ). Touche pour compter.');
       q.showMe = stepDemo(dayStrip, 7, d, steps, `C'est <b>${ans}</b> !`);
       return q;
@@ -1763,7 +1952,7 @@
       return q;
     }
     if (type === 'count') {
-      const pool =
+      const pool: [string, number, string][] =
         lvl === 0
           ? [
               ['Combien de jours y a-t-il dans une semaine ?', 7, 'week'],
@@ -1780,16 +1969,18 @@
       q.input = 'number';
       q.answer = ans;
       q.hint = 'Compte les cases une à une.';
-      const ex = {
-        week: 'Une semaine a 7 jours : dimanche, lundi, mardi, mercredi, jeudi, vendredi, samedi.',
-        weekend: "La fin de semaine, c'est samedi et dimanche : 2 jours.",
-        school: "Lundi, mardi, mercredi, jeudi, vendredi : 5 jours d'école.",
-        months: 'Une année a 12 mois, de janvier à décembre.',
-        seasons: "Il y a 4 saisons : le printemps, l'été, l'automne et l'hiver.",
-      }[k];
+      const ex = (
+        {
+          week: 'Une semaine a 7 jours : dimanche, lundi, mardi, mercredi, jeudi, vendredi, samedi.',
+          weekend: "La fin de semaine, c'est samedi et dimanche : 2 jours.",
+          school: "Lundi, mardi, mercredi, jeudi, vendredi : 5 jours d'école.",
+          months: 'Une année a 12 mois, de janvier à décembre.',
+          seasons: "Il y a 4 saisons : le printemps, l'été, l'automne et l'hiver.",
+        } as Record<string, string>
+      )[k];
       q.explain = ex;
       const html = k === 'months' ? monthStrip : k === 'seasons' ? seasonStrip : dayStrip;
-      const which = (i) => (k === 'weekend' ? i === 0 || i === 6 : k === 'school' ? i >= 1 && i <= 5 : true);
+      const which = (i: number): boolean => (k === 'weekend' ? i === 0 || i === 6 : k === 'school' ? i >= 1 && i <= 5 : true);
       q.viz = tileToggleViz(html, -1, 'Touche les cases pour les compter.');
       q.showMe = async (el) => {
         const alive = claim(el);
@@ -1810,21 +2001,21 @@
     }
     if (type === 'season') {
       const useEvent = lvl > 0 || Math.random() < 0.5;
-      let p, ans, em;
+      let p: string, ans: string;
       if (useEvent) {
         const ev = M.pick(
           EVENTS.filter((e) => e.s && (lvl > 0 || ['Noël', "l'Halloween", 'la fête du Canada', 'la Saint-Valentin'].includes(e.name))),
         );
         p = `${ev.em} En quelle saison est <b>${ev.name}</b> ?`;
-        ans = ev.s;
-        em = ev;
-        const se = SEASONS.find((x) => x.id === ans);
+        ans = ev.s!; // filtré : e.s
+        const se = SEASONS.find((x) => x.id === ans)!;
         q.explain = `${cap(ev.name)}, c'est ${ev.when} : c'est ${se.the} ${se.em}.`;
       } else {
         const sg = M.pick(SIGNS);
         p = `${sg.em} « ${sg.t} » En quelle saison ?`;
         ans = sg.s;
-        q.explain = `${sg.t} C'est ${SEASONS.find((s) => s.id === ans).the} ${SEASONS.find((s) => s.id === ans).em}.`;
+        const se = SEASONS.find((s) => s.id === ans)!;
+        q.explain = `${sg.t} C'est ${se.the} ${se.em}.`;
       }
       q.prompt = p;
       q.input = 'choice';
@@ -1837,7 +2028,7 @@
       };
       q.showMe = (el) => {
         claim(el);
-        el.innerHTML = `<div class="viz-hint">Les 4 saisons.</div>${seasonStrip()}<div class="viz-status">${SEASONS.find((s) => s.id === ans).em} ${ans}</div>`;
+        el.innerHTML = `<div class="viz-hint">Les 4 saisons.</div>${seasonStrip()}<div class="viz-status">${SEASONS.find((s) => s.id === ans)!.em} ${ans}</div>`;
         const t = M.$$('.me-tile', el)[SEASONS.findIndex((s) => s.id === ans)];
         if (t) t.classList.add('on');
       };
@@ -1845,10 +2036,11 @@
     }
     if (type === 'eventMonth') {
       const ev = M.pick(EVENTS.filter((e) => e.m != null));
-      const ans = MONTHS[ev.m];
+      const em = ev.m!; // filtré : e.m != null
+      const ans = MONTHS[em];
       q.prompt = `${ev.em} En quel mois fête-t-on <b>${ev.name}</b> ?`;
       q.input = 'choice';
-      q.choices = namesChoices(MONTHS, ans, [MONTHS[mod(ev.m + 1, 12)], MONTHS[mod(ev.m - 1, 12)]]);
+      q.choices = namesChoices(MONTHS, ans, [MONTHS[mod(em + 1, 12)], MONTHS[mod(em - 1, 12)]]);
       q.answer = ans;
       q.hint = "Pense au temps qu'il fait ce jour-là, puis cherche le mois.";
       q.explain = `${cap(ev.name)}, c'est ${ev.when}.`;
@@ -1856,13 +2048,13 @@
       q.showMe = (el) => {
         claim(el);
         el.innerHTML = `<div class="viz-hint">Les 12 mois de l'année.</div>${monthStrip(-1)}<div class="viz-status">${ev.em} ${cap(ev.name)} : ${ev.when}</div>`;
-        const t = M.$$('.me-tile', el)[ev.m];
+        const t = M.$$('.me-tile', el)[em];
         if (t) t.classList.add('on');
       };
       return q;
     }
     if (type === 'cycle') {
-      const items = [
+      const items: [string, string][] = [
         ['Ton anniversaire revient…', 'an'],
         ['Noël revient…', 'an'],
         ["L'été revient…", 'an'],
@@ -1874,7 +2066,7 @@
         ['Le lundi revient…', 'sem'],
       ];
       const [p, ans] = M.pick(items);
-      const W = { jour: 'chaque jour', sem: 'chaque semaine', an: 'chaque année' };
+      const W: Record<string, string> = { jour: 'chaque jour', sem: 'chaque semaine', an: 'chaque année' };
       q.prompt = p;
       q.input = 'choice';
       q.choices = [
@@ -1942,8 +2134,8 @@
     const first = new Date(y, mo, 1).getDay(),
       nd = new Date(y, mo + 1, 0).getDate();
     const gt = M.pick(['weekday', 'weekday', 'firstX', 'countX', 'ndays']);
-    let col = null,
-      hl = null;
+    let col: number | null = null,
+      hl: number | null = null;
     if (gt === 'weekday') {
       const d = M.rnd(2, nd);
       const wd = (first + d - 1) % 7;
@@ -1992,9 +2184,9 @@
       const t = M.$('.me-cal', el);
       if (t)
         t.onclick = (e) => {
-          const td = e.target.closest('td[data-d]');
+          const td = M.closest(e, 'td[data-d]');
           if (!td) return;
-          calMark(el, +td.dataset.c, +td.dataset.d);
+          calMark(el, Number(td.dataset.c), Number(td.dataset.d));
           M.sfx.tap();
         };
     };
@@ -2002,7 +2194,7 @@
       claim(el);
       el.innerHTML = `<div class="viz-hint">Regarde la colonne en vert.</div>${calHtml(y, mo)}<div class="viz-status"></div>`;
       calMark(el, col, hl);
-      status(el, q.explain);
+      status(el, q.explain ?? '');
     };
     return q;
   }
@@ -2014,13 +2206,29 @@
     desc: 'Les jours, les mois, les saisons et les cycles du temps. Lis un calendrier.',
     pda: 'Mesure — Temps : jour, semaine, mois, année, saisons; cycles quotidien, hebdomadaire et annuel',
     learn: 'calendrier',
-    gen: ({ lvl }) => calGen(lvl),
+    gen: ({ lvl }) => done(calGen(lvl)),
   });
 
   /* =====================================================================
      7. Les durées
      ===================================================================== */
-  const TU = [
+  interface TimeUnit {
+    id: string;
+    sing: string;
+    pl: string;
+    em: string;
+    /** Durée en secondes. */
+    sec: number;
+    ex: string;
+  }
+  interface Activity {
+    t: string;
+    em: string;
+    n: number;
+    /** Id d'une unité de TU. */
+    u: string;
+  }
+  const TU: TimeUnit[] = [
     { id: 's', sing: 'seconde', pl: 'secondes', em: '⚡', sec: 1, ex: 'cligner des yeux' },
     { id: 'min', sing: 'minute', pl: 'minutes', em: '⏱️', sec: 60, ex: 'se laver les mains' },
     { id: 'h', sing: 'heure', pl: 'heures', em: '🕐', sec: 3600, ex: 'un film' },
@@ -2028,8 +2236,8 @@
     { id: 'sem', sing: 'semaine', pl: 'semaines', em: '📅', sec: 604800, ex: '7 jours' },
     { id: 'mois', sing: 'mois', pl: 'mois', em: '🗓️', sec: 2592000, ex: 'environ 30 jours' },
   ];
-  const TUi = (id) => TU.find((u) => u.id === id);
-  const ACTS = [
+  const TUi = (id: string): TimeUnit => TU.find((u) => u.id === id)!;
+  const ACTS: Activity[] = [
     { t: 'Brosser tes dents', em: '🪥', n: 2, u: 'min' },
     { t: 'Une nuit de sommeil', em: '😴', n: 10, u: 'h' },
     { t: 'Un film au cinéma', em: '🎬', n: 2, u: 'h' },
@@ -2044,15 +2252,15 @@
     { t: 'Faire pousser une citrouille', em: '🎃', n: 3, u: 'mois' },
     { t: "Le camp de jour d'été", em: '🏕️', n: 6, u: 'sem' },
   ];
-  const durTxt = (n, u) => `${n} ${M.plural(n, TUi(u).sing, TUi(u).pl)}`;
-  const actSec = (a) => a.n * TUi(a.u).sec;
-  function ladderHtml(hl) {
+  const durTxt = (n: number, u: string): string => `${n} ${M.plural(n, TUi(u).sing, TUi(u).pl)}`;
+  const actSec = (a: Activity): number => a.n * TUi(a.u).sec;
+  function ladderHtml(hl: string | null): string {
     return stripHtml(
       TU.map((u) => ({ t: u.sing, em: u.em, cls: hl === u.id ? 'on' : '' })),
       6,
     );
   }
-  function durGen(lvl) {
+  function durGen(lvl: number): MesureDraft {
     const types =
       lvl === 0
         ? ['est', 'est', 'most']
@@ -2060,8 +2268,8 @@
           ? ['est', 'most', 'conv', 'cmpU']
           : ['est', 'most', 'conv', 'elapsed', 'elapsed', 'end'];
     const type = M.pick(types);
-    const q = {};
-    const ladderViz = (hl) => (el) => {
+    const q: MesureDraft = {};
+    const ladderViz = (hl: string | null) => (el: HTMLElement) => {
       claim(el);
       el.innerHTML = `<div class="viz-hint">Les unités de temps, de la plus courte à la plus longue :</div>${ladderHtml(hl)}<div class="viz-status"></div>`;
     };
@@ -2085,7 +2293,7 @@
       return q;
     }
     if (type === 'most') {
-      let pick;
+      let pick: Activity[] = [];
       for (let g = 0; g < 100; g++) {
         pick = M.shuffle(ACTS).slice(0, 3);
         const s = pick.map(actSec).sort((x, y) => x - y);
@@ -2131,7 +2339,7 @@
       return q;
     }
     if (type === 'conv') {
-      const pool =
+      const pool: [string, number, string][] =
         lvl === 1
           ? [
               ['1 semaine = {?} jours', 7, 'week'],
@@ -2149,20 +2357,24 @@
       q.say = p.replace('{?}', 'combien de');
       q.input = 'number';
       q.answer = ans;
-      q.hint = {
-        week: 'Récite les jours de la semaine en les comptant.',
-        ladder: "C'est un nombre à retenir !",
-        clock: 'Pendant 1 heure, la grande aiguille fait un tour complet : 5, 10, 15… 60.',
-        half: "Une demi-heure, c'est la moitié d'une heure : la grande aiguille fait un demi-tour.",
-        quarter: "Un quart d'heure : la grande aiguille va du 12 au 3.",
-      }[k];
-      q.explain = {
-        week: 'Une semaine a 7 jours.',
-        ladder: ans === 24 ? 'Un jour complet (le jour et la nuit) dure 24 heures.' : 'Une minute dure 60 secondes.',
-        clock: "Une heure = 60 minutes : la grande aiguille fait un tour complet et la petite aiguille avance d'un nombre.",
-        half: 'Une demi-heure = 30 minutes : la grande aiguille fait un demi-tour.',
-        quarter: "Un quart d'heure = 15 minutes : la grande aiguille fait un quart de tour.",
-      }[k];
+      q.hint = (
+        {
+          week: 'Récite les jours de la semaine en les comptant.',
+          ladder: "C'est un nombre à retenir !",
+          clock: 'Pendant 1 heure, la grande aiguille fait un tour complet : 5, 10, 15… 60.',
+          half: "Une demi-heure, c'est la moitié d'une heure : la grande aiguille fait un demi-tour.",
+          quarter: "Un quart d'heure : la grande aiguille va du 12 au 3.",
+        } as Record<string, string>
+      )[k];
+      q.explain = (
+        {
+          week: 'Une semaine a 7 jours.',
+          ladder: ans === 24 ? 'Un jour complet (le jour et la nuit) dure 24 heures.' : 'Une minute dure 60 secondes.',
+          clock: "Une heure = 60 minutes : la grande aiguille fait un tour complet et la petite aiguille avance d'un nombre.",
+          half: 'Une demi-heure = 30 minutes : la grande aiguille fait un demi-tour.',
+          quarter: "Un quart d'heure = 15 minutes : la grande aiguille fait un quart de tour.",
+        } as Record<string, string>
+      )[k];
       if (k === 'week') {
         q.viz = tileToggleViz(dayStrip, -1, 'Touche les jours pour les compter.');
         q.showMe = async (el) => {
@@ -2201,7 +2413,7 @@
     }
     // elapsed / end : durée en heures entières
     // Heures de début et durées réalistes pour chaque activité (après-midi en 13 h – 17 h)
-    const ctx = M.pick([
+    const ctx = M.pick<[string, string, number[], number[]]>([
       ['Le film', 'il', [13, 14, 15, 18, 19], [2]],
       ["La fête d'anniversaire", 'elle', [13, 14, 15], [2, 3]],
       ['La visite au zoo', 'elle', [9, 10, 13], [2, 3, 4]],
@@ -2215,7 +2427,7 @@
     const d = M.pick(durs),
       s = M.pick(starts);
     const e = s + d;
-    const twoClocks = (showEnd) => `<div class="l-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+    const twoClocks = (showEnd: boolean): string => `<div class="l-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
       <div class="l-tile"><b>Début</b>${clockSvg(s, 0, { size: 180 })}<div class="me-dig">${fmt(s, 0)}</div></div>
       <div class="l-tile"><b>Fin</b>${showEnd ? clockSvg(e, 0, { size: 180 }) + `<div class="me-dig">${fmt(e, 0)}</div>` : '<div style="font-size:4rem;font-weight:900;color:#c7c2b4">?</div>'}</div></div>`;
     if (type === 'elapsed') {
@@ -2274,6 +2486,6 @@
     desc: 'Combien de temps ça dure ? Secondes, minutes, heures, jours…',
     pda: 'Mesure — Temps G.1–G.2 : estimer et mesurer des durées; unités de temps',
     learn: 'heure',
-    gen: ({ lvl }) => durGen(lvl),
+    gen: ({ lvl }) => done(durGen(lvl)),
   });
 })();

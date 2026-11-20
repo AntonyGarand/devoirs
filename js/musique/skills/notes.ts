@@ -4,6 +4,26 @@
      mu-do-re-mi : nommer les notes de la gamme, les trouver sur le piano, plus aigu / plus grave.
    Les noms absolus ne s'entendent pas (oreille absolue) : on nomme à partir du piano ou d'un « do » de départ.
    ===================================================================== */
+
+interface MusiqueApi {
+  /** do, ré, mi, fa, sol, la, si. */
+  NOTES: string[];
+  /** Couleur de la note i de la gamme (0 = do, cycle de 7). */
+  noteCol(i: number): string;
+  /** midi → index dans la gamme (0 = do 60), ou -1 pour une touche noire. */
+  degree(midi: number): number;
+  /** Nom d'une touche blanche ('' pour une touche noire). */
+  noteName(midi: number): string;
+  /** Index dans la gamme → midi (0 = do 60). */
+  midiOf(deg: number): number;
+  /** Petit piano SVG (touches data-midi) de from à to. */
+  keyboardSvg(
+    from?: number,
+    to?: number,
+    opts?: { labels?: boolean; colors?: boolean; mark?: number | null; hide?: number | null; w?: number; cls?: string },
+  ): string;
+}
+
 (function () {
   'use strict';
   const M = window.M;
@@ -33,14 +53,14 @@
    *        hide (midi dont le nom devient « ? »), w (largeur d'une touche blanche).
    */
   MU.keyboardSvg = (from = 60, to = 72, { labels = true, colors = true, mark = null, hide = null, w = 46, cls = '' } = {}) => {
-    const whites = [],
-      blacks = [];
+    const whites: number[] = [],
+      blacks: number[] = [];
     for (let m = from; m <= to; m++) (MU.degree(m) < 0 ? blacks : whites).push(m);
     const H = 168,
       BH = 100,
       BW = w * 0.58,
       W = whites.length * w + 4;
-    const xOf = (m) => 2 + whites.indexOf(m) * w;
+    const xOf = (m: number) => 2 + whites.indexOf(m) * w;
     let body = '';
     whites.forEach((m) => {
       const x = xOf(m),
@@ -61,14 +81,14 @@
     return `<svg class="mu-kbd ${cls}" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Piano">${body}</svg>`;
   };
 
-  const nm = (d) => MU.NOTES[((d % 7) + 7) % 7];
-  const B = (s) => `<b>${s}</b>`;
-  const choicesOf = (ans, pool) =>
+  const nm = (d: number) => MU.NOTES[((d % 7) + 7) % 7];
+  const B = (s: string) => `<b>${s}</b>`;
+  const choicesOf = (ans: string, pool: string[]) =>
     shuffle([ans, ...shuffle(pool.filter((x) => x !== ans)).slice(0, 2)]).map((x) => ({
       label: `<span class="mu-big">${x}</span>`,
       value: x,
     }));
-  const pno = (deg, t = 0, dur = 0.5) => ({ t, inst: 'piano', midi: MU.midiOf(deg), vel: 0.75, dur });
+  const pno = (deg: number, t = 0, dur = 0.5): MuEvent => ({ t, inst: 'piano', midi: MU.midiOf(deg), vel: 0.75, dur });
 
   M.registerSkill({
     id: 'mu-do-re-mi',

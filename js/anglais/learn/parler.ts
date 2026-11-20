@@ -7,10 +7,10 @@
   const M = window.M;
   const EN = M.EN;
   const LANG = EN.LANG;
-  const X = (ids) => ids.map((id) => EN.expr[id]);
+  const X = (ids: string[]): EnExpr[] => ids.map((id) => EN.expr[id]);
 
   /* ------------------------------ Hello ! ------------------------------ */
-  const DIALOG = [
+  const DIALOG: EnDialogLine[] = [
     { who: '🦫', name: 'Max', en: 'Hi, Lily!', fr: 'Salut, Lily !' },
     { who: '🐰', name: 'Lily', en: 'Hello, Max! How are you?', fr: 'Bonjour, Max ! Comment ça va ?', right: true },
     { who: '🦫', name: 'Max', en: "I'm fine, thank you. And you?", fr: 'Ça va bien, merci. Et toi ?' },
@@ -34,13 +34,14 @@
         ${M.ui.section({ icon: '🃏', title: "Qu'est-ce qu'on dit ?", intro: 'Lis la situation, dis la phrase en anglais, puis retourne la carte pour vérifier.', body: '<div class="en-fc"></div>' })}
         ${M.ui.section({ icon: '✅', title: 'Vérifie ta compréhension', body: '<div class="en-mq"></div>' })}`;
       EN.bindDialog(el, DIALOG);
-      M.$('.en-fr-toggle', el).onclick = (e) => {
-        const d = M.$('.en-dlg', el);
+      const toggle = M.$('.en-fr-toggle', el)!;
+      toggle.onclick = () => {
+        const d = M.$('.en-dlg', el)!;
         d.classList.toggle('en-hidefr');
-        e.target.textContent = d.classList.contains('en-hidefr') ? '💡 Voir le sens en français' : '🙈 Cacher le français';
+        toggle.textContent = d.classList.contains('en-hidefr') ? '💡 Voir le sens en français' : '🙈 Cacher le français';
       };
       M.ui.flashcards(
-        M.$('.en-fc', el),
+        M.$('.en-fc', el)!,
         M.shuffle(EN.SAYABLE.filter((x) => x.lvl <= 1)).map((x) => ({
           front: `<span style="font-size:2.6rem">${x.emoji}</span><small style="font-size:1rem;padding:0 14px;text-align:center">${M.esc(x.situation)}</small>`,
           back: `<span lang="en">${M.esc(x.en)}</span><small style="font-size:1rem;color:var(--muted)">${M.esc(x.fr)}</small>`,
@@ -48,7 +49,7 @@
           lang: LANG,
         })),
       );
-      M.ui.miniQuiz(M.$('.en-mq', el), [EN.quiz('en-que-dire', 0), EN.quiz('en-reagir', 0), EN.quiz('en-que-dire', 1)]);
+      M.ui.miniQuiz(M.$('.en-mq', el)!, [EN.quiz('en-que-dire', 0), EN.quiz('en-reagir', 0), EN.quiz('en-que-dire', 1)]);
       EN.voiceWarn(el);
     },
   });
@@ -105,15 +106,16 @@
         ],
         'routine',
       );
-      M.$('.en-me', el).onclick = (e) => {
-        const b = e.target.closest('.en-pair');
+      const me = M.$('.en-me', el)!;
+      me.onclick = (e) => {
+        const b = M.closest(e, '.en-pair');
         if (!b) return;
-        const w = EN.word[b.dataset.w];
-        M.$$('.en-pair', M.$('.en-me', el)).forEach((x) => x.classList.toggle('sel', x === b));
-        M.$('.en-me-said', el).innerHTML = `<span lang="en">${M.esc(w.say)}</span> <span class="muted">— Je suis ${M.esc(w.fr)}.</span>`;
+        const w = EN.word[b.dataset.w || ''];
+        M.$$('.en-pair', me).forEach((x) => x.classList.toggle('sel', x === b));
+        M.$('.en-me-said', el)!.innerHTML = `<span lang="en">${M.esc(w.say)}</span> <span class="muted">— Je suis ${M.esc(w.fr)}.</span>`;
         M.say(w.say, { lang: LANG, raw: true });
       };
-      M.ui.miniQuiz(M.$('.en-mq', el), [EN.quiz('en-sentiments', 0), EN.quiz('en-sentiments', 1), EN.quiz('en-questions', 1)]);
+      M.ui.miniQuiz(M.$('.en-mq', el)!, [EN.quiz('en-sentiments', 0), EN.quiz('en-sentiments', 1), EN.quiz('en-questions', 1)]);
       EN.voiceWarn(el);
     },
   });

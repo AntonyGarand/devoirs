@@ -5,17 +5,24 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
-import { OfflineAudioContext } from 'node-web-audio-api';
+import { OfflineAudioContext, type AudioBuffer } from 'node-web-audio-api';
+
+/** M.music de js/music.js (seul script chargé) : render() rend la musique d'ambiance hors ligne. */
+interface PreviewM {
+  music?: { render(offline: OfflineAudioContext, secs: number, mood?: string, subject?: string): Promise<AudioBuffer> };
+}
 
 const [mood = 'jeu', subject = 'maths', secs = '40', out = `music-${mood}-${subject}.wav`] = process.argv.slice(2);
-const ctx = { window: {}, document: {}, Math, setTimeout, clearTimeout };
+const ctx: { window: { M?: PreviewM }; [name: string]: unknown } = { window: {}, document: {}, Math, setTimeout, clearTimeout };
 ctx.window.M = {};
+const M: PreviewM = ctx.window.M;
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(import.meta.dirname, '..', 'dist', 'js', 'music.js'), 'utf8'), ctx);
 
 const SR = 44100;
 const off = new OfflineAudioContext(2, Math.ceil(+secs * SR), SR);
-ctx.window.M.music.render(off, +secs, mood, subject).then((buf) => {
+if (!M.music) throw new Error('M.music absent : dist/js/music.js est-il compilé ?');
+M.music.render(off, +secs, mood, subject).then((buf) => {
   const ch = [buf.getChannelData(0), buf.getChannelData(1)],
     n = ch[0].length;
   const data = Buffer.alloc(44 + n * 4);

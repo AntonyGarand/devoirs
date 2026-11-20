@@ -6,12 +6,31 @@
       paysage, pots, bac d'eau, aimants). Les zones fines ont une surface touchable
       élargie (cercle ou rectangle transparent).
    ===================================================================== */
+
+interface ScApi {
+  svg: ScSvg;
+  INK: string;
+}
+/** Scènes SVG (M.SC.svg) : zones data-hot; ciel.ts ajoute terre, ombre, arbre, erable. */
+interface ScSvg {
+  plante(opts?: { hot?: boolean; flowerColor?: string; cls?: string }): string;
+  corps(opts?: { hot?: boolean; cls?: string }): string;
+  paysage(opts?: { hot?: boolean; cls?: string }): string;
+  /** eau 0–3, lum 0–2. */
+  pot(opts?: { eau?: number; lum?: number; cls?: string }): string;
+  bac(objHtml: string, opts?: { y?: number }): string;
+  objInSvg(o: ScPic): string;
+  aimantU(x: number, y: number): string;
+  barre(x: number, y: number, flip?: boolean): string;
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  const SC = (M.SC = M.SC || {});
-  const V = (w, h, inner, cls = '') => `<svg class="${cls}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
-  const R = (name, emoji, fn) => M.art.register(name, fn, emoji);
+  const SC = (M.SC = M.SC || ({} as ScApi));
+  const V = (w: number, h: number, inner: string, cls = ''): string =>
+    `<svg class="${cls}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+  const R = (name: string, emoji: string, fn: () => string): void => M.art.register(name, fn, emoji);
   const INK = '#2b2d42';
 
   /* ================= Animaux ================= */
@@ -362,12 +381,12 @@
   );
 
   /* ================= Scènes (M.SC.svg) ================= */
-  const S = (SC.svg = {});
-  const hit = (attrs) => `<rect ${attrs} fill="transparent"/>`;
+  const S = (SC.svg = {} as ScSvg);
+  const hit = (attrs: string): string => `<rect ${attrs} fill="transparent"/>`;
 
   /** Plante à fleur. opts.parts : ids à rendre touchables (data-hot); anchors pour le format label. */
   S.plante = function ({ hot = true, flowerColor = '#ef7fb0', cls = 'sc-fig' } = {}) {
-    const h = (id, anchor) => (hot ? ` data-hot="${id}" data-anchor="${anchor}"` : '');
+    const h = (id: string, anchor: string): string => (hot ? ` data-hot="${id}" data-anchor="${anchor}"` : '');
     const petals = M.range(0, 5)
       .map((i) => {
         const a = (i * Math.PI) / 3;
@@ -408,10 +427,11 @@
       genou: '300,330',
       pied: '300,412',
     };
-    const h = (id) => (hot ? ` data-hot="${id}" data-anchor="${A[id]}"` : '');
-    const limb = (pts) =>
+    const h = (id: keyof typeof A): string => (hot ? ` data-hot="${id}" data-anchor="${A[id]}"` : '');
+    const limb = (pts: string): string =>
       `<polyline points="${pts}" fill="none" stroke="${BODY}" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/><polyline points="${pts}" fill="none" stroke="${LINE}" stroke-width="2" stroke-dasharray="0" opacity="0"/>`;
-    const joint = (x, y) => `<circle cx="${x}" cy="${y}" r="9" fill="${J}"/><circle cx="${x}" cy="${y}" r="22" fill="transparent"/>`;
+    const joint = (x: number, y: number): string =>
+      `<circle cx="${x}" cy="${y}" r="9" fill="${J}"/><circle cx="${x}" cy="${y}" r="22" fill="transparent"/>`;
     return V(
       360,
       430,
@@ -434,8 +454,8 @@
 
   /** Paysage québécois : forêt, lac, champ, ville (data-hot = foret | eau | champ | ville). */
   S.paysage = function ({ hot = true, cls = 'sc-fig' } = {}) {
-    const h = (id) => (hot ? ` data-hot="${id}"` : '');
-    const pine = (x, y, s = 1) =>
+    const h = (id: string): string => (hot ? ` data-hot="${id}"` : '');
+    const pine = (x: number, y: number, s = 1): string =>
       `<polygon points="${x},${y - 46 * s} ${x - 18 * s},${y} ${x + 18 * s},${y}" fill="#2f7a37"/><rect x="${x - 3}" y="${y}" width="6" height="${10 * s}" fill="#6b4425"/>`;
     return V(
       600,

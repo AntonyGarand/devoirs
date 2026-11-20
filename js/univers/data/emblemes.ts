@@ -3,6 +3,33 @@
    fleurdelisé adopté le 21 janvier 1948, proportions 2 sur 3, croix blanche et 4 fleurs de lis blanches sur fond bleu;
    harfang des neiges (oiseau) depuis 1987; bouleau jaune (arbre) depuis 1993; iris versicolore (fleur) depuis 1999;
    devise : « Je me souviens ». */
+
+type UsFlagId = 'quebec' | 'canada' | 'invente' | 'invente2';
+interface UsEmbleme {
+  id: string;
+  nom: string;
+  type: 'drapeau' | 'oiseau' | 'fleur' | 'arbre' | 'devise';
+  depuis?: number;
+  emoji?: string;
+  art?: string;
+  /** Dessin du drapeau. */
+  html?: () => string;
+  fait: string;
+  source: string;
+}
+interface UsEmblemes {
+  flags: Record<UsFlagId, () => string>;
+  list: UsEmbleme[];
+  /** Vrai ou faux; lvl = niveau minimal. */
+  faits: (UsFait & { lvl: number })[];
+  /** Distracteurs (aucun n'est un emblème du Québec), par id d'emblème. */
+  autres: Record<string, string[]>;
+  symboles: { nom: string; flag?: UsFlagId; art?: string; emoji?: string; pays: 'quebec' | 'canada' }[];
+}
+interface DataRegistry {
+  'us-emblemes': UsEmblemes;
+}
+
 (function () {
   'use strict';
   const M = window.M;
@@ -13,7 +40,7 @@
     'M-1.8 1.5 C-3.5 -1.5 -8.6 -3.2 -8.8 0.2 C-9 2.6 -6.4 3.6 -5.4 2 C-6.6 1.2 -5.8 -0.6 -4.2 0.4 C-3.4 1 -3 1.6 -3 2.2 Z' +
     'M1.8 1.5 C3.5 -1.5 8.6 -3.2 8.8 0.2 C9 2.6 6.4 3.6 5.4 2 C6.6 1.2 5.8 -0.6 4.2 0.4 C3.4 1 3 1.6 3 2.2 Z' +
     'M-4.6 2.6 h9.2 v2 h-9.2 Z M-1.4 4.6 h2.8 l-0.4 3 l2.6 2.6 h-7.2 l2.6 -2.6 Z';
-  const lis = (x, y) => `<path d="${LIS}" transform="translate(${x} ${y}) scale(0.36)" fill="#fff"/>`;
+  const lis = (x: number, y: number) => `<path d="${LIS}" transform="translate(${x} ${y}) scale(0.36)" fill="#fff"/>`;
   /** Drapeau du Québec : 2 sur 3 (24 × 36), croix blanche, une fleur de lis dans chaque canton. */
   const quebec = () =>
     `<svg class="us-flag" viewBox="0 0 36 24" role="img" aria-label="drapeau du Québec"><rect width="36" height="24" fill="${BLUE}"/><rect x="16" width="4" height="24" fill="#fff"/><rect y="10" width="36" height="4" fill="#fff"/>${lis(8, 5)}${lis(28, 5)}${lis(8, 19)}${lis(28, 19)}</svg>`;
@@ -26,7 +53,7 @@
   const invente2 = () =>
     `<svg class="us-flag" viewBox="0 0 36 24" role="img" aria-label="drapeau inventé"><rect width="36" height="24" fill="#d62828"/><rect x="16" width="4" height="24" fill="#fff"/><rect y="10" width="36" height="4" fill="#fff"/><circle cx="8" cy="5" r="2.4" fill="#fff"/><circle cx="28" cy="19" r="2.4" fill="#fff"/></svg>`;
 
-  const sv = (inner) => `<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">${inner}</svg>`;
+  const sv = (inner: string) => `<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">${inner}</svg>`;
   M.art.register(
     'us-harfang',
     () =>

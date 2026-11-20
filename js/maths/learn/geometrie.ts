@@ -8,8 +8,8 @@
   const G = M.geo;
   if (!G) return;
   const DOM = 'geometrie';
-  const alive = (el) => !!(el && el.isConnected);
-  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const alive = (el: Element | null | undefined): boolean => !!(el && el.isConnected);
+  const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 
   try {
     M.css(`
@@ -85,21 +85,28 @@
 .geo-mission { font-size: 1.2rem; font-weight: 800; text-align: center; margin: 4px 0 10px }
 .geo-lrrow .geo-slot { cursor: pointer }
 `);
-  } catch (e) {
+  } catch {
     /* hors navigateur */
   }
 
   /* ------------------------------------------------------------------
      Aide : pliage d'un dessin sur un axe vertical (au milieu)
      ------------------------------------------------------------------ */
-  function foldHtml(svg, w) {
+  function foldHtml(svg: string, w: number): string {
     return `<div class="geo-fold" style="width:${w}px;height:${w}px"><div class="geo-fold-l"><div style="width:${w}px">${svg}</div></div><div class="geo-fold-r"><div style="width:${w}px;margin-left:-${w / 2}px">${svg}</div></div></div>`;
   }
 
   /* ===================================================================
      LES SOLIDES
      =================================================================== */
-  const EXAMPLES = { boule: '⚽🍊🎱', cone: '🍦🥕', cube: '🎲🧊', cylindre: '🥫🔋🧻🥁', prisme: '📦🧱🧈⛺', pyramide: '🔺' };
+  const EXAMPLES: Record<GeoSolidCat, string> = {
+    boule: '⚽🍊🎱',
+    cone: '🍦🥕',
+    cube: '🎲🧊',
+    cylindre: '🥫🔋🧻🥁',
+    prisme: '📦🧱🧈⛺',
+    pyramide: '🔺',
+  };
   M.registerLearn({
     id: 'solides',
     domain: DOM,
@@ -140,12 +147,12 @@
         </section>`;
 
       /* --- fiche --- */
-      const fiche = M.$('.geo-fiche', el);
-      const yn = (b, txt) => `<span class="chip ${b ? 'yes' : 'no'}">${b ? '✔️' : '✖️'} ${txt}</span>`;
-      M.$('.geo-gal', el).addEventListener('click', (e) => {
-        const b = e.target.closest('.l-tile');
+      const fiche = M.$('.geo-fiche', el)!;
+      const yn = (b: boolean, txt: string): string => `<span class="chip ${b ? 'yes' : 'no'}">${b ? '✔️' : '✖️'} ${txt}</span>`;
+      M.$('.geo-gal', el)!.addEventListener('click', (e) => {
+        const b = M.closest(e, '.l-tile');
         if (!b) return;
-        const k = b.dataset.k,
+        const k = b.dataset.k as GeoSolidCat,
           S = G.SOL[k];
         M.$$('.geo-gal .l-tile', el).forEach((t) => t.classList.toggle('on', t === b));
         M.sfx.tap();
@@ -176,11 +183,11 @@
       });
 
       /* --- rampe --- */
-      let cur = 'boule',
+      let cur: GeoSolidCat = 'boule',
         anim = 0;
-      const obj = M.$('.geo-ramp .obj', el),
-        rmsg = M.$('.geo-rmsg', el);
-      function place(k, lie) {
+      const obj = M.$('.geo-ramp .obj', el)!,
+        rmsg = M.$('.geo-rmsg', el)!;
+      function place(k: GeoSolidKind, lie?: boolean): void {
         obj.style.transition = 'none';
         obj.style.left = '3%';
         obj.style.top = '16%';
@@ -190,16 +197,16 @@
         void obj.offsetWidth;
       }
       place(cur);
-      M.$('.geo-rsol', el).addEventListener('click', (e) => {
-        const b = e.target.closest('.btn');
+      M.$('.geo-rsol', el)!.addEventListener('click', (e) => {
+        const b = M.closest(e, '.btn');
         if (!b) return;
-        cur = b.dataset.k;
+        cur = b.dataset.k as GeoSolidCat;
         anim++;
         M.$$('.geo-rsol .btn', el).forEach((x) => x.classList.toggle('on', x === b));
         place(cur);
         rmsg.textContent = '';
       });
-      async function go(roll) {
+      async function go(roll: boolean): Promise<void> {
         const my = ++anim,
           S = G.SOL[cur];
         const can = roll ? S.roule : S.glisse;
@@ -221,21 +228,25 @@
         M.sfx.hop();
         rmsg.innerHTML = roll ? `${cap(S.le)} roule grâce à sa surface courbe ! 🛞` : `${cap(S.le)} glisse sur sa surface plane ! 🛷`;
       }
-      M.$('.geo-roll', el).onclick = () => go(true);
-      M.$('.geo-slide', el).onclick = () => go(false);
+      M.$('.geo-roll', el)!.onclick = () => go(true);
+      M.$('.geo-slide', el)!.onclick = () => go(false);
       M.onCleanup(() => {
         anim++;
       });
 
       /* --- tri --- */
-      const objsEl = M.$('.geo-objs', el),
-        bins = M.$('.geo-bins', el),
-        tmsg = M.$('.geo-tmsg', el);
-      let sel = null,
+      const objsEl = M.$('.geo-objs', el)!,
+        bins = M.$('.geo-bins', el)!,
+        tmsg = M.$('.geo-tmsg', el)!;
+      let sel: number | null = null,
         left = 0,
-        items = [];
+        items: { html: string; n: string; s: GeoSolidCat }[] = [];
       function newGame() {
-        const pyr = { html: G.solid('pyramide', { size: 46, color: '#e9c46a' }), n: "une pyramide d'Égypte", s: 'pyramide' };
+        const pyr: { html: string; n: string; s: GeoSolidCat } = {
+          html: G.solid('pyramide', { size: 46, color: '#e9c46a' }),
+          n: "une pyramide d'Égypte",
+          s: 'pyramide',
+        };
         items = M.shuffle([
           ...M.shuffle(G.OBJ)
             .slice(0, 9)
@@ -252,28 +263,28 @@
         tmsg.textContent = 'Touche un objet 👆';
       }
       objsEl.addEventListener('click', (e) => {
-        const b = e.target.closest('button');
+        const b = M.closest(e, 'button');
         if (!b) return;
-        sel = +b.dataset.i;
+        sel = Number(b.dataset.i);
         M.$$('button', objsEl).forEach((x) => x.classList.toggle('on', x === b));
         M.sfx.tap();
         tmsg.innerHTML = `${cap(items[sel].n)} : à quel solide ressemble-t-il ? 👇`;
       });
       bins.addEventListener('click', (e) => {
-        const bin = e.target.closest('.geo-bin');
+        const bin = M.closest(e, '.geo-bin');
         if (!bin) return;
         if (sel == null) {
           tmsg.textContent = "Touche d'abord un objet 👆";
           return;
         }
         const it = items[sel],
-          k = bin.dataset.k;
+          k = bin.dataset.k as GeoSolidCat;
         bin.classList.remove('good', 'bad');
         void bin.offsetWidth;
         if (it.s === k) {
           bin.classList.add('good');
           M.sfx.good();
-          M.$('.in', bin).insertAdjacentHTML('beforeend', `<span>${it.html}</span>`);
+          M.$('.in', bin)!.insertAdjacentHTML('beforeend', `<span>${it.html}</span>`);
           const ob = M.$(`button[data-i="${sel}"]`, objsEl);
           if (ob) ob.remove();
           tmsg.innerHTML = `Oui ! ${cap(it.n)} ressemble à ${G.SOL[k].un}.`;
@@ -290,7 +301,7 @@
           tmsg.innerHTML = `Hmm… ${it.n} n'est pas ${G.SOL[k].un}. ${G.SOL[it.s].courbes ? 'Regarde : il a une partie arrondie.' : 'Regarde : il est tout plat sur ses côtés.'}`;
         }
       });
-      M.$('.geo-again', el).onclick = newGame;
+      M.$('.geo-again', el)!.onclick = newGame;
       newGame();
     },
   });
@@ -299,7 +310,7 @@
      LES FIGURES PLANES ET LES LIGNES
      =================================================================== */
   /** Figure avec marques : petits traits = côtés pareils, petit carré = coin droit. */
-  function markedFig(kind, color) {
+  function markedFig(kind: 'carre' | 'rectangle' | 'losange', color: string): string {
     const P = G.figPts(kind, { W: 160, H: 120, pad: 22, ratio: kind === 'rectangle' ? 1.9 : 1.7 });
     const n = P.length;
     const st = G.dark(color, 0.3);
@@ -335,7 +346,7 @@
     return G.svg(160, 120, h, { width: 160 });
   }
 
-  const AROUND = [
+  const AROUND: { e: string; n: string; f: GeoFig5 }[] = [
     { e: '🚪', n: 'La porte', f: 'rectangle' },
     { e: '📱', n: 'Le téléphone', f: 'rectangle' },
     { e: '🍕', n: 'La pointe de pizza', f: 'triangle' },
@@ -355,14 +366,20 @@
     intro:
       'Une <b>figure plane</b> est toute plate, comme un dessin sur une feuille. On la reconnaît en comptant ses <b>côtés</b> et ses <b>sommets</b> (ses coins).',
     render(el) {
-      const COL = { carre: '#06a77d', rectangle: '#9b5de5', triangle: '#ef476f', losange: '#f78c40', cercle: '#118ab2' };
+      const COL: Record<GeoFig5, string> & Partial<Record<GeoFigKind, string>> = {
+        carre: '#06a77d',
+        rectangle: '#9b5de5',
+        triangle: '#ef476f',
+        losange: '#f78c40',
+        cercle: '#118ab2',
+      };
       el.innerHTML = `
         <section class="l-sec"><h2>🔷 Les 5 figures</h2>
           <div class="l-grid">${G.FIG5.map((k) => `<div class="l-tile">${G.figure(k, { color: COL[k], size: 110, ratio: 1.7 })}<h3>${cap(G.FIG[k].nom)}</h3><p>${k === 'cercle' ? 'Tout rond : 0 côté, 0 sommet' : `${G.FIG[k].cotes} côtés, ${G.FIG[k].cotes} sommets`}</p></div>`).join('')}</div>
         </section>
         <section class="l-sec"><h2>👆 Compte les côtés et les sommets</h2>
           <p>Choisis une figure. Touche chaque <b>côté</b> (trait droit), puis chaque <b>sommet</b> (coin).</p>
-          <div class="geo-pick geo-cpick">${[...G.FIG5, 'pentagone', 'hexagone'].map((k, i) => `<button class="btn${i === 2 ? ' on' : ''}" data-k="${k}">${G.figure(k, { color: COL[k] || '#2a9d8f', size: 34, sw: 6, ratio: 1.7 })} ${G.FIG[k].nom}</button>`).join('')}</div>
+          <div class="geo-pick geo-cpick">${[...G.FIG5, 'pentagone' as const, 'hexagone' as const].map((k, i) => `<button class="btn${i === 2 ? ' on' : ''}" data-k="${k}">${G.figure(k, { color: COL[k] || '#2a9d8f', size: 34, sw: 6, ratio: 1.7 })} ${G.FIG[k].nom}</button>`).join('')}</div>
           <div class="geo-cbox"><div class="geo-cnt"></div><div class="row" style="justify-content:center"><button class="btn yellow geo-cshow">👀 Montre-moi</button><button class="btn geo-crot">🔄 Tourner</button></div></div>
           <div class="callout">🦫 Une figure a toujours <b>autant de côtés que de sommets</b>. Le triangle : 3 et 3. Le carré : 4 et 4 !</div>
         </section>
@@ -377,7 +394,7 @@
           <div class="callout">🦫 Le carré, c'est un peu les deux : 4 coins droits comme le rectangle, et 4 côtés pareils comme le losange. Et même tourné, <b>un carré reste un carré</b> !</div>
         </section>
         <section class="l-sec"><h2>〰️ Les lignes</h2>
-          <div class="l-grid">${Object.keys(G.LIGNES)
+          <div class="l-grid">${(Object.keys(G.LIGNES) as GeoLineKind[])
             .map(
               (k) =>
                 `<div class="l-tile">${G.lineSvg(k, { size: 140 })}<h3>${cap(G.LIGNES[k])}</h3><p>${k.startsWith('courbe') ? 'Arrondie, sans coin.' : 'Des traits droits, avec des coins.'} ${k.endsWith('fermee') ? 'Pas de bout.' : 'Deux bouts.'}</p></div>`,
@@ -404,10 +421,10 @@
         </section>`;
 
       /* --- compter --- */
-      const cnt = M.$('.geo-cnt', el);
-      let curK = 'triangle',
+      const cnt = M.$('.geo-cnt', el)!;
+      let curK: GeoFigKind = 'triangle',
         rot = 0,
-        w = null;
+        w: GeoCountCtl | null = null;
       function mount() {
         w = G.countFig(cnt, curK, {
           color: COL[curK] || '#2a9d8f',
@@ -421,49 +438,49 @@
         });
       }
       mount();
-      M.$('.geo-cpick', el).addEventListener('click', (e) => {
-        const b = e.target.closest('.btn');
+      M.$('.geo-cpick', el)!.addEventListener('click', (e) => {
+        const b = M.closest(e, '.btn');
         if (!b) return;
-        curK = b.dataset.k;
+        curK = b.dataset.k as GeoFigKind;
         rot = 0;
         M.$$('.geo-cpick .btn', el).forEach((x) => x.classList.toggle('on', x === b));
         mount();
       });
-      M.$('.geo-cshow', el).onclick = () => w && w.showMe();
-      M.$('.geo-crot', el).onclick = () => {
+      M.$('.geo-cshow', el)!.onclick = () => w && w.showMe();
+      M.$('.geo-crot', el)!.onclick = () => {
         rot = (rot + 30) % 360;
         mount();
       };
 
       /* --- carré tourné --- */
       let turned = 0;
-      M.$('.geo-turn', el).onclick = () => {
+      M.$('.geo-turn', el)!.onclick = () => {
         turned = (turned + 45) % 360;
-        M.$('.geo-sq', el).style.transform = `rotate(${turned}deg)`;
-        M.$('.geo-turnmsg', el).textContent = turned
+        M.$('.geo-sq', el)!.style.transform = `rotate(${turned}deg)`;
+        M.$('.geo-turnmsg', el)!.textContent = turned
           ? "Il est tourné… mais c'est encore un carré ! 4 côtés pareils, 4 coins droits."
           : 'De retour à sa place !';
       };
 
       /* --- quiz des lignes --- */
-      const lq = { k: null, a: null, b: null };
-      const lsvg = M.$('.geo-lsvg', el),
-        lmsg = M.$('.geo-lmsg', el);
+      const lq: { k: GeoLineKind; a: string | null; b: string | null } = { k: 'courbe-ouverte', a: null, b: null };
+      const lsvg = M.$('.geo-lsvg', el)!,
+        lmsg = M.$('.geo-lmsg', el)!;
       function newLine() {
-        lq.k = M.pick(Object.keys(G.LIGNES));
+        lq.k = M.pick(Object.keys(G.LIGNES) as GeoLineKind[]);
         lq.a = lq.b = null;
         lsvg.innerHTML = G.lineSvg(lq.k, { size: 220 });
         M.$$('.geo-lq [data-a], .geo-lq [data-b]', el).forEach((x) => x.classList.remove('on'));
         lmsg.textContent = 'Choisis un mot dans chaque rangée.';
       }
-      M.$('.geo-lq', el).addEventListener('click', (e) => {
-        const b = e.target.closest('[data-a],[data-b]');
+      M.$('.geo-lq', el)!.addEventListener('click', (e) => {
+        const b = M.closest(e, '[data-a],[data-b]');
         if (!b) return;
         if (b.dataset.a) {
           lq.a = b.dataset.a;
           M.$$('.geo-lq [data-a]', el).forEach((x) => x.classList.toggle('on', x === b));
         } else {
-          lq.b = b.dataset.b;
+          lq.b = b.dataset.b ?? null;
           M.$$('.geo-lq [data-b]', el).forEach((x) => x.classList.toggle('on', x === b));
         }
         M.sfx.tap();
@@ -478,15 +495,15 @@
           }
         }
       });
-      M.$('.geo-lnext', el).onclick = newLine;
+      M.$('.geo-lnext', el)!.onclick = newLine;
       newLine();
 
       /* --- figures autour de moi --- */
-      M.$('.geo-around', el).addEventListener('click', (e) => {
-        const b = e.target.closest('.l-tile');
+      M.$('.geo-around', el)!.addEventListener('click', (e) => {
+        const b = M.closest(e, '.l-tile');
         if (!b) return;
-        const f = b.dataset.f;
-        M.$('.res', b).innerHTML = `${G.figure(f, { color: COL[f], size: 54, ratio: 1.7, sw: 5 })}<b>${G.FIG[f].un}</b>`;
+        const f = b.dataset.f as GeoFig5;
+        M.$('.res', b)!.innerHTML = `${G.figure(f, { color: COL[f], size: 54, ratio: 1.7, sw: 5 })}<b>${G.FIG[f].un}</b>`;
         M.sfx.pop();
         M.say(G.FIG[f].un);
       });
@@ -509,7 +526,7 @@
       el.innerHTML = `
         <section class="l-sec"><h2>🦋 L'axe de réflexion</h2>
           <p>Appuie sur <b>Plier</b> : la moitié de droite se retourne sur la moitié de gauche, comme une page de livre.</p>
-          <div class="geo-pick geo-fpick">${['papillon', 'coeur', 'maison', 'sapin', 'drapeau'].map((k, i) => `<button class="btn${i === 0 ? ' on' : ''}" data-k="${k}">${G.symSvg(k, null, { size: 34 })}</button>`).join('')}</div>
+          <div class="geo-pick geo-fpick">${(['papillon', 'coeur', 'maison', 'sapin', 'drapeau'] as const).map((k, i) => `<button class="btn${i === 0 ? ' on' : ''}" data-k="${k}">${G.symSvg(k, null, { size: 34 })}</button>`).join('')}</div>
           <div class="geo-foldbox"></div>
           <div class="row" style="justify-content:center"><button class="btn blue geo-dofold">📖 Plier</button></div>
           <div class="viz-status geo-fmsg" style="text-align:center"></div>
@@ -531,7 +548,7 @@
         </section>
         <section class="l-sec"><h2>🎏 Je fabrique une frise</h2>
           <p>Choisis un motif, puis choisis comment le répéter.</p>
-          <div class="geo-pick geo-mpick">${Object.keys(G.MOTIFS)
+          <div class="geo-pick geo-mpick">${(Object.keys(G.MOTIFS) as GeoMotifName[])
             .map((k, i) => `<button class="btn${i === 0 ? ' on' : ''}" data-k="${k}">${G.motif(k, '#ef476f', 'n', 34)}</button>`)
             .join('')}</div>
           <div class="row" style="justify-content:center"><button class="btn blue geo-ftr">➡️ Glisser (translation)</button><button class="btn blue geo-frf">🪞 Réflexion (miroir)</button></div>
@@ -541,23 +558,23 @@
         </section>`;
 
       /* --- pliage --- */
-      const fbox = M.$('.geo-foldbox', el),
-        fmsg = M.$('.geo-fmsg', el);
-      let fk = 'papillon';
+      const fbox = M.$('.geo-foldbox', el)!,
+        fmsg = M.$('.geo-fmsg', el)!;
+      let fk: GeoSymName = 'papillon';
       const FW = 220;
       function showFold() {
         fbox.innerHTML = foldHtml(G.symSvg(fk, 'v', { size: FW, color: '#9b5de5' }), FW);
         fmsg.textContent = '';
       }
       showFold();
-      M.$('.geo-fpick', el).addEventListener('click', (e) => {
-        const b = e.target.closest('.btn');
+      M.$('.geo-fpick', el)!.addEventListener('click', (e) => {
+        const b = M.closest(e, '.btn');
         if (!b) return;
-        fk = b.dataset.k;
+        fk = b.dataset.k as GeoSymName;
         M.$$('.geo-fpick .btn', el).forEach((x) => x.classList.toggle('on', x === b));
         showFold();
       });
-      M.$('.geo-dofold', el).onclick = async () => {
+      M.$('.geo-dofold', el)!.onclick = async () => {
         const f = M.$('.geo-fold', fbox);
         if (!f) return;
         const folded = f.classList.toggle('folded');
@@ -578,18 +595,20 @@
       /* --- miroir magique --- */
       const ROWS = 6,
         COLS = 4;
-      const gl = M.$('.geo-pgrid.l', el),
-        gr = M.$('.geo-pgrid.r', el),
-        paint = M.$('.geo-paint', el),
-        pmsg = M.$('.geo-pmsg', el);
+      const gl = M.$('.geo-pgrid.l', el)!,
+        gr = M.$('.geo-pgrid.r', el)!,
+        paint = M.$('.geo-paint', el)!,
+        pmsg = M.$('.geo-pmsg', el)!;
       let color = PCOLORS[0],
         mode = 'draw';
-      let L = [],
-        R = [],
-        target = null;
-      const blank = () => Array.from({ length: ROWS }, () => Array(COLS).fill(null));
-      function drawGrids() {
-        const cells = (g, side) =>
+      /** Couleur de chaque case (null : vide). */
+      type Paint = (string | null)[][];
+      let L: Paint = [],
+        R: Paint = [],
+        target: Paint | null = null;
+      const blank = (): Paint => Array.from({ length: ROWS }, () => Array<string | null>(COLS).fill(null));
+      function drawGrids(): void {
+        const cells = (g: Paint, side: string): string =>
           g
             .map((row, r) =>
               row
@@ -626,11 +645,11 @@
         pmsg.textContent = 'Complète la moitié de droite par réflexion.';
       }
       paint.addEventListener('click', async (e) => {
-        const b = e.target.closest('.geo-pc');
+        const b = M.closest(e, '.geo-pc');
         if (!b || paint.classList.contains('folded')) return;
         const side = b.dataset.s,
-          r = +b.dataset.r,
-          c = +b.dataset.c;
+          r = Number(b.dataset.r),
+          c = Number(b.dataset.c);
         if (mode === 'defi' && side === 'l') {
           pmsg.textContent = 'Dans le défi, on dessine seulement à droite 👉';
           return;
@@ -658,26 +677,26 @@
           M.sfx.pop();
         }
       });
-      M.$('.geo-colors', el).addEventListener('click', (e) => {
-        const b = e.target.closest('button');
+      M.$('.geo-colors', el)!.addEventListener('click', (e) => {
+        const b = M.closest(e, 'button');
         if (!b) return;
-        color = b.dataset.c;
+        color = b.dataset.c ?? color;
         M.$$('.geo-colors button', el).forEach((x) => x.classList.toggle('on', x === b));
       });
-      const setMode = (m) => {
+      const setMode = (m: 'draw' | 'defi'): void => {
         mode = m;
-        M.$('.geo-mdraw', el).classList.toggle('on', m === 'draw');
-        M.$('.geo-mdefi', el).classList.toggle('on', m === 'defi');
-        M.$('.geo-pcheck', el).hidden = m !== 'defi';
+        M.$('.geo-mdraw', el)!.classList.toggle('on', m === 'draw');
+        M.$('.geo-mdefi', el)!.classList.toggle('on', m === 'defi');
+        M.$('.geo-pcheck', el)!.hidden = m !== 'defi';
         if (m === 'defi') newDefi();
         else {
           reset();
           drawGrids();
         }
       };
-      M.$('.geo-mdraw', el).onclick = () => setMode('draw');
-      M.$('.geo-mdefi', el).onclick = () => setMode('defi');
-      M.$('.geo-pclear', el).onclick = () => {
+      M.$('.geo-mdraw', el)!.onclick = () => setMode('draw');
+      M.$('.geo-mdefi', el)!.onclick = () => setMode('defi');
+      M.$('.geo-pclear', el)!.onclick = () => {
         if (mode === 'defi') {
           R = blank();
           paint.classList.remove('folded');
@@ -687,20 +706,21 @@
           drawGrids();
         }
       };
-      M.$('.geo-pfold', el).onclick = () => {
+      M.$('.geo-pfold', el)!.onclick = () => {
         const f = paint.classList.toggle('folded');
         M.sfx.hop();
         pmsg.textContent = f ? 'Plié ! Les cases de droite se posent-elles sur celles de gauche ?' : '';
       };
-      M.$('.geo-pcheck', el).onclick = () => {
-        if (!target) return;
+      M.$('.geo-pcheck', el)!.onclick = () => {
+        const tg = target;
+        if (!tg) return;
         paint.classList.remove('folded');
         let miss = 0,
           extra = 0;
         M.$$('.geo-pc[data-s="r"]', paint).forEach((b) => {
-          const r = +b.dataset.r,
-            c = +b.dataset.c,
-            want = target[r][c],
+          const r = Number(b.dataset.r),
+            c = Number(b.dataset.c),
+            want = tg[r][c],
             got = R[r][c];
           if (want && got !== want) {
             miss++;
@@ -723,9 +743,9 @@
       drawGrids();
 
       /* --- symétrique ou pas --- */
-      const symq = M.$('.geo-symq', el);
+      const symq = M.$('.geo-symq', el)!;
       function newSym() {
-        const pool = M.shuffle([
+        const pool = M.shuffle<[GeoSymName, GeoAxisArg]>([
           ['papillon', 'v'],
           ['coeur', 'h'],
           ['rectangle', 'd1'],
@@ -751,39 +771,40 @@
           .join('');
       }
       symq.addEventListener('click', (e) => {
-        const b = e.target.closest('[data-v]');
+        const b = M.closest(e, '[data-v]');
         if (!b) return;
-        const t = b.closest('.l-tile'),
-          k = t.dataset.k,
-          a = t.dataset.a;
+        const t = b.closest<HTMLElement>('.l-tile')!,
+          k = t.dataset.k as GeoSymName,
+          a = t.dataset.a as GeoAxis;
         const ok = G.SYM[k].axes.includes(a),
           right = (b.dataset.v === 'oui') === ok;
-        M.$$('[data-v]', t).forEach((x) => (x.disabled = true));
+        M.$$<HTMLButtonElement>('[data-v]', t).forEach((x) => (x.disabled = true));
         b.classList.add('on');
-        M.$('.pic', t).innerHTML = G.symSvg(k, a, { size: 130, color: PCOLORS[+t.dataset.i % 4], ghost: true });
-        M.$('.res', t).innerHTML =
+        M.$('.pic', t)!.innerHTML = G.symSvg(k, a, { size: 130, color: PCOLORS[Number(t.dataset.i) % 4], ghost: true });
+        M.$('.res', t)!.innerHTML =
           (right ? '✔️ Bravo ! ' : '✖️ Oups. ') +
           (ok ? "L'image miroir se pose exactement : c'est un axe." : "L'image miroir (pâle) ne se pose pas : ce n'est pas un axe.");
-        right ? M.sfx.good() : M.sfx.bad();
+        if (right) M.sfx.good();
+        else M.sfx.bad();
       });
-      M.$('.geo-symnew', el).onclick = newSym;
+      M.$('.geo-symnew', el)!.onclick = newSym;
       newSym();
 
       /* --- frise --- */
-      let mk = Object.keys(G.MOTIFS)[0],
+      let mk = (Object.keys(G.MOTIFS) as GeoMotifName[])[0],
         ftok = 0;
-      const fb = M.$('.geo-fb', el),
-        fbmsg = M.$('.geo-fbmsg', el);
-      M.$('.geo-mpick', el).addEventListener('click', (e) => {
-        const b = e.target.closest('.btn');
+      const fb = M.$('.geo-fb', el)!,
+        fbmsg = M.$('.geo-fbmsg', el)!;
+      M.$('.geo-mpick', el)!.addEventListener('click', (e) => {
+        const b = M.closest(e, '.btn');
         if (!b) return;
-        mk = b.dataset.k;
+        mk = b.dataset.k as GeoMotifName;
         ftok++;
         M.$$('.geo-mpick .btn', el).forEach((x) => x.classList.toggle('on', x === b));
         fb.innerHTML = G.motif(mk, '#ef476f', 'n', 52);
         fbmsg.textContent = '';
       });
-      async function build(refl) {
+      async function build(refl: boolean): Promise<void> {
         const my = ++ftok;
         fb.innerHTML = '';
         fbmsg.innerHTML = refl
@@ -797,8 +818,8 @@
           M.sfx.pop();
         }
       }
-      M.$('.geo-ftr', el).onclick = () => build(false);
-      M.$('.geo-frf', el).onclick = () => build(true);
+      M.$('.geo-ftr', el)!.onclick = () => build(false);
+      M.$('.geo-frf', el)!.onclick = () => build(true);
       fb.innerHTML = G.motif(mk, '#ef476f', 'n', 52);
       M.onCleanup(() => {
         ftok++;
@@ -853,11 +874,11 @@
         </section>`;
 
       /* --- rangée d'animaux --- */
-      const lrmsg = M.$('.geo-lrmsg', el);
-      M.$('.geo-lrrow', el).addEventListener('click', (e) => {
-        const s = e.target.closest('.geo-slot');
+      const lrmsg = M.$('.geo-lrmsg', el)!;
+      M.$('.geo-lrrow', el)!.addEventListener('click', (e) => {
+        const s = M.closest(e, '.geo-slot');
         if (!s) return;
-        const i = +s.dataset.i,
+        const i = Number(s.dataset.i),
           a = row[i];
         M.$$('.geo-lrrow .geo-slot', el).forEach((x, k) => {
           x.classList.toggle('ref', k === i);
@@ -874,14 +895,14 @@
       });
 
       /* --- plan + castor --- */
-      const wrap = M.$('.geo-plan-wrap', el),
-        mission = M.$('.geo-mission', el),
-        pmsg = M.$('.geo-pmsg2', el);
+      const wrap = M.$('.geo-plan-wrap', el)!,
+        mission = M.$('.geo-mission', el)!,
+        pmsg = M.$('.geo-pmsg2', el)!;
       const pos = [0, 1];
-      let goal = null,
+      let goal: { cell: string; o: GeoThing } | null = null,
         moves = 0;
       function draw() {
-        const items = {};
+        const items: Record<string, string> = {};
         if (goal) items[goal.cell] = goal.o.e;
         items[G.cell(pos[0], pos[1])] = '🦫';
         wrap.innerHTML = G.planHtml(items);
@@ -899,7 +920,7 @@
         draw();
         M.say(`Va chercher ${goal.o.n} dans la case ${goal.cell[0]} ${goal.cell.slice(1)} !`);
       }
-      function move(dx, dy) {
+      function move(dx: number, dy: number): void {
         const c = pos[0] + dx,
           r = pos[1] + dy;
         if (c < 0 || c > 4 || r < 1 || r > 5) {
@@ -922,30 +943,32 @@
         } else pmsg.innerHTML = `Le castor 🦫 est dans la case <b>${here}</b>.`;
         draw();
       }
-      M.$('.geo-arrows', el).addEventListener('click', (e) => {
-        const b = e.target.closest('[data-d]');
+      M.$('.geo-arrows', el)!.addEventListener('click', (e) => {
+        const b = M.closest(e, '[data-d]');
         if (!b) return;
-        const [dx, dy] = b.dataset.d.split(',').map(Number);
+        const [dx, dy] = String(b.dataset.d).split(',').map(Number);
         move(dx, dy);
       });
       wrap.addEventListener('click', (e) => {
-        const c = e.target.closest('.geo-cell');
+        const c = M.closest(e, '.geo-cell');
         if (!c) return;
-        const k = c.dataset.cell;
+        const k = c.dataset.cell ?? '';
         pmsg.innerHTML = `Cette case s'appelle <b>${k}</b> : colonne ${k[0]}, rangée ${k.slice(1)}.`;
         M.sfx.tap();
         M.say(`${k[0]} ${k.slice(1)}`);
       });
-      function onKey(e) {
+      function onKey(e: KeyboardEvent): void {
         if (!alive(wrap)) return;
-        const d = { ArrowUp: [0, 1], ArrowDown: [0, -1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }[e.key];
+        const d = ({ ArrowUp: [0, 1], ArrowDown: [0, -1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] } as Record<string, number[] | undefined>)[
+          e.key
+        ];
         if (!d) return;
         e.preventDefault();
         move(d[0], d[1]);
       }
       document.addEventListener('keydown', onKey);
       M.onCleanup(() => document.removeEventListener('keydown', onKey));
-      M.$('.geo-newm', el).onclick = newMission;
+      M.$('.geo-newm', el)!.onclick = newMission;
       newMission();
     },
   });

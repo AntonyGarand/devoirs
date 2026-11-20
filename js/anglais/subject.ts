@@ -11,10 +11,50 @@
      M.EN.COLORS                  couleurs (id → hex) pour les dessins recoloriables
      M.EN.lint(q)                 règles de la matière (aussi exposées comme subject.lint)
    ===================================================================== */
+
+interface MApi {
+  EN: EnglishApi;
+}
+
+/** Ce qui s'illustre : emoji, ou dessin M.art (recoloriable : color; corps : part). */
+interface EnPicItem {
+  emoji?: string;
+  art?: string;
+  color?: string;
+  part?: string;
+  /** Texte de remplacement (sens français, sinon le mot). */
+  fr?: string;
+  word?: string;
+}
+
+/** M.EN — espace de noms de la matière (chaque fichier y ajoute ses membres). */
+interface EnglishApi {
+  /** 'en-CA' */
+  LANG: string;
+  /** Couleurs (id → hex) pour les dessins recoloriables. */
+  COLORS: Record<string, string>;
+  /** Hex d'un id de couleur (ou la valeur telle quelle). */
+  hex(c?: string | null): string;
+  /** Assombrit/éclaircit une couleur hex (k entre -1 et 1). */
+  shade(hex: string, k: number): string;
+  /** <span lang="en"> (lu avec la voix anglaise dans une consigne). */
+  en(text: string): string;
+  /** Mot anglais + bouton 🔊. */
+  ear(text: string, say?: string): string;
+  /** Image d'un mot : emoji ou dessin M.art (repli emoji). */
+  pic(it: EnPicItem | null | undefined, size?: number): string;
+  /** Nombre affiché en chiffres. */
+  digit(n: number): string;
+  /** Encadré si aucune voix anglaise (pages Apprendre). */
+  voiceWarn(el: HTMLElement | null | undefined): void;
+  /** Règles de la matière (aussi subject.lint). */
+  lint(q: Question, skill?: Skill): CheckResult;
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  const EN = (M.EN = M.EN || {});
+  const EN = (M.EN = M.EN || ({} as EnglishApi));
   EN.LANG = 'en-CA';
 
   M.registerSubject({
@@ -80,12 +120,12 @@
     white: '#ffffff',
     grey: '#9aa0a6',
   };
-  EN.hex = (c) => EN.COLORS[c] || c || '#1d6fd8';
+  EN.hex = (c) => (c && EN.COLORS[c]) || c || '#1d6fd8';
   /** Assombrit/éclaircit une couleur hex (k entre -1 et 1). */
   EN.shade = (hex, k) => {
     const h = EN.hex(hex).replace('#', '');
     const n = parseInt(h.length === 3 ? h.replace(/./g, '$&$&') : h, 16);
-    const f = (v) => Math.max(0, Math.min(255, Math.round(k < 0 ? v * (1 + k) : v + (255 - v) * k)));
+    const f = (v: number): number => Math.max(0, Math.min(255, Math.round(k < 0 ? v * (1 + k) : v + (255 - v) * k)));
     return '#' + [f(n >> 16), f((n >> 8) & 255), f(n & 255)].map((v) => v.toString(16).padStart(2, '0')).join('');
   };
 
@@ -114,47 +154,49 @@
         "Ton appareil n'a pas de voix anglaise : les 🔊 resteront muets. Demande à un adulte (page Parents → Anglais).",
         { tone: 'warn', who: '🔇' },
       );
-      el.prepend(box.firstChild);
+      if (box.firstChild) el.prepend(box.firstChild);
     });
   };
 
   /* ---------------- Règles de la matière (tools/check-skills.js) ---------------- */
-  const hasEn = (html) => /lang="en/.test(String(html || ''));
+  const hasEn = (html: string | null | undefined): boolean => /lang="en/.test(String(html || ''));
   EN.lint = function (q, skill) {
     const fmt = q.format || q.input;
     if (fmt === 'text') return "format text interdit en anglais (pas d'écriture au 1er cycle)";
-    if (fmt === 'steps' && (q.steps || []).some((s) => (s.format || s.input) === 'text')) return 'étape text interdite en anglais';
+    if ('steps' in q && fmt === 'steps' && (q.steps || []).some((s) => (s.format || s.input) === 'text'))
+      return 'étape text interdite en anglais';
     if (q.audio) {
       const a = typeof q.audio === 'string' ? { text: q.audio } : q.audio;
-      if (!a.lang || !/^en/.test(a.lang)) return 'audio sans lang anglaise (jamais lu par une voix française)';
+      if (!a.lang || !a.lang.startsWith('en')) return 'audio sans lang anglaise (jamais lu par une voix française)';
     }
-    if (q.passage && q.passage.lang && !/^en/.test(q.passage.lang)) return 'passage : lang doit être anglaise';
-    if (q.passage && !q.passage.lang) return 'passage sans lang';
-    if (q.sayLang && !/^en/.test(q.sayLang)) return 'sayLang inattendu';
-    if (q.choices) {
+    const passLang = typeof q.passage === 'object' ? q.passage.lang : undefined; // texte seul : pas de lang
+    if (q.passage && passLang && !passLang.startsWith('en')) return 'passage : lang doit être anglaise';
+    if (q.passage && !passLang) return 'passage sans lang';
+    if (q.sayLang && !q.sayLang.startsWith('en')) return 'sayLang inattendu';
+    if ('choices' in q && q.choices) {
       for (const c of q.choices) {
-        if (hasEn(c.label) && !c.say) return `choix anglais sans audio : ${M.text ? c.value : ''}`;
+        if (hasEn(c.label) && !c.say) return `choix anglais sans audio : ${c.value}`;
         // say français permis seulement s'il est explicite (lang: 'fr-CA') sur un choix sans anglais (ex. situations lues)
-        if (c.say && !/^en/.test(c.lang || q.lang || '') && !(/^fr/.test(c.lang || '') && !hasEn(c.label)))
+        if (c.say && !(c.lang || q.lang || '').startsWith('en') && !((c.lang || '').startsWith('fr') && !hasEn(c.label)))
           return 'choix avec say sans lang anglaise';
       }
       const labels = q.choices.map((c) => String(c.label));
       if (new Set(labels).size !== labels.length) return 'deux choix ont la même image/étiquette';
     }
-    if (q.pairs)
+    if ('pairs' in q && q.pairs)
       for (const p of q.pairs) {
         if (hasEn(p.left) && !p.sayLeft) return 'match : mot anglais à gauche sans sayLeft';
         if (hasEn(p.right) && !p.sayRight) return 'match : mot anglais à droite sans sayRight';
       }
-    if (q.items) for (const it of q.items) if (hasEn(it.label) && !it.say) return 'sort : élément anglais sans say';
-    if (q.bins) for (const b of q.bins) if (hasEn(b.label)) return "sort : boîte en anglais (pas d'audio pour les boîtes)";
-    if (fmt === 'hotspot' && q.answerSay && !/^en/.test(q.lang || '')) return 'hotspot : answerSay sans lang anglaise';
+    if ('items' in q && q.items) for (const it of q.items) if (hasEn(it.label) && !it.say) return 'sort : élément anglais sans say';
+    if ('bins' in q && q.bins) for (const b of q.bins) if (hasEn(b.label)) return "sort : boîte en anglais (pas d'audio pour les boîtes)";
+    if (fmt === 'hotspot' && 'answerSay' in q && q.answerSay && !(q.lang || '').startsWith('en'))
+      return 'hotspot : answerSay sans lang anglaise';
     if (skill && !(skill.needs || []).includes('speech:en') && (q.audio || q.passage))
       return 'habileté avec audio anglais sans needs speech:en';
     // L'anglais dans la consigne doit être balisé (sinon lu avec l'accent français)
     const bare = String(q.prompt || '').replace(/<span lang="en">[^<]*<\/span>/g, '');
-    if (/\b(the|you|your|touch|what|is it|it's)\b/i.test(M.text ? bare.replace(/<[^>]*>/g, '') : bare))
-      return 'mot anglais non balisé dans la consigne';
+    if (/\b(the|you|your|touch|what|is it|it's)\b/i.test(bare.replace(/<[^>]*>/g, ''))) return 'mot anglais non balisé dans la consigne';
   };
 
   /* ---------------- Styles (préfixe en-) ---------------- */

@@ -35,13 +35,14 @@
     ['🍁🍂', 'Les feuilles tombent'],
   ].map(([em, s]) => ({ em, s, w: s.split(' ') }));
   const NOMS_PROPRES = M.people.NAMES.map((x) => x[0]);
-  const isName = (w) => NOMS_PROPRES.includes(w);
-  const sentence = (sc) => sc.s + '.';
-  const lowFirst = (w) => w.charAt(0).toLocaleLowerCase('fr-CA') + w.slice(1);
+  type Scene = (typeof SCENES)[number];
+  const isName = (w: string) => NOMS_PROPRES.includes(w);
+  const sentence = (sc: Scene) => sc.s + '.';
+  const lowFirst = (w: string) => w.charAt(0).toLocaleLowerCase('fr-CA') + w.slice(1);
   /** Phrases mal écrites (une seule erreur chacune). */
-  const errors = (sc) => {
+  const errors = (sc: Scene) => {
     const w = sc.w,
-      out = [];
+      out: { kind: string; s: string; why: string }[] = [];
     out.push({ kind: 'maj', s: [lowFirst(w[0]), ...w.slice(1)].join(' ') + '.', why: 'il manque la <b>majuscule</b> au début' });
     out.push({ kind: 'point', s: sc.s, why: 'il manque le <b>point</b> à la fin' });
     if (w.length >= 3)
@@ -55,7 +56,7 @@
       });
     return out;
   };
-  const buildStep = (sc, extra = {}) => {
+  const buildStep = (sc: Scene, extra: Partial<BuildFields> = {}): BuildFields & { format: 'build'; hint: string } => {
     const first = sc.w[0];
     const tiles = [...sc.w, '.', lowFirst(first)];
     return {
@@ -93,7 +94,7 @@
         };
       }
       const errs = M.shuffle(errors(sc)).slice(0, lvl === 1 ? 2 : 3);
-      const pickStep = {
+      const pickStep: StepItem = {
         label: '🔎 La phrase bien écrite',
         prompt: 'Quelle phrase est <b>bien écrite</b> ?',
         format: 'choice',
@@ -105,13 +106,13 @@
         ]),
         hint: 'Regarde le début, la fin et les espaces.',
       };
-      const own = {
+      const own: StepItem = {
         label: '💬 À toi ! (pas noté)',
         format: 'reflect',
         prompt: `${lvl === 2 ? 'Écris <b>deux phrases</b>' : 'Écris <b>ta phrase</b>'} sur l'image, sur une feuille. Puis vérifie :<br>${CHECKLIST}`,
         actions: ["✅ J'ai vérifié ma phrase", '🙈 Je préfère passer'],
       };
-      const steps =
+      const steps: StepItem[] =
         lvl === 1
           ? [{ label: '🧱 Je construis', prompt: "Construis la phrase de l'image.", ...buildStep(sc) }, pickStep, own]
           : [pickStep, { label: '🧱 Je construis', prompt: "Construis la phrase de l'image.", ...buildStep(sc) }, own];
@@ -126,12 +127,12 @@
       };
     },
     check(q) {
-      const builds = q.format === 'build' ? [q] : (q.steps || []).filter((s) => s.format === 'build');
+      const builds = q.format === 'build' ? [q] : q.format === 'steps' ? q.steps.filter((s) => s.format === 'build') : [];
       for (const b of builds) {
-        if (!/^[A-ZÀ-Ý]/.test(b.answer[0])) return 'la phrase ne commence pas par une majuscule';
+        if (!/^[A-ZÀ-Ý]/.test(String(b.answer[0]))) return 'la phrase ne commence pas par une majuscule';
         if (b.answer[b.answer.length - 1] !== '.') return 'pas de point final';
       }
-      const ch = (q.steps || []).find((s) => s.format === 'choice');
+      const ch = q.format === 'steps' ? q.steps.find((s) => s.format === 'choice') : undefined;
       if (ch && new Set(ch.choices.map((c) => c.value)).size !== ch.choices.length) return 'choix en double';
     },
   });
@@ -234,7 +235,7 @@
     },
   ];
   const AVIS = ["😄 Oui ! C'était drôle.", '😮 Oui ! Il y a une surprise.', "🥰 Oui ! J'aime le personnage.", '🙂 Un peu.', '😕 Pas trop.'];
-  M.registerSkill({
+  M.registerSkill<QuestionOf<'steps'>>({
     id: 'fr-apprecier',
     domain: 'fr-lecture',
     title: "J'apprécie une histoire",
@@ -250,7 +251,7 @@
       const [q1, q2, q3] = h.q;
       const drop = M.rnd(0, 2);
       const qs = lvl === 0 ? [M.pick([q1, q2])] : lvl === 1 ? h.q.filter((_, i) => i !== drop) : [M.pick([q1, q2]), q3];
-      const steps = qs.map(([question, ok, ...bad]) => ({
+      const steps = qs.map(([question, ok, ...bad]): StepItem => ({
         label: '❓ Je comprends',
         prompt: question,
         format: 'choice',
@@ -275,7 +276,8 @@
       };
     },
     check(q) {
-      const t = HIST.find((h) => q.passage.title.endsWith(h.titre));
+      const title = typeof q.passage === 'object' ? q.passage.title : undefined;
+      const t = title && HIST.find((h) => title.endsWith(h.titre));
       if (!t) return 'histoire introuvable';
       for (const s of q.steps) if (s.format === 'choice' && !FR.uniqueNorm(s.choices.map((c) => c.value))) return 'choix en double';
       if (q.steps[q.steps.length - 1].format !== 'reflect') return "la carte d'avis manque";

@@ -9,17 +9,21 @@
   const U = M.us;
   const D = 'us-moi-autres';
   const EMO = () => U.d('emotions');
-  const emo = (id) => EMO().find((e) => e.id === id);
-  const adj = (e, who) => e.adj[who && who.f ? 1 : 0];
+  const emo = (id: string) =>
+    U.must(
+      EMO().find((e) => e.id === id),
+      'émotion ' + id,
+    );
+  const adj = (e: UsEmotion, who?: UsPerso) => e.adj[who && who.f ? 1 : 0];
   const PROB =
     'On devine une émotion avec des <b>indices</b> : le visage, les gestes, les paroles. Chaque personne peut ressentir les choses à sa façon.';
-  const pickLvl = (list, lvl) => {
+  const pickLvl = <T extends { lvl: number }>(list: T[], lvl: number): T => {
     const exact = list.filter((s) => s.lvl === lvl);
     return M.pick(exact.length && Math.random() < 0.75 ? exact : list.filter((s) => s.lvl <= lvl));
   };
 
   /* ---------------------------------------------------------------- us-emotions */
-  function feelQ(s) {
+  function feelQ(s: UsScEmotionFeel): QuestionOf<'choice'> {
     const w = s.who,
       e = emo(s.answer);
     const bare = e.nom.replace(/^(la |le |l')/, '');
@@ -27,7 +31,7 @@
       { label: `${e.emoji} ${adj(e, w)}`, tag: 'ok', emo: e.id },
       ...s.distract.map((id) => ({ label: `${emo(id).emoji} ${adj(emo(id), w)}`, tag: 'opp', emo: id })),
     ];
-    const sh = M.shuffle(items).map((c, i) => ({ ...c, value: c.emo }));
+    const sh = M.shuffle(items).map((c) => ({ ...c, value: c.emo }));
     return {
       scene: s.scene,
       passage: { html: s.text },
@@ -40,7 +44,7 @@
       explain: `${U.cap(s.cue)} : ce sont des indices ${M.fr.de(bare).replace(bare, `<b>${bare}</b>`)} ${e.emoji}. ${PROB}`,
     };
   }
-  function triggerQ(s) {
+  function triggerQ(s: UsScEmotionTrigger): QuestionOf<'choice'> {
     const w = s.who,
       e = emo(s.feel);
     const t = U.tagged(s.choices);
@@ -68,9 +72,10 @@
       "Les personnages sont fictifs; la consigne dit « probablement » et l'explication rappelle que chacun peut ressentir autre chose.",
     lint(q) {
       // R3 : aucun distracteur de même valence que la réponse
-      if (q.format === 'choice' && q.choices.some((c) => c.emo)) {
-        const ok = emo(q.answer);
-        const bad = q.choices.find((c) => c.emo && c.emo !== q.answer && emo(c.emo).valence === ok.valence);
+      const ch: (Choice & { emo?: string })[] = q.format === 'choice' ? q.choices : [];
+      if (q.format === 'choice' && ch.some((c) => c.emo)) {
+        const ok = emo(String(q.answer));
+        const bad = ch.find((c) => c.emo && c.emo !== q.answer && emo(c.emo).valence === ok.valence);
         if (bad) return `R3 : distracteur voisin (${bad.emo}) pour ${ok.id}`;
       }
       if (q.format === 'choice' && !/probablement/.test(q.prompt)) return 'R2 : la consigne doit dire « probablement »';
@@ -131,7 +136,7 @@
       if (lvl === 0) {
         if (Math.random() < 0.5) {
           const r = M.pick(B.reponses);
-          const t = U.tagged([{ label: r.ok, tag: 'ok' }, ...r.off.map((l) => ({ label: l, tag: 'off' }))]);
+          const t = U.tagged([{ label: r.ok, tag: 'ok' }, ...r.off.map((l) => ({ label: l, tag: 'off' as const }))]);
           return {
             scene: [{ emoji: r.em, label: r.sit }],
             prompt: `${r.sit} Qu'est-ce qui répond à son besoin ?`,
@@ -170,7 +175,7 @@
             'Un <b>besoin</b> est nécessaire pour vivre et bien grandir (manger, dormir, être aimé, jouer, apprendre). Une <b>envie</b> fait plaisir, mais on peut vivre sans.',
         };
       }
-      const typed = bes.filter((i) => i.type);
+      const typed = bes.filter((i): i is UsBesoin & { type: UsBesoinType } => !!i.type);
       const items = B.types.flatMap((t) => M.shuffle(typed.filter((i) => i.type === t.id)).slice(0, 2));
       return {
         prompt: 'Classe chaque besoin : est-ce un besoin du <b>corps</b>, du <b>cœur</b> ou pour <b>apprendre</b> ?',
@@ -185,7 +190,7 @@
   });
 
   /* ---------------------------------------------------------------- us-civilite */
-  const civQ = (s) => {
+  const civQ = (s: UsScCivilite): QuestionOf<'choice'> => {
     const t = U.tagged(s.choices);
     return {
       scene: s.scene,
@@ -238,8 +243,20 @@
           };
         }
         const pool = M.shuffle(S);
-        const aide = pool.slice(0, 3).map((s) => s.choices.find((c) => c.tag === 'ok').label);
-        const bl = pool.slice(3, 6).map((s) => s.choices.find((c) => c.tag === 'harm').label);
+        const aide = pool.slice(0, 3).map(
+          (s) =>
+            U.must(
+              s.choices.find((c) => c.tag === 'ok'),
+              s.id,
+            ).label,
+        );
+        const bl = pool.slice(3, 6).map(
+          (s) =>
+            U.must(
+              s.choices.find((c) => c.tag === 'harm'),
+              s.id,
+            ).label,
+        );
         return {
           prompt: "Classe chaque geste : est-ce qu'il <b>aide</b> ou est-ce qu'il <b>blesse</b> ?",
           format: 'sort',
@@ -308,7 +325,7 @@
       if (lvl === 2 && Math.random() < 0.5) {
         const p = M.pick(S.problemes);
         const others = M.shuffle(S.problemes.filter((x) => x !== p)).slice(0, 2);
-        const t = U.tagged([{ label: p.ok, tag: 'ok' }, ...others.map((o) => ({ label: o.ok, tag: 'off' }))]);
+        const t = U.tagged([{ label: p.ok, tag: 'ok' }, ...others.map((o) => ({ label: o.ok, tag: 'off' as const }))]);
         return {
           passage: { html: p.p },
           prompt: 'Quelle règle faudrait-il pour régler ce problème ?',
@@ -323,7 +340,13 @@
       const n = lvl === 1 ? 3 : 4;
       const chosen =
         lvl === 2
-          ? [S.reglesRaison2.find((r) => /casque/.test(r.r)), ...M.shuffle(pool.filter((r) => !/casque/.test(r.r))).slice(0, n - 1)]
+          ? [
+              U.must(
+                S.reglesRaison2.find((r) => /casque/.test(r.r)),
+                'règle du casque',
+              ),
+              ...M.shuffle(pool.filter((r) => !/casque/.test(r.r))).slice(0, n - 1),
+            ]
           : M.shuffle(pool).slice(0, n);
       return {
         prompt: 'Associe chaque règle à sa <b>raison</b>.',
@@ -368,7 +391,7 @@
           { label: M.pick(S.calme), tag: 'ok' },
           ...M.shuffle(S.blesse)
             .slice(0, 2)
-            .map((l) => ({ label: l, tag: 'harm' })),
+            .map((l) => ({ label: l, tag: 'harm' as const })),
         ]);
         return {
           passage: { html: k.text },
@@ -418,8 +441,8 @@
       const feelAdj = k.both ? (pl === 'elles' ? 'fâchées' : 'fâchés') : k.a.f ? 'fâchée' : 'fâché';
       const happy = k.both ? (pl === 'elles' ? 'très contentes' : 'très contents') : k.a.f ? 'très contente' : 'très content';
       const sleepy = k.both ? (pl === 'elles' ? 'endormies' : 'endormis') : k.a.f ? 'endormie' : 'endormi';
-      const sol = U.tagged([{ label: k.sol[0], tag: 'ok' }, ...k.sol.slice(1).map((l) => ({ label: l, tag: 'harm' }))]);
-      const steps = [
+      const sol = U.tagged([{ label: k.sol[0], tag: 'ok' }, ...k.sol.slice(1).map((l) => ({ label: l, tag: 'harm' as const }))]);
+      const steps: StepItem[] = [
         {
           label: '🔍 Le problème',
           prompt: 'Quel est le problème ?',
@@ -462,7 +485,7 @@
           cols: 1,
         },
       ];
-      const q = {
+      const q: QuestionOf<'steps'> = {
         passage: { html: k.text },
         prompt: 'Aide-les à régler leur conflit, une étape à la fois.',
         format: 'steps',
@@ -683,7 +706,7 @@
       "Le dialogue en Culture et citoyenneté québécoise : on apprend à dire « Je pense que… parce que… », à poser une question pour comprendre et à ne pas être d'accord sans blesser. Les situations sont fictives; aucune réponse ne porte sur les opinions de l'enfant.",
     gen({ lvl }) {
       const r = Math.random();
-      const tf = () => {
+      const tf = (): QuestionOf<'tf'> => {
         const f = M.pick(DIA.faits);
         return {
           prompt: `Vrai ou faux ? ${f.t}`,
@@ -693,8 +716,8 @@
           explain: `C'est <b>${f.v ? 'vrai' : 'faux'}</b>. Pour bien discuter : on écoute, on parle chacun son tour, on donne son idée avec une raison et on respecte les idées des autres.`,
         };
       };
-      const sortQ = (kind, n) => {
-        const S = kind === 'ecoute' ? DIA.ecoute : DIA.desaccord;
+      const sortQ = (kind: 'ecoute' | 'desaccord', n: number): QuestionOf<'sort'> => {
+        const S: Record<string, string[]> = kind === 'ecoute' ? DIA.ecoute : DIA.desaccord;
         const [ka, kb] = kind === 'ecoute' ? ['oui', 'non'] : ['respect', 'blesse'];
         const items = [
           ...M.shuffle(S[ka])
@@ -730,7 +753,7 @@
                 "On a le droit de ne pas être d'accord ! On le dit avec <b>respect</b> : « Je ne suis pas d'accord, parce que… ». Les insultes et les moqueries <b>blessent</b> la personne.",
             };
       };
-      const avisQ = () => {
+      const avisQ = (): QuestionOf<'choice'> => {
         const a = M.pick(DIA.avis);
         const t = U.tagged([
           { label: a.ok, tag: 'ok' },
@@ -747,7 +770,7 @@
           explain: `${a.ok} C'est poli : on dit son idée <b>et sa raison</b>, sans rabaisser les idées des autres.`,
         };
       };
-      const questionQ = () => {
+      const questionQ = (): QuestionOf<'choice'> => {
         const q = M.pick(DIA.questions);
         const t = U.tagged([
           { label: q.ok, tag: 'ok' },
@@ -808,7 +831,7 @@
       }
       if (r < 0.55) {
         const x = M.pick(DIA.raisons);
-        const t = U.tagged([{ label: x.ok, tag: 'ok' }, ...x.d.map((l) => ({ label: l, tag: 'off' }))]);
+        const t = U.tagged([{ label: x.ok, tag: 'ok' }, ...x.d.map((l) => ({ label: l, tag: 'off' as const }))]);
         return {
           prompt: 'Quelle phrase donne une idée <b>avec une raison</b> ?',
           format: 'choice',

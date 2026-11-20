@@ -5,25 +5,214 @@
            js/learn/geometrie.js
    Les générateurs gen() ne touchent jamais au DOM (seuls viz/showMe).
    ===================================================================== */
+
+/* ------------------------------------------------------------------ types (globaux : fusion avec MApi) */
+interface MApi {
+  geo: GeoApi;
+}
+/** Point 2D [x, y]. */
+type GeoPt = [number, number];
+type GeoVec3 = [number, number, number];
+/** Solide dessinable (prisme-tri = prisme triangulaire). */
+type GeoSolidKind = 'boule' | 'cone' | 'cube' | 'cylindre' | 'prisme' | 'prisme-tri' | 'pyramide';
+/** Catégorie de solide (le prisme triangulaire est un prisme). */
+type GeoSolidCat = Exclude<GeoSolidKind, 'prisme-tri'>;
+type GeoFigKind = 'carre' | 'rectangle' | 'triangle' | 'losange' | 'cercle' | 'pentagone' | 'hexagone';
+/** Les 5 figures du programme (G.FIG5). */
+type GeoFig5 = Exclude<GeoFigKind, 'pentagone' | 'hexagone'>;
+/** Forme de la base d'un solide. */
+type GeoBaseKind = 'cercle' | 'carre' | 'rectangle' | 'triangle';
+type GeoTriKind = 'equi' | 'iso' | 'rect' | 'quel';
+type GeoLineKind = 'courbe-ouverte' | 'courbe-fermee' | 'brisee-ouverte' | 'brisee-fermee';
+/** Axe de symétrie : vertical, horizontal, diagonales \ et /. */
+type GeoAxis = 'v' | 'h' | 'd1' | 'd2';
+/** Axe dessiné par G.symSvg : voff / hoff = axe décalé (pas un axe de symétrie). */
+type GeoAxisArg = GeoAxis | 'voff' | 'hoff' | null;
+type GeoSymName =
+  | 'papillon'
+  | 'coeur'
+  | 'maison'
+  | 'sapin'
+  | 'etoile'
+  | 'triangle'
+  | 'poisson'
+  | 'rectangle'
+  | 'losange'
+  | 'carre'
+  | 'cercle'
+  | 'drapeau'
+  | 'botte'
+  | 'quelconque'
+  | 'eclair';
+type GeoMotifName = 'drapeau' | 'botte' | 'lettreF' | 'pied';
+/** Orientation d'un motif : normal, miroir gauche-droite, à l'envers, demi-tour. */
+type GeoOrient = 'n' | 'h' | 'v' | 'r';
+interface GeoSolInfo {
+  nom: string;
+  un: string;
+  le: string;
+  planes: number;
+  courbes: number;
+  roule: boolean;
+  glisse: boolean;
+  empile: boolean;
+  faces: number | null;
+  base: GeoBaseKind | null;
+  color: string;
+  long?: string;
+}
+interface GeoSvgOpts {
+  cls?: string;
+  width?: number;
+  title?: string;
+}
+interface GeoSolidOpts {
+  color?: string;
+  size?: number;
+  /** Cylindre couché. */
+  lie?: boolean;
+  /** Prisme triangulaire debout sur sa base. */
+  stand?: boolean;
+  /** Prisme rectangulaire : [largeur, hauteur, profondeur]. */
+  dims?: GeoVec3;
+  /** Hauteur de la pyramide. */
+  h?: number;
+}
+/** Face d'un solide dessiné : visible, centre (coordonnées SVG), nom. */
+interface GeoFace {
+  vis: boolean;
+  c: number[];
+  name: string;
+}
+interface GeoSolidData {
+  svg: string;
+  /** null pour les solides courbes. */
+  faces: GeoFace[] | null;
+}
+/** Objet de tous les jours qui ressemble à un solide (k : dessin précis, ex. prisme-tri). */
+interface GeoObj {
+  e: string;
+  n: string;
+  s: GeoSolidCat;
+  k?: GeoSolidKind;
+}
+interface GeoFigInfo {
+  nom: string;
+  un: string;
+  le: string;
+  cotes: number;
+}
+interface GeoFigOpts {
+  W?: number;
+  H?: number;
+  pad?: number;
+  /** Rotation (degrés). */
+  rot?: number;
+  /** Remplissage de la boîte (0–1). */
+  fill?: number;
+  /** px par unité (remplace fill). */
+  unit?: number;
+  ratio?: number;
+  tri?: GeoTriKind;
+  color?: string;
+  /** Épaisseur du contour. */
+  sw?: number;
+  size?: number;
+}
+interface GeoCountFigOpts extends GeoFigOpts {
+  hint?: string;
+  onDone?: (sides: number, vertices: number) => void;
+}
+interface GeoCountCtl {
+  /** Compte les côtés (s), les sommets (v) ou les deux. */
+  showMe(what?: 'both' | 's' | 'v'): Promise<void> | void;
+}
+interface GeoSymDef {
+  nom: string;
+  axes: GeoAxis[];
+  draw(c: string): string;
+}
+interface GeoSymOpts {
+  color?: string;
+  rot?: number;
+  size?: number;
+  /** Montre l'image miroir. */
+  ghost?: boolean;
+  /** Décalage de l'axe voff / hoff. */
+  off?: number;
+  cls?: string;
+}
+/** Animal, objet ou élément de plan : emoji, nom avec déterminant (f : nom féminin à élision). */
+interface GeoThing {
+  e: string;
+  n: string;
+  f?: boolean;
+}
+interface GeoApi {
+  light(h: string, a: number): string;
+  dark(h: string, a: number): string;
+  COLORS: string[];
+  /** Enveloppe SVG avec une largeur en px. */
+  svg(w: number, h: number, inner: string, o?: GeoSvgOpts): string;
+  /** Élément SVG (animations dans viz/showMe). */
+  svgEl(tag: string, attrs?: Record<string, string | number>, text?: string | number | null): SVGElement;
+  SOL: Record<GeoSolidKind, GeoSolInfo>;
+  CATS: GeoSolidCat[];
+  cat(k: GeoSolidKind): GeoSolidCat;
+  solidData(kind: GeoSolidKind, o?: GeoSolidOpts): GeoSolidData;
+  solid(kind: GeoSolidKind, o?: GeoSolidOpts): string;
+  /** Variante aléatoire d'une catégorie de solide. */
+  randSolid(cat: GeoSolidCat, o?: { color?: string; size?: number }): { kind: GeoSolidKind; svg: string };
+  OBJ: GeoObj[];
+  FIG: Record<GeoFigKind, GeoFigInfo>;
+  FIG5: GeoFig5[];
+  figPts(kind: GeoFigKind, o?: GeoFigOpts): GeoPt[];
+  figure(kind: GeoFigKind, o?: GeoFigOpts): string;
+  randFigOpts(kind: GeoFigKind, lvl?: number): GeoFigOpts;
+  /** Figure à compter (côtés et sommets touchables). */
+  countFig(el: HTMLElement, kind: GeoFigKind, o?: GeoCountFigOpts): GeoCountCtl;
+  LIGNES: Record<GeoLineKind, string>;
+  lineSvg(kind: GeoLineKind, o?: { color?: string; size?: number }): string;
+  SYM: Record<GeoSymName, GeoSymDef>;
+  symSvg(name: GeoSymName, axis: GeoAxisArg, o?: GeoSymOpts): string;
+  MOTIFS: Record<GeoMotifName, (c: string) => string>;
+  motif(name: GeoMotifName, c: string, orient?: GeoOrient, size?: number): string;
+  /** Lettres des colonnes du plan quadrillé. */
+  COLS: string[];
+  /** Nom d'une case : colonne (0 = A), rangée (1 en bas). */
+  cell(c: number, r: number): string;
+  parseCell(k: string): [number, number];
+  /** Plan quadrillé : items = case → html. */
+  planHtml(items: Record<string, string>, o?: { n?: number; cls?: string }): string;
+  ANIMAUX: GeoThing[];
+  /** « du chat », « de la vache » */
+  de(x: GeoThing): string;
+  PLAN_ITEMS: GeoThing[];
+  /** Polyomino (cellules [x, y]). */
+  polySvg(cells: number[][], o?: { unit?: number; color?: string }): string;
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  const G = (M.geo = {});
+  const G = (M.geo = {} as GeoApi);
   const DOM = 'geometrie';
 
   /* ------------------------------------------------------------------
      Outils
      ------------------------------------------------------------------ */
   let UID = 0;
-  const uid = (p) => 'geo' + p + ++UID;
-  const f1 = (n) => Math.round(n * 10) / 10;
-  const pt = (p) => f1(p[0]) + ',' + f1(p[1]);
+  const uid = (p: string): string => 'geo' + p + ++UID;
+  const f1 = (n: number): number => Math.round(n * 10) / 10;
+  const pt = (p: readonly number[]): string => f1(p[0]) + ',' + f1(p[1]);
   const pick = M.pick,
     rnd = M.rnd,
     shuffle = M.shuffle;
-  const alive = (el) => !!(el && el.isConnected);
+  const alive = (el: Element | null | undefined): boolean => !!(el && el.isConnected);
+  /** Clés d'un objet, avec leur type littéral. */
+  const keysOf = <K extends string>(o: Record<K, unknown>): K[] => Object.keys(o) as K[];
 
-  function hex2rgb(h) {
+  function hex2rgb(h: string): number[] {
     h = h.replace('#', '');
     if (h.length === 3)
       h = h
@@ -33,7 +222,7 @@
     const n = parseInt(h, 16);
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
   }
-  function mix(h, t, a) {
+  function mix(h: string, t: string, a: number): string {
     const c = hex2rgb(h),
       d = hex2rgb(t);
     return (
@@ -58,20 +247,25 @@
   /** Crée un élément SVG (pour les animations dans viz/showMe). */
   G.svgEl = function (tag, attrs, text) {
     const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
-    Object.keys(attrs || {}).forEach((k) => e.setAttribute(k, attrs[k]));
-    if (text != null) e.textContent = text;
+    const a = attrs || {};
+    Object.keys(a).forEach((k) => e.setAttribute(k, String(a[k])));
+    if (text != null) e.textContent = String(text);
     return e;
   };
 
   /* vecteurs 3D */
-  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-  const norm = (a) => {
+  const sub = (a: readonly number[], b: readonly number[]): GeoVec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const dot = (a: readonly number[], b: readonly number[]): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a: readonly number[], b: readonly number[]): GeoVec3 => [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ];
+  const norm = (a: readonly number[]): GeoVec3 => {
     const l = Math.hypot(a[0], a[1], a[2]) || 1;
     return [a[0] / l, a[1] / l, a[2] / l];
   };
-  const avg = (pts) => {
+  const avg = (pts: readonly (readonly number[])[]): number[] => {
     const n = pts.length,
       s = pts[0].map(() => 0);
     pts.forEach((p) => p.forEach((v, i) => (s[i] += v / n)));
@@ -83,11 +277,24 @@
      ------------------------------------------------------------------ */
   const KX = 0.5,
     KY = 0.36;
-  const VIEW = [KX, KY, 1];
+  const VIEW: GeoVec3 = [KX, KY, 1];
   const LIGHT = norm([-0.35, 0.85, 0.5]);
-  const proj = (p) => [p[0] - p[2] * KX, -p[1] + p[2] * KY];
+  const proj = (p: readonly number[]): GeoPt => [p[0] - p[2] * KX, -p[1] + p[2] * KY];
 
-  function box(w, h, d) {
+  /** Polyèdre : sommets 3D, faces (indices des sommets), noms des faces. */
+  interface PolyDef {
+    V: GeoVec3[];
+    F: number[][];
+    names: string[];
+  }
+  interface PolyFace {
+    f: number[];
+    n: number[];
+    vis: boolean;
+    c: number[];
+    name: string;
+  }
+  function box(w: number, h: number, d: number): PolyDef {
     return {
       V: [
         [0, 0, 0],
@@ -111,9 +318,9 @@
     };
   }
   /** Polygone dans le plan XY (face avant), allongé vers l'arrière. */
-  function prismZ(poly, d, names) {
+  function prismZ(poly: GeoPt[], d: number, names: string[]): PolyDef {
     const n = poly.length;
-    const V = poly.map(([x, y]) => [x, y, 0]).concat(poly.map(([x, y]) => [x, y, -d]));
+    const V = poly.map(([x, y]): GeoVec3 => [x, y, 0]).concat(poly.map(([x, y]): GeoVec3 => [x, y, -d]));
     const F = [M.range(0, n - 1), M.range(n, 2 * n - 1)];
     for (let i = 0; i < n; i++) {
       const j = (i + 1) % n;
@@ -122,9 +329,9 @@
     return { V, F, names };
   }
   /** Polygone posé au sol (points [x, z]), monté vers le haut. */
-  function prismY(poly, h, names) {
+  function prismY(poly: GeoPt[], h: number, names: string[]): PolyDef {
     const n = poly.length;
-    const V = poly.map(([x, z]) => [x, 0, z]).concat(poly.map(([x, z]) => [x, h, z]));
+    const V = poly.map(([x, z]): GeoVec3 => [x, 0, z]).concat(poly.map(([x, z]): GeoVec3 => [x, h, z]));
     const F = [M.range(0, n - 1), M.range(n, 2 * n - 1)];
     for (let i = 0; i < n; i++) {
       const j = (i + 1) % n;
@@ -132,7 +339,7 @@
     }
     return { V, F, names };
   }
-  function pyramid(w, h) {
+  function pyramid(w: number, h: number): PolyDef {
     return {
       V: [
         [0, 0, 0],
@@ -152,7 +359,10 @@
     };
   }
 
-  function renderPoly(def, o) {
+  function renderPoly(
+    def: PolyDef,
+    o: { W?: number; H?: number; pad?: number; color: string; hidden?: boolean },
+  ): { inner: string; faces: PolyFace[] } {
     const W = o.W || 120,
       H = o.H || 120,
       pad = o.pad == null ? 8 : o.pad,
@@ -174,12 +384,12 @@
     const ox = (W - (x1 - x0) * s) / 2 - x0 * s,
       oy = (H - (y1 - y0) * s) / 2 - y0 * s;
     const Q = P.map((p) => [p[0] * s + ox, p[1] * s + oy]);
-    const faces = def.F.map((f, fi) => {
-      let n = norm(cross(sub(V[f[1]], V[f[0]]), sub(V[f[2]], V[f[0]])));
+    const faces = def.F.map((f, fi): PolyFace => {
+      let n: number[] = norm(cross(sub(V[f[1]], V[f[0]]), sub(V[f[2]], V[f[0]])));
       if (dot(n, sub(avg(f.map((i) => V[i])), cen)) < 0) n = n.map((x) => -x);
       return { f, n, vis: dot(n, VIEW) > 1e-6, c: avg(f.map((i) => Q[i])), name: def.names ? def.names[fi] : '' };
     });
-    const E = new Map();
+    const E = new Map<string, { a: number; b: number; fs: number[] }>();
     faces.forEach((fa, fi) =>
       fa.f.forEach((v, k) => {
         const w = fa.f[(k + 1) % fa.f.length],
@@ -187,12 +397,12 @@
           b = Math.max(v, w),
           key = a + '-' + b;
         if (!E.has(key)) E.set(key, { a, b, fs: [] });
-        E.get(key).fs.push(fi);
+        E.get(key)!.fs.push(fi);
       }),
     );
     const edges = [...E.values()].map((e) => ({ ...e, vis: e.fs.some((fi) => faces[fi].vis) }));
     const st = G.dark(c, 0.45);
-    const line = (e, extra) =>
+    const line = (e: { a: number; b: number }, extra: string): string =>
       `<line x1="${f1(Q[e.a][0])}" y1="${f1(Q[e.a][1])}" x2="${f1(Q[e.b][0])}" y2="${f1(Q[e.b][1])}" stroke="${st}" ${extra}/>`;
     let out = '';
     faces.forEach((fa, fi) => {
@@ -207,7 +417,7 @@
     return { inner: out, faces };
   }
 
-  function boule(c) {
+  function boule(c: string): string {
     const g = uid('g'),
       st = G.dark(c, 0.45);
     return `<defs><radialGradient id="${g}" cx=".36" cy=".32" r=".72"><stop offset="0" stop-color="${G.light(c, 0.75)}"/><stop offset=".55" stop-color="${c}"/><stop offset="1" stop-color="${G.dark(c, 0.35)}"/></radialGradient></defs>
@@ -215,7 +425,7 @@
       <path d="M12,60 A48 14 0 0 1 108,60" fill="none" stroke="${st}" stroke-width="1.6" stroke-dasharray="5 4" opacity=".6"/>
       <path d="M12,60 A48 14 0 0 0 108,60" fill="none" stroke="${st}" stroke-width="1.6" opacity=".5"/>`;
   }
-  function cylindre(c, lie) {
+  function cylindre(c: string, lie?: boolean): string {
     const g = uid('g'),
       st = G.dark(c, 0.45);
     const inner = `<defs><linearGradient id="${g}" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="${G.dark(c, 0.15)}"/><stop offset=".32" stop-color="${G.light(c, 0.4)}"/><stop offset=".75" stop-color="${c}"/><stop offset="1" stop-color="${G.dark(c, 0.3)}"/></linearGradient></defs>
@@ -224,7 +434,7 @@
       <ellipse cx="60" cy="24" rx="34" ry="11" fill="${G.light(c, 0.45)}" stroke="${st}" stroke-width="2.6"/>`;
     return lie ? `<g transform="rotate(90 60 60)">${inner}</g>` : inner;
   }
-  function cone(c) {
+  function cone(c: string): string {
     const g = uid('g'),
       st = G.dark(c, 0.45);
     return `<defs><linearGradient id="${g}" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="${G.dark(c, 0.12)}"/><stop offset=".35" stop-color="${G.light(c, 0.42)}"/><stop offset=".75" stop-color="${c}"/><stop offset="1" stop-color="${G.dark(c, 0.3)}"/></linearGradient></defs>
@@ -339,13 +549,13 @@
    */
   G.solidData = function (kind, o = {}) {
     const c = o.color || G.SOL[kind].color;
-    let inner,
-      faces = null;
+    let inner: string,
+      faces: GeoFace[] | null = null;
     if (kind === 'boule') inner = boule(c);
     else if (kind === 'cone') inner = cone(c);
     else if (kind === 'cylindre') inner = cylindre(c, o.lie);
     else {
-      let def;
+      let def: PolyDef;
       if (kind === 'cube') def = box(1, 1, 1);
       else if (kind === 'prisme') {
         const d = o.dims || [1.8, 0.85, 0.9];
@@ -380,10 +590,10 @@
   G.solid = (kind, o) => G.solidData(kind, o).svg;
   /** Variante aléatoire (dimensions, couleur) d'une catégorie de solide. */
   G.randSolid = function (cat, o = {}) {
-    const kind = cat === 'prisme' ? pick(['prisme', 'prisme', 'prisme-tri']) : cat;
-    const opt = { color: o.color || (Math.random() < 0.5 ? G.SOL[kind].color : pick(G.COLORS)), size: o.size };
+    const kind: GeoSolidKind = cat === 'prisme' ? pick<GeoSolidKind>(['prisme', 'prisme', 'prisme-tri']) : cat;
+    const opt: GeoSolidOpts = { color: o.color || (Math.random() < 0.5 ? G.SOL[kind].color : pick(G.COLORS)), size: o.size };
     if (kind === 'prisme')
-      opt.dims = pick([
+      opt.dims = pick<GeoVec3>([
         [1.8, 0.85, 0.9],
         [0.9, 1.7, 0.8],
         [1.6, 0.6, 1.3],
@@ -428,7 +638,7 @@
     hexagone: { nom: 'hexagone', un: 'un hexagone', le: "l'hexagone", cotes: 6 },
   };
   G.FIG5 = ['carre', 'rectangle', 'triangle', 'losange', 'cercle'];
-  const TRI = {
+  const TRI: Record<GeoTriKind, GeoPt[]> = {
     equi: [
       [0, -0.577],
       [0.5, 0.289],
@@ -450,7 +660,7 @@
       [-0.25, -0.35],
     ],
   };
-  function basePts(kind, o) {
+  function basePts(kind: GeoFigKind, o: GeoFigOpts): GeoPt[] {
     if (kind === 'carre')
       return [
         [-0.5, -0.5],
@@ -478,7 +688,7 @@
     }
     if (kind === 'triangle') return TRI[o.tri || 'equi'];
     const n = kind === 'pentagone' ? 5 : 6;
-    return M.range(0, n - 1).map((i) => {
+    return M.range(0, n - 1).map((i): GeoPt => {
       const a = -Math.PI / 2 + (i * 2 * Math.PI) / n;
       return [0.5 * Math.cos(a), 0.5 * Math.sin(a)];
     });
@@ -491,7 +701,7 @@
     const a = ((o.rot || 0) * Math.PI) / 180,
       cs = Math.cos(a),
       sn = Math.sin(a);
-    const p = basePts(kind, o).map(([x, y]) => [x * cs - y * sn, x * sn + y * cs]);
+    const p = basePts(kind, o).map(([x, y]): GeoPt => [x * cs - y * sn, x * sn + y * cs]);
     let x0 = Infinity,
       y0 = Infinity,
       x1 = -Infinity,
@@ -505,7 +715,7 @@
     const s = o.unit || Math.min((W - 2 * pad) / (x1 - x0), (H - 2 * pad) / (y1 - y0)) * (o.fill || 1);
     const cx = (x0 + x1) / 2,
       cy = (y0 + y1) / 2;
-    return p.map(([x, y]) => [W / 2 + (x - cx) * s, H / 2 + (y - cy) * s]);
+    return p.map(([x, y]): GeoPt => [W / 2 + (x - cx) * s, H / 2 + (y - cy) * s]);
   };
   /** SVG d'une figure plane. */
   G.figure = function (kind, o = {}) {
@@ -514,14 +724,14 @@
       c = o.color || '#118ab2',
       pad = o.pad == null ? 8 : o.pad;
     const sty = `fill="${G.light(c, 0.25)}" stroke="${G.dark(c, 0.25)}" stroke-width="${o.sw || 3.5}" stroke-linejoin="round"`;
-    let inner;
+    let inner: string;
     if (kind === 'cercle') inner = `<circle cx="${W / 2}" cy="${H / 2}" r="${f1((Math.min(W, H) / 2 - pad) * (o.fill || 1))}" ${sty}/>`;
     else inner = `<polygon points="${G.figPts(kind, o).map(pt).join(' ')}" ${sty}/>`;
     return G.svg(W, H, inner, { width: o.size || W, title: G.FIG[kind].nom });
   };
   /** Options aléatoires (orientation, proportions, grandeur) pour une figure. */
   G.randFigOpts = function (kind, lvl = 1) {
-    const o = { color: pick(G.COLORS), fill: 0.62 + Math.random() * 0.38 };
+    const o: GeoFigOpts = { color: pick(G.COLORS), fill: 0.62 + Math.random() * 0.38 };
     if (kind === 'carre') o.rot = lvl === 0 ? pick([0, 0, 15]) : pick([0, 15, 30, 45, -20]);
     if (kind === 'rectangle') {
       o.ratio = 1.5 + Math.random() * 0.8;
@@ -566,12 +776,13 @@
     });
     h += '<g class="geo-lbls"></g>';
     el.innerHTML = `<div class="viz-hint">${o.hint || 'Touche chaque <b>côté</b>, puis chaque <b>sommet</b> (coin) pour les compter.'}</div>${G.svg(W, H, h, { cls: 'geo-count', width: 240 })}<div class="viz-status"></div>`;
-    const svg = M.$('svg', el),
-      lbls = M.$('.geo-lbls', el),
-      status = M.$('.viz-status', el);
-    const sOn = new Set(),
-      vOn = new Set();
-    const out = (p, d) => {
+    // éléments qu'on vient de rendre
+    const svg = M.$('svg', el)!,
+      lbls = M.$('.geo-lbls', el)!,
+      status = M.$('.viz-status', el)!;
+    const sOn = new Set<number>(),
+      vOn = new Set<number>();
+    const out = (p: readonly number[], d: number): GeoPt => {
       const v = [p[0] - ctr[0], p[1] - ctr[1]],
         l = Math.hypot(v[0], v[1]) || 1;
       return [p[0] + (v[0] / l) * d, p[1] + (v[1] / l) * d];
@@ -590,21 +801,23 @@
         const m = out(P[i], 22);
         lbls.appendChild(G.svgEl('text', { x: f1(m[0]), y: f1(m[1]) + 6, class: 'geo-lbl v' }, String.fromCharCode(65 + k++)));
       });
-      M.$$('.geo-side', svg).forEach((g) => g.classList.toggle('on', sOn.has(+g.dataset.k)));
-      M.$$('.geo-vtx', svg).forEach((g) => g.classList.toggle('on', vOn.has(+g.dataset.k)));
+      M.$$<SVGGElement>('.geo-side', svg).forEach((g) => g.classList.toggle('on', sOn.has(Number(g.dataset.k))));
+      M.$$<SVGGElement>('.geo-vtx', svg).forEach((g) => g.classList.toggle('on', vOn.has(Number(g.dataset.k))));
       status.innerHTML = `Côtés : <b>${sOn.size}</b> · Sommets : <b>${vOn.size}</b>` + (sOn.size === n && vOn.size === n ? ' 🎉' : '');
       if (sOn.size === n && vOn.size === n && o.onDone) o.onDone(n, n);
     }
     svg.addEventListener('click', (e) => {
-      const v = e.target.closest('.geo-vtx'),
-        s = e.target.closest('.geo-side');
+      const v = M.closest<SVGGElement>(e, '.geo-vtx'),
+        s = M.closest<SVGGElement>(e, '.geo-side');
       if (v) {
-        const k = +v.dataset.k;
-        vOn.has(k) ? vOn.delete(k) : vOn.add(k);
+        const k = Number(v.dataset.k);
+        if (vOn.has(k)) vOn.delete(k);
+        else vOn.add(k);
         M.sfx.pop();
       } else if (s) {
-        const k = +s.dataset.k;
-        sOn.has(k) ? sOn.delete(k) : sOn.add(k);
+        const k = Number(s.dataset.k);
+        if (sOn.has(k)) sOn.delete(k);
+        else sOn.add(k);
         M.sfx.tap();
       } else return;
       redraw();
@@ -612,7 +825,7 @@
     redraw();
     let tok = 0;
     return {
-      async showMe(what = 'both') {
+      async showMe(what: 'both' | 's' | 'v' = 'both') {
         const my = ++tok;
         sOn.clear();
         vOn.clear();
@@ -646,9 +859,9 @@
     'brisee-ouverte': 'ligne brisée ouverte',
     'brisee-fermee': 'ligne brisée fermée',
   };
-  function smoothPath(P, closed) {
+  function smoothPath(P: readonly GeoPt[], closed: boolean): string {
     const n = P.length,
-      get = (i) => (closed ? P[(i + n) % n] : P[Math.max(0, Math.min(n - 1, i))]);
+      get = (i: number): GeoPt => (closed ? P[(i + n) % n] : P[Math.max(0, Math.min(n - 1, i))]);
     let d = 'M' + pt(P[0]);
     for (let i = 0; i < (closed ? n : n - 1); i++) {
       const p0 = get(i - 1),
@@ -659,9 +872,9 @@
     }
     return d + (closed ? 'Z' : '');
   }
-  function ringPts(n, cx, cy, rx, ry, jit) {
+  function ringPts(n: number, cx: number, cy: number, rx: number, ry: number, jit: number): GeoPt[] {
     const a0 = Math.random() * Math.PI * 2;
-    return M.range(0, n - 1).map((i) => {
+    return M.range(0, n - 1).map((i): GeoPt => {
       const a = a0 + (i * 2 * Math.PI) / n + (Math.random() - 0.5) * 0.5,
         r = 1 - Math.random() * jit;
       return [cx + Math.cos(a) * rx * r, cy + Math.sin(a) * ry * r];
@@ -672,23 +885,23 @@
     const c = o.color || '#2b2d42',
       W = 140,
       H = 100;
-    let d,
-      ends = null;
+    let d: string,
+      ends: GeoPt[] | null = null;
     if (kind === 'courbe-fermee') d = smoothPath(ringPts(rnd(5, 7), 70, 50, 52, 36, 0.35), true);
     else if (kind === 'brisee-fermee') {
       const P = ringPts(rnd(4, 7), 70, 50, 54, 38, 0.4);
       d = 'M' + P.map(pt).join(' L') + 'Z';
     } else {
-      let P;
+      let P: GeoPt[];
       if (Math.random() < 0.6) {
         const n = kind === 'courbe-ouverte' ? rnd(4, 5) : rnd(4, 6),
           up = Math.random() < 0.5;
-        P = M.range(0, n - 1).map((i) => [14 + (i * 112) / (n - 1), (i % 2 === 0) === up ? rnd(14, 36) : rnd(64, 86)]);
+        P = M.range(0, n - 1).map((i): GeoPt => [14 + (i * 112) / (n - 1), (i % 2 === 0) === up ? rnd(14, 36) : rnd(64, 86)]);
       } else {
         // forme en « C » ou en « U » : les deux bouts restent bien séparés
         const a0 = pick([0.25, 0.75, 1.25]) * Math.PI,
           n = kind === 'courbe-ouverte' ? 6 : rnd(4, 5);
-        P = M.range(0, n - 1).map((i) => {
+        P = M.range(0, n - 1).map((i): GeoPt => {
           const a = a0 + (i / (n - 1)) * 1.45 * Math.PI;
           return [70 + Math.cos(a) * 52, 50 + Math.sin(a) * 38];
         });
@@ -705,10 +918,10 @@
      SYMÉTRIE : figures dans une boîte 120×120, centrées en (60, 60)
      axes : v (vertical), h (horizontal), d1 (\), d2 (/)
      ------------------------------------------------------------------ */
-  const half = (inner) => inner + `<g transform="translate(120,0) scale(-1,1)">${inner}</g>`;
-  const S = (c, w = 2.5) => `fill="${c}" stroke="${G.dark(c, 0.35)}" stroke-width="${w}" stroke-linejoin="round"`;
-  function starPts(cx, cy, R, r) {
-    return M.range(0, 9).map((i) => {
+  const half = (inner: string): string => inner + `<g transform="translate(120,0) scale(-1,1)">${inner}</g>`;
+  const S = (c: string, w = 2.5): string => `fill="${c}" stroke="${G.dark(c, 0.35)}" stroke-width="${w}" stroke-linejoin="round"`;
+  function starPts(cx: number, cy: number, R: number, r: number): GeoPt[] {
+    return M.range(0, 9).map((i): GeoPt => {
       const a = -Math.PI / 2 + (i * Math.PI) / 5,
         q = i % 2 ? r : R;
       return [cx + Math.cos(a) * q, cy + Math.sin(a) * q];
@@ -761,8 +974,8 @@
     quelconque: { nom: 'le triangle', axes: [], draw: (c) => `<polygon points="14,98 106,98 36,20" ${S(c, 3)}/>` },
     eclair: { nom: "l'éclair", axes: [], draw: (c) => `<polygon points="54,6 26,64 54,64 40,114 96,46 66,46 84,6" ${S(c, 3)}/>` },
   };
-  const AXIS_LINE = { v: [60, 2, 60, 118], h: [2, 60, 118, 60], d1: [6, 6, 114, 114], d2: [114, 6, 6, 114] };
-  const REFLECT = {
+  const AXIS_LINE: Record<GeoAxis, number[]> = { v: [60, 2, 60, 118], h: [2, 60, 118, 60], d1: [6, 6, 114, 114], d2: [114, 6, 6, 114] };
+  const REFLECT: Record<GeoAxis, string> = {
     v: 'translate(120,0) scale(-1,1)',
     h: 'translate(0,120) scale(1,-1)',
     d1: 'matrix(0,1,1,0,0,0)',
@@ -780,7 +993,7 @@
       ghost = '';
     if (axis) {
       const off = o.off || 24;
-      const L = axis === 'voff' ? [60 + off, 2, 60 + off, 118] : axis === 'hoff' ? [2, 60 + off, 118, 60 + off] : AXIS_LINE[axis];
+      const L: number[] = axis === 'voff' ? [60 + off, 2, 60 + off, 118] : axis === 'hoff' ? [2, 60 + off, 118, 60 + off] : AXIS_LINE[axis];
       ax = `<line x1="${L[0]}" y1="${L[1]}" x2="${L[2]}" y2="${L[3]}" stroke="#d62828" stroke-width="3" stroke-dasharray="8 6" stroke-linecap="round"/>`;
       if (o.ghost) {
         const tr =
@@ -810,7 +1023,12 @@
     pied: (c) =>
       `<ellipse cx="17" cy="25" rx="8" ry="12" fill="${c}" transform="rotate(-12 17 25)"/><circle cx="14" cy="8" r="3.4" fill="${c}"/><circle cx="21" cy="8.6" r="2.8" fill="${c}"/><circle cx="26.5" cy="11" r="2.4" fill="${c}"/><circle cx="30" cy="15" r="2" fill="${c}"/>`,
   };
-  const ORIENT = { n: '', h: 'translate(40,0) scale(-1,1)', v: 'translate(0,40) scale(1,-1)', r: 'rotate(180 20 20)' };
+  const ORIENT: Record<GeoOrient, string> = {
+    n: '',
+    h: 'translate(40,0) scale(-1,1)',
+    v: 'translate(0,40) scale(1,-1)',
+    r: 'rotate(180 20 20)',
+  };
   G.motif = (name, c, orient = 'n', size = 46) =>
     G.svg(40, 40, `<g transform="${ORIENT[orient]}">${G.MOTIFS[name](c)}</g>`, { width: size });
 
@@ -819,7 +1037,7 @@
      ------------------------------------------------------------------ */
   G.COLS = ['A', 'B', 'C', 'D', 'E', 'F'];
   G.cell = (c, r) => G.COLS[c] + r;
-  G.parseCell = (k) => [G.COLS.indexOf(k[0]), +k.slice(1)];
+  G.parseCell = (k) => [G.COLS.indexOf(k[0]), Number(k.slice(1))];
   G.planHtml = function (items, o = {}) {
     const n = o.n || 5;
     let h = `<div class="geo-plan${o.cls ? ' ' + o.cls : ''}" style="--n:${n}">`;
@@ -887,14 +1105,14 @@
 @keyframes geo-fade { from { opacity: 0 } to { opacity: 1 } }
 .geo-mgrid { border-collapse: separate }
 `);
-  } catch (e) {
+  } catch {
     /* hors navigateur (tools/check-skills.js) */
   }
 
   /* ------------------------------------------------------------------
      Aides communes aux habiletés
      ------------------------------------------------------------------ */
-  const ANIMAUX = [
+  const ANIMAUX: GeoThing[] = [
     { e: '🐱', n: 'le chat' },
     { e: '🐶', n: 'le chien' },
     { e: '🐸', n: 'la grenouille' },
@@ -910,7 +1128,7 @@
     { e: '🐯', n: 'le tigre' },
     { e: '🐔', n: 'la poule' },
   ];
-  const OBJETS = [
+  const OBJETS: GeoThing[] = [
     { e: '🧸', n: "l'ourson" },
     { e: '⚽', n: 'le ballon' },
     { e: '📕', n: 'le livre' },
@@ -928,21 +1146,21 @@
     { e: '🎁', n: 'le cadeau' },
     { e: '🖍️', n: 'le crayon' },
   ];
-  const de = (x) => (x.n.startsWith('le ') ? 'du ' + x.n.slice(3) : 'de ' + x.n);
+  const de = (x: GeoThing): string => (x.n.startsWith('le ') ? 'du ' + x.n.slice(3) : 'de ' + x.n);
   /** « au chat », « à la vache », « à l'ours » */
-  const au = (x) => (x.n.startsWith('le ') ? 'au ' + x.n.slice(3) : 'à ' + x.n);
+  const au = (x: GeoThing): string => (x.n.startsWith('le ') ? 'au ' + x.n.slice(3) : 'à ' + x.n);
   /** Genre du nom : « la … » ou f: true (« l'auto ») → accords il/elle, collé/collée, le/la. */
-  const fem = (x) => x.f || x.n.startsWith('la ');
-  const il = (x) => (fem(x) ? 'elle' : 'il'),
-    Il = (x) => (fem(x) ? 'Elle' : 'Il'),
-    E = (x) => (fem(x) ? 'e' : ''),
-    le = (x) => (fem(x) ? 'la' : 'le');
-  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const fem = (x: GeoThing): boolean => x.f || x.n.startsWith('la ');
+  const il = (x: GeoThing): string => (fem(x) ? 'elle' : 'il'),
+    Il = (x: GeoThing): string => (fem(x) ? 'Elle' : 'Il'),
+    E = (x: GeoThing): string => (fem(x) ? 'e' : ''),
+    le = (x: GeoThing): string => (fem(x) ? 'la' : 'le');
+  const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
   G.ANIMAUX = ANIMAUX;
   G.de = de;
-  const emoChoice = (x) => ({ label: `<span style="font-size:2.3rem;line-height:1">${x.e}</span>`, value: x.e });
+  const emoChoice = (x: GeoThing): Choice<string> => ({ label: `<span style="font-size:2.3rem;line-height:1">${x.e}</span>`, value: x.e });
   const LR_NOTE = '<div class="geo-note">👈 ta gauche · ta droite 👉 (quand tu regardes l\'écran)</div>';
-  const OUI_NON = [
+  const OUI_NON: Choice<string>[] = [
     { label: '👍 Oui', value: 'oui' },
     { label: '👎 Non', value: 'non' },
   ];
@@ -950,14 +1168,14 @@
   /* ===================================================================
      1. Se repérer dans l'espace
      =================================================================== */
-  function rowViz(el, row) {
+  function rowViz(el: HTMLElement, row: GeoThing[]): void {
     el.innerHTML = `<div class="geo-row">${row.map((a, i) => `<div class="geo-slot" data-i="${i}">${a.e}</div>`).join('')}</div>
       <div class="geo-lr"><span>👈 ta gauche</span><span>ta droite 👉</span></div>`;
   }
-  function shelvesViz(el, grid) {
+  function shelvesViz(el: HTMLElement, grid: GeoThing[][]): void {
     el.innerHTML = `<div class="geo-shelves">${grid.map((r, ri) => `<div class="geo-shelf">${r.map((x, ci) => `<div class="geo-slot" data-i="${ri * 4 + ci}">${x.e}</div>`).join('')}</div>`).join('')}</div>`;
   }
-  async function markSlots(el, ref, ans) {
+  async function markSlots(el: HTMLElement, ref: number | number[], ans: number | number[]): Promise<void> {
     const slots = M.$$('.geo-slot', el);
     slots.forEach((s) => s.classList.remove('ref', 'ans'));
     (Array.isArray(ref) ? ref : [ref]).forEach((i) => slots[i] && slots[i].classList.add('ref'));
@@ -965,8 +1183,16 @@
     if (!alive(el)) return;
     (Array.isArray(ans) ? ans : [ans]).forEach((i) => slots[i] && slots[i].classList.add('ans'));
   }
+  interface GeoScene {
+    place: GeoThing;
+    front: GeoThing;
+    behind: GeoThing;
+    side: GeoThing;
+    left: boolean;
+  }
+  type GeoSceneSpot = 'place' | 'b' | 'f' | 's';
   /** Scène devant / derrière / à côté, dessinée en SVG (s'adapte à la largeur). */
-  function sceneLayout(sc) {
+  function sceneLayout(sc: GeoScene): Record<GeoSceneSpot, { x: number; y: number; fs: number; e: string }> {
     const Lx = sc.left ? 210 : 90;
     return {
       place: { x: Lx, y: 160, fs: 120, e: sc.place.e },
@@ -975,9 +1201,10 @@
       s: { x: sc.left ? 55 : 248, y: 196, fs: 60, e: sc.side.e },
     };
   }
-  function sceneViz(el, sc, ring) {
+  function sceneViz(el: HTMLElement, sc: GeoScene, ring?: GeoSceneSpot): void {
     const P = sceneLayout(sc);
-    const tx = (p) => `<text x="${p.x}" y="${p.y}" font-size="${p.fs}" text-anchor="middle">${p.e}</text>`;
+    const tx = (p: { x: number; y: number; fs: number; e: string }): string =>
+      `<text x="${p.x}" y="${p.y}" font-size="${p.fs}" text-anchor="middle">${p.e}</text>`;
     let rg = '';
     if (ring) {
       const p = P[ring];
@@ -1065,7 +1292,7 @@
       }
 
       const row = shuffle(ANIMAUX).slice(0, 5);
-      const viz = (el) => rowViz(el, row);
+      const viz = (el: HTMLElement): void => rowViz(el, row);
       if (t === 'g' || t === 'd') {
         const left = t === 'g',
           i = left ? rnd(1, 4) : rnd(0, 3),
@@ -1183,27 +1410,27 @@
     { e: '🎈', n: 'le ballon' },
   ];
   G.PLAN_ITEMS = PLAN_ITEMS;
-  const inGrid = (c, r) => c >= 0 && c < 5 && r >= 1 && r <= 5;
-  function planViz(items, extra) {
+  const inGrid = (c: number, r: number): boolean => c >= 0 && c < 5 && r >= 1 && r <= 5;
+  function planViz(items: Record<string, string>, extra?: (el: HTMLElement) => void): (el: HTMLElement) => void {
     return (el) => {
       el.innerHTML = `<div class="viz-hint">La lettre dit la <b>colonne</b> ↕, le chiffre dit la <b>rangée</b> ↔.</div>${G.planHtml(items)}`;
       if (extra) extra(el);
     };
   }
-  async function showCell(el, k) {
+  async function showCell(el: HTMLElement, k: string): Promise<void> {
     const [c, r] = G.parseCell(k);
     const cells = M.$$('.geo-cell', el);
     cells.forEach((x) => x.classList.remove('hc', 'hr', 'hx'));
-    cells.filter((x) => x.dataset.cell[0] === G.COLS[c]).forEach((x) => x.classList.add('hc'));
+    cells.filter((x) => x.dataset.cell?.[0] === G.COLS[c]).forEach((x) => x.classList.add('hc'));
     await M.sleep(800);
     if (!alive(el)) return;
-    cells.filter((x) => +x.dataset.cell.slice(1) === r).forEach((x) => x.classList.add('hr'));
+    cells.filter((x) => Number(x.dataset.cell?.slice(1)) === r).forEach((x) => x.classList.add('hr'));
     await M.sleep(800);
     if (!alive(el)) return;
     const t = M.$(`[data-cell="${k}"]`, el);
     if (t) t.classList.add('hx');
   }
-  function cellChoices(ans, extras) {
+  function cellChoices(ans: string, extras: number[][]): Choice<string>[] {
     const [c, r] = G.parseCell(ans);
     const cand = [...extras, [r - 1, c + 1], [c + 1, r], [c - 1, r], [c, r + 1], [c, r - 1], [c + 1, r + 1], [c - 1, r - 1]];
     const set = [ans];
@@ -1261,10 +1488,10 @@
             const s = M.$(`[data-cell="${start}"]`, el);
             if (s) s.classList.add('start');
           }),
-          async showMe(el) {
+          async showMe(el: HTMLElement) {
             let c = sc,
               r = sr;
-            const step = async (nc, nr) => {
+            const step = async (nc: number, nr: number): Promise<boolean> => {
               await M.sleep(520);
               if (!alive(el)) return false;
               const a = M.$(`[data-cell="${G.cell(c, r)}"]`, el),
@@ -1293,7 +1520,7 @@
       const cells = shuffle(all).slice(0, nItems);
       const objs = [{ e: '🦫', n: 'le castor' }, ...shuffle(PLAN_ITEMS)].slice(0, nItems);
       const emo = objs.map((o) => o.e);
-      const items = {};
+      const items: Record<string, string> = {};
       cells.forEach((k, i) => (items[k] = emo[i]));
 
       if (t === 'ou') {
@@ -1344,12 +1571,12 @@
   /* ===================================================================
      3. Les solides
      =================================================================== */
-  const SOL_EXCL = { cube: ['prisme'], prisme: ['cube'] };
-  function solidCats(target, n) {
+  const SOL_EXCL: Partial<Record<GeoSolidCat, GeoSolidCat[]>> = { cube: ['prisme'], prisme: ['cube'] };
+  function solidCats(target: GeoSolidCat, n: number): GeoSolidCat[] {
     const others = shuffle(G.CATS.filter((k) => k !== target && !(SOL_EXCL[target] || []).includes(k)));
     return shuffle([target, ...others.slice(0, n - 1)]);
   }
-  const solidName = (cat) => G.SOL[cat].nom;
+  const solidName = (cat: GeoSolidKind): string => G.SOL[cat].nom;
 
   M.registerSkill({
     id: 'solides',
@@ -1460,7 +1687,7 @@
   /* ===================================================================
      4. Propriétés des solides
      =================================================================== */
-  async function numberFaces(el, data) {
+  async function numberFaces(el: HTMLElement, data: GeoSolidData): Promise<void> {
     const svg = M.$('svg', el);
     if (!svg || !data.faces) return;
     M.$$('.geo-fnum', svg).forEach((x) => x.remove());
@@ -1482,9 +1709,13 @@
       chips.insertAdjacentHTML('beforeend', `<span class="chip">${k} · ${f.name}${f.vis ? '' : ' (cachée)'}</span>`);
     }
   }
-  const SURF = { planes: 'Seulement des surfaces planes', courbes: 'Seulement des surfaces courbes', deux: 'Les deux' };
-  const surfOf = (k) => (G.SOL[k].planes && G.SOL[k].courbes ? 'deux' : G.SOL[k].courbes ? 'courbes' : 'planes');
-  const mouvOf = (k) => (G.SOL[k].roule && G.SOL[k].glisse ? 'deux' : G.SOL[k].roule ? 'roule' : 'glisse');
+  const SURF: Record<'planes' | 'courbes' | 'deux', string> = {
+    planes: 'Seulement des surfaces planes',
+    courbes: 'Seulement des surfaces courbes',
+    deux: 'Les deux',
+  };
+  const surfOf = (k: GeoSolidKind): string => (G.SOL[k].planes && G.SOL[k].courbes ? 'deux' : G.SOL[k].courbes ? 'courbes' : 'planes');
+  const mouvOf = (k: GeoSolidKind): string => (G.SOL[k].roule && G.SOL[k].glisse ? 'deux' : G.SOL[k].roule ? 'roule' : 'glisse');
 
   M.registerSkill({
     id: 'solides-proprietes',
@@ -1527,7 +1758,7 @@
         };
       }
       if (t === 'mouv' || t === 'surf') {
-        const kind = pick(['boule', 'cone', 'cylindre', 'cube', 'prisme', 'prisme-tri', 'pyramide']);
+        const kind = pick<GeoSolidKind>(['boule', 'cone', 'cylindre', 'cube', 'prisme', 'prisme-tri', 'pyramide']);
         const s = G.randSolid(G.cat(kind), { size: 190 });
         const k = s.kind;
         if (t === 'mouv') {
@@ -1558,7 +1789,7 @@
         return {
           prompt: 'Ce solide a…',
           input: 'choice',
-          choices: Object.keys(SURF).map((v) => ({ label: SURF[v], value: v })),
+          choices: keysOf(SURF).map((v) => ({ label: SURF[v], value: v })),
           answer: a,
           cols: 1,
           viz: (el) => {
@@ -1575,10 +1806,10 @@
       }
 
       if (t === 'faces') {
-        const k = pick(lvl === 1 ? ['cube', 'prisme', 'pyramide'] : ['cube', 'prisme', 'pyramide', 'prisme-tri']);
-        const opt = { size: 210 };
+        const k = pick<GeoSolidKind>(lvl === 1 ? ['cube', 'prisme', 'pyramide'] : ['cube', 'prisme', 'pyramide', 'prisme-tri']);
+        const opt: GeoSolidOpts = { size: 210 };
         if (k === 'prisme')
-          opt.dims = pick([
+          opt.dims = pick<GeoVec3>([
             [1.8, 0.85, 0.9],
             [0.9, 1.6, 0.8],
           ]);
@@ -1588,7 +1819,7 @@
           prompt: `Combien de <b>faces</b> a ce ${k === 'pyramide' ? 'solide (une pyramide à base carrée)' : nm} ?`,
           say: `Combien de faces a ce ${k === 'pyramide' ? 'solide' : nm} ?`,
           input: 'number',
-          answer: G.SOL[k].faces,
+          answer: G.SOL[k].faces!, // cube, prismes, pyramide : nombre de faces connu
           viz: (el) => {
             el.innerHTML =
               data.svg +
@@ -1606,16 +1837,16 @@
       }
 
       if (t === 'base') {
-        const k = pick(['cylindre', 'cone', 'cube', 'prisme', 'prisme-tri', 'pyramide']);
-        const opt = { size: 190, stand: true };
+        const k = pick<GeoSolidKind>(['cylindre', 'cone', 'cube', 'prisme', 'prisme-tri', 'pyramide']);
+        const opt: GeoSolidOpts = { size: 190, stand: true };
         if (k === 'prisme') opt.dims = [1.8, 0.8, 1];
         const data = G.solidData(k, opt);
-        const a = G.SOL[k].base;
-        const FB = { cercle: '#118ab2', carre: '#06a77d', triangle: '#ef476f', rectangle: '#9b5de5' };
+        const a = G.SOL[k].base!; // ces solides ont tous une base
+        const FB: Record<GeoBaseKind, string> = { cercle: '#118ab2', carre: '#06a77d', triangle: '#ef476f', rectangle: '#9b5de5' };
         return {
           prompt: 'Ce solide est posé sur sa <b>base</b>. Quelle forme a sa base (la face du dessous) ?',
           input: 'choice',
-          choices: ['cercle', 'carre', 'triangle', 'rectangle'].map((f) => ({
+          choices: (['cercle', 'carre', 'triangle', 'rectangle'] as const).map((f) => ({
             label: G.figure(f, { size: 54, color: FB[f], ratio: 1.8, sw: 4 }) + `<small>${G.FIG[f].nom}</small>`,
             value: f,
           })),
@@ -1629,7 +1860,7 @@
       }
 
       if (t === 'nbsurf') {
-        const k = pick(['cylindre', 'cone']),
+        const k = pick<GeoSolidKind>(['cylindre', 'cone']),
           plane = Math.random() < 0.6;
         const n = plane ? G.SOL[k].planes : G.SOL[k].courbes;
         return {
@@ -1650,7 +1881,7 @@
       }
 
       // lequel
-      const Q = [
+      const Q: { a: GeoSolidCat; q: string; ex: string }[] = [
         { a: 'boule', q: "Quel solide n'a <b>aucune</b> surface plane ?", ex: 'La boule est ronde partout : aucune surface plane.' },
         {
           a: 'cone',
@@ -1679,7 +1910,7 @@
         },
       ];
       const qq = pick(Q);
-      const pool =
+      const pool: GeoSolidCat[] =
         qq.a === 'boule' || qq.a === 'cone' || qq.a === 'cylindre' ? ['cube', 'prisme', 'pyramide', 'cylindre', 'cone', 'boule'] : G.CATS;
       let others = shuffle(pool.filter((k) => k !== qq.a && !(SOL_EXCL[qq.a] || []).includes(k)));
       if (qq.q.includes('rouler')) others = others.filter((k) => !G.SOL[k].roule || G.SOL[k].glisse);
@@ -1698,13 +1929,14 @@
   /* ===================================================================
      5. Les figures planes
      =================================================================== */
-  const FIG_EXCL = { carre: ['rectangle', 'losange'] };
-  const figSet = (target, n, pool = G.FIG5) => {
+  const FIG_EXCL: Partial<Record<GeoFigKind, GeoFigKind[]>> = { carre: ['rectangle', 'losange'] };
+  const figSet = (target: GeoFig5, n: number, pool = G.FIG5): GeoFig5[] => {
     // un carré est aussi un rectangle et un losange : on évite les choix ambigus
-    const bad = (k) => (FIG_EXCL[target] || []).includes(k) || ((target === 'rectangle' || target === 'losange') && k === 'carre');
+    const bad = (k: GeoFigKind): boolean =>
+      (FIG_EXCL[target] || []).includes(k) || ((target === 'rectangle' || target === 'losange') && k === 'carre');
     return shuffle([target, ...shuffle(pool.filter((k) => k !== target && !bad(k))).slice(0, n - 1)]);
   };
-  const figHint = {
+  const figHint: Record<GeoFig5, string> = {
     carre: 'Le carré a 4 côtés <b>pareils</b> et 4 coins droits.',
     rectangle: 'Le rectangle a 4 côtés et 4 coins droits; 2 côtés longs et 2 côtés courts.',
     triangle: 'Le triangle a 3 côtés et 3 sommets.',
@@ -1729,7 +1961,7 @@
             : pick(['nom', 'touche', 'cotes', 'sommets', 'prop', 'prop2']);
 
       if (t === 'cotes' || t === 'sommets') {
-        const k = pick(
+        const k = pick<GeoFigKind>(
           lvl === 2
             ? ['triangle', 'carre', 'rectangle', 'losange', 'pentagone', 'hexagone']
             : ['triangle', 'carre', 'rectangle', 'losange', 'triangle'],
@@ -1737,7 +1969,7 @@
         const o = G.randFigOpts(k, lvl);
         const n = G.FIG[k].cotes,
           sides = t === 'cotes';
-        let w;
+        let w: GeoCountCtl | undefined;
         return {
           prompt: sides ? 'Combien de <b>côtés</b> a cette figure ?' : 'Combien de <b>sommets</b> (coins) a cette figure ?',
           input: 'number',
@@ -1759,21 +1991,23 @@
       if (t === 'prop' || t === 'prop2') {
         const Q =
           t === 'prop'
-            ? [
+            ? ([
                 { a: 'triangle', q: 'Quelle figure a <b>3 côtés</b> ?' },
                 { a: 'cercle', q: "Quelle figure n'a <b>aucun</b> sommet (coin) ?" },
                 { a: 'triangle', q: 'Quelle figure a <b>3 sommets</b> ?' },
-              ]
-            : [
+              ] as { a: GeoFig5; q: string }[])
+            : ([
                 { a: 'carre', q: 'Quelle figure a 4 côtés <b>pareils</b> et 4 coins <b>droits</b> ?' },
                 { a: 'losange', q: 'Quelle figure a 4 côtés <b>pareils</b>, mais <b>pas</b> de coins droits ?' },
                 { a: 'rectangle', q: 'Quelle figure a 4 coins droits, 2 côtés <b>longs</b> et 2 côtés <b>courts</b> ?' },
-              ];
+              ] as { a: GeoFig5; q: string }[]);
         const qq = pick(Q);
-        let ks;
+        let ks: GeoFig5[];
         if (qq.a === 'carre') ks = shuffle(['carre', 'rectangle', 'losange', pick(['triangle', 'cercle'])]);
-        else if (qq.a === 'triangle') ks = shuffle(['triangle', ...shuffle(['carre', 'rectangle', 'losange', 'cercle']).slice(0, 3)]);
-        else if (qq.a === 'cercle') ks = shuffle(['cercle', ...shuffle(['carre', 'rectangle', 'losange', 'triangle']).slice(0, 3)]);
+        else if (qq.a === 'triangle')
+          ks = shuffle(['triangle', ...shuffle<GeoFig5>(['carre', 'rectangle', 'losange', 'cercle']).slice(0, 3)]);
+        else if (qq.a === 'cercle')
+          ks = shuffle(['cercle', ...shuffle<GeoFig5>(['carre', 'rectangle', 'losange', 'triangle']).slice(0, 3)]);
         else ks = shuffle([qq.a, qq.a === 'losange' ? 'rectangle' : 'losange', 'triangle', 'cercle']);
         return {
           prompt: qq.q,
@@ -1818,7 +2052,7 @@
   /* ===================================================================
      6. Les lignes
      =================================================================== */
-  const LK = Object.keys(G.LIGNES);
+  const LK = keysOf(G.LIGNES);
   M.registerSkill({
     id: 'lignes',
     domain: DOM,
@@ -1833,8 +2067,8 @@
       const k = pick(LK);
       if (t === 'trouve') {
         // une seule propriété à la fois : « Laquelle est fermée ? » parmi 3 dessins
-        const prop = pick(['fermee', 'ouverte', 'courbe', 'brisee']);
-        const has = (x) => x.includes(prop);
+        const prop = pick(['fermee', 'ouverte', 'courbe', 'brisee'] as const);
+        const has = (x: string): boolean => x.includes(prop);
         const good = pick(LK.filter(has)),
           bad = shuffle(LK.filter((x) => !has(x))).slice(0, 2);
         const word = { fermee: 'fermée', ouverte: 'ouverte', courbe: 'courbe', brisee: 'brisée' }[prop];
@@ -1856,7 +2090,7 @@
       const closed = k.endsWith('fermee'),
         curved = k.startsWith('courbe');
       const svg = G.lineSvg(k, { size: 240 });
-      const viz = (el) => {
+      const viz = (el: HTMLElement): void => {
         el.innerHTML = svg;
       };
       const why = `${curved ? 'Elle est <b>courbe</b> : elle est arrondie, sans coin.' : 'Elle est <b>brisée</b> : elle est faite de traits droits, avec des coins.'} ${closed ? 'Elle est <b>fermée</b> : pas de bout, on peut en faire le tour.' : 'Elle est <b>ouverte</b> : elle a deux bouts (les points).'}`;
@@ -1914,11 +2148,11 @@
   /* ===================================================================
      7. Symétrie (axe de réflexion) et figures isométriques
      =================================================================== */
-  const SYM_V = ['papillon', 'coeur', 'maison', 'sapin', 'etoile', 'triangle'];
-  const ASYM = ['drapeau', 'botte', 'quelconque', 'eclair'];
-  function axisQuestion(lvl) {
-    let name,
-      axis,
+  const SYM_V: GeoSymName[] = ['papillon', 'coeur', 'maison', 'sapin', 'etoile', 'triangle'];
+  const ASYM: GeoSymName[] = ['drapeau', 'botte', 'quelconque', 'eclair'];
+  function axisQuestion(lvl: number): QuestionOf<'choice'> {
+    let name: GeoSymName,
+      axis: GeoAxisArg,
       rot = 0;
     const yes = Math.random() < 0.5;
     if (lvl === 0) {
@@ -1954,7 +2188,7 @@
       }
       if (Math.random() < 0.3 && name !== 'cercle') rot = 90;
     }
-    const ok = G.SYM[name].axes.includes(axis);
+    const ok = (G.SYM[name].axes as GeoAxisArg[]).includes(axis);
     const color = pick(G.COLORS);
     const nm = G.SYM[name].nom;
     return {
@@ -1963,10 +2197,10 @@
       input: 'choice',
       choices: OUI_NON,
       answer: ok ? 'oui' : 'non',
-      viz: (el) => {
+      viz: (el: HTMLElement) => {
         el.innerHTML = G.symSvg(name, axis, { color, rot, size: 220 });
       },
-      showMe: (el) => {
+      showMe: (el: HTMLElement) => {
         el.innerHTML =
           G.symSvg(name, axis, { color, rot, size: 220, ghost: true }) +
           `<div class="viz-status" style="text-align:center">Voici l'image miroir (pâle). ${ok ? 'Elle se pose exactement sur la figure ✔️' : 'Elle ne se pose pas sur la figure ✖️'}</div>`;
@@ -1981,7 +2215,7 @@
   }
 
   /* --- polyominos pour les figures isométriques --- */
-  const POLY = [
+  const POLY: number[][][] = [
     [
       [0, 0],
       [0, 1],
@@ -2050,7 +2284,7 @@
       [2, 2],
     ],
   ];
-  const TF = [
+  const TF: ((x: number, y: number) => number[])[] = [
     (x, y) => [x, y],
     (x, y) => [-x, y],
     (x, y) => [x, -y],
@@ -2060,22 +2294,22 @@
     (x, y) => [y, -x],
     (x, y) => [-y, -x],
   ];
-  const normCells = (cs) => {
+  const normCells = (cs: readonly number[][]): number[][] => {
     const mx = Math.min(...cs.map((c) => c[0])),
       my = Math.min(...cs.map((c) => c[1]));
     return cs.map(([x, y]) => [x - mx, y - my]).sort((a, b) => a[1] - b[1] || a[0] - b[0]);
   };
-  const key = (cs) =>
+  const key = (cs: readonly number[][]): string =>
     normCells(cs)
       .map((c) => c.join(','))
       .join(';');
-  const canon = (cs) => TF.map((f) => key(cs.map(([x, y]) => f(x, y)))).sort()[0];
-  const connected = (cs) => {
+  const canon = (cs: readonly number[][]): string => TF.map((f) => key(cs.map(([x, y]) => f(x, y)))).sort()[0];
+  const connected = (cs: readonly number[][]): boolean => {
     const s = new Set(cs.map((c) => c.join(','))),
       seen = new Set([cs[0].join(',')]),
       st = [cs[0]];
     while (st.length) {
-      const [x, y] = st.pop();
+      const [x, y] = st.pop()!;
       [
         [1, 0],
         [-1, 0],
@@ -2105,20 +2339,20 @@
       .join('');
     return G.svg(w * u + 4, h * u + 4, inner, { width: w * u + 4 });
   };
-  function isoQuestion() {
+  function isoQuestion(): QuestionOf<'choice'> {
     const model = pick(POLY);
     const mk = canon(model);
-    let ok;
+    let ok: number[][] = model;
     for (let g = 0; g < 20; g++) {
       ok = normCells(model.map(([x, y]) => pick(TF.slice(1))(x, y)));
       if (key(ok) !== key(model)) break;
     }
-    const big = [];
+    const big: number[][] = [];
     normCells(model).forEach(([x, y]) => {
       big.push([2 * x, 2 * y], [2 * x + 1, 2 * y], [2 * x, 2 * y + 1], [2 * x + 1, 2 * y + 1]);
     });
     const other = pick(POLY.filter((p) => p.length === model.length && canon(p) !== mk)) || POLY.find((p) => canon(p) !== mk);
-    let moved = null;
+    let moved: number[][] | null = null;
     for (let g = 0; g < 80 && !moved; g++) {
       const cs = normCells(model).map((c) => c.slice());
       cs.splice(rnd(0, cs.length - 1), 1);
@@ -2134,7 +2368,7 @@
       if (connected(cs) && canon(cs) !== mk && canon(cs) !== canon(other)) moved = cs;
     }
     const color = pick(['#9b5de5', '#118ab2', '#ef476f', '#06a77d']);
-    const opts = [
+    const opts: { v: string; c: number[][] }[] = [
       { v: 'ok', c: ok },
       { v: 'grand', c: big },
       { v: 'autre', c: other },
@@ -2145,7 +2379,7 @@
       input: 'choice',
       choices: shuffle(opts).map((x) => ({ label: G.polySvg(x.c, { color }), value: x.v })),
       answer: 'ok',
-      viz: (el) => {
+      viz: (el: HTMLElement) => {
         el.innerHTML = `<div class="viz-hint" style="text-align:center">Le modèle :</div>${G.polySvg(model, { color })}`;
       },
       hint: 'Compte les carrés. Tu peux tourner ou retourner la figure dans ta tête.',
@@ -2154,11 +2388,12 @@
     };
   }
   /* --- compléter par réflexion sur un quadrillage --- */
-  function mirrorQuestion() {
+  function mirrorQuestion(): QuestionOf<'choice'> {
     const R = 4,
       C = 3;
-    const s = (g) => g.map((r) => r.join('')).join('/');
-    let L, cand;
+    const s = (g: number[][]): string => g.map((r) => r.join('')).join('/');
+    let L: number[][] = [],
+      cand: { v: string; g: number[][] }[] = [];
     for (let g = 0; g < 200; g++) {
       L = M.range(0, R - 1).map(() => M.range(0, C - 1).map(() => 0));
       const n = rnd(4, 6);
@@ -2182,7 +2417,7 @@
     }
     const color = pick(['#ef476f', '#118ab2', '#9b5de5', '#06a77d', '#f78c40']);
     const U = 22;
-    const cellsSvg = (g, x0, fill) =>
+    const cellsSvg = (g: number[][], x0: number, fill: boolean): string =>
       g
         .map((r, ri) =>
           r
@@ -2193,10 +2428,11 @@
             .join(''),
         )
         .join('');
-    const axisL = (x) => `<line x1="${x}" y1="0" x2="${x}" y2="${R * U + 4}" stroke="#d62828" stroke-width="3" stroke-dasharray="7 5"/>`;
-    const halfSvg = (g) => G.svg(C * U + 8, R * U + 4, cellsSvg(g, 6, true) + axisL(3), { width: C * U + 8 });
+    const axisL = (x: number): string =>
+      `<line x1="${x}" y1="0" x2="${x}" y2="${R * U + 4}" stroke="#d62828" stroke-width="3" stroke-dasharray="7 5"/>`;
+    const halfSvg = (g: number[][]): string => G.svg(C * U + 8, R * U + 4, cellsSvg(g, 6, true) + axisL(3), { width: C * U + 8 });
     const empty = L.map((r) => r.map(() => 0));
-    const full = (right) =>
+    const full = (right: number[][]): string =>
       G.svg(2 * C * U + 4, R * U + 4, cellsSvg(L, 2, true) + cellsSvg(right, 2 + C * U, true) + axisL(2 + C * U), {
         width: 2 * (2 * C * U + 4),
         cls: 'geo-mgrid',
@@ -2207,10 +2443,10 @@
       input: 'choice',
       choices: shuffle(cand).map((x) => ({ label: halfSvg(x.g), value: x.v })),
       answer: 'miroir',
-      viz: (el) => {
+      viz: (el: HTMLElement) => {
         el.innerHTML = `<div class="viz-hint">La ligne rouge est l'axe de réflexion. Quelle moitié va à droite ?</div>${full(empty)}`;
       },
-      async showMe(el) {
+      async showMe(el: HTMLElement) {
         const g = empty.map((r) => r.slice());
         for (let r = 0; r < R; r++)
           for (let c = 0; c < C; c++) {
@@ -2246,17 +2482,26 @@
   /* ===================================================================
      8. Les frises
      =================================================================== */
-  const FRISE_KINDS = ['cercle', 'carre', 'triangle', 'losange', 'rectangle'];
+  const FRISE_KINDS: GeoFig5[] = ['cercle', 'carre', 'triangle', 'losange', 'rectangle'];
   const FRISE_COLORS = ['#ef476f', '#118ab2', '#f4b400', '#06a77d', '#9b5de5'];
-  const itemSvg = (it, size = 44) => G.figure(it.k, { color: it.c, size, ratio: 1.7, sw: 4, pad: 6 });
-  const PATTERNS = { 0: ['AB', 'ABC', 'AB'], 1: ['AAB', 'ABB', 'ABC', 'AABB'], 2: ['AABB', 'ABBC', 'ABAC', 'AAB'] };
+  /** Élément d'une frise : figure et couleur. */
+  interface FriseItem {
+    k: GeoFigKind;
+    c: string;
+  }
+  const itemSvg = (it: FriseItem, size = 44): string => G.figure(it.k, { color: it.c, size, ratio: 1.7, sw: 4, pad: 6 });
+  const PATTERNS: Record<number, string[]> = {
+    0: ['AB', 'ABC', 'AB'],
+    1: ['AAB', 'ABB', 'ABC', 'AABB'],
+    2: ['AABB', 'ABBC', 'ABAC', 'AAB'],
+  };
 
-  function friseViz(cells, opts = {}) {
+  function friseViz(cells: string[], opts: { hint?: string; axes?: boolean } = {}): (el: HTMLElement) => void {
     return (el) => {
       el.innerHTML = `<div class="viz-hint">${opts.hint || 'Observe la régularité.'}</div><div class="geo-frise">${cells.map((h, i) => (opts.axes && i > 0 && i < cells.length ? '<i class="ax"></i>' : '') + `<span>${h}</span>`).join('')}${opts.axes ? '<i class="ax"></i>' : ''}<span class="geo-q">?</span></div>`;
     };
   }
-  function revealQ(el, html) {
+  function revealQ(el: HTMLElement, html: string): void {
     const q = M.$('.geo-q', el);
     if (q) {
       q.innerHTML = html;
@@ -2275,19 +2520,19 @@
     pda: 'Géométrie — Frises et dallages D.2, D.3a : observer et produire des régularités avec des figures; frises par réflexion',
     gen({ lvl }) {
       if (lvl === 2 && Math.random() < 0.55) {
-        const name = pick(Object.keys(G.MOTIFS)),
+        const name = pick(keysOf(G.MOTIFS)),
           c = pick(FRISE_COLORS);
         const refl = Math.random() < 0.65;
         const n = rnd(4, 6);
-        const seq = M.range(0, n - 1).map((i) => (refl && i % 2 ? 'h' : 'n'));
-        const a = refl && n % 2 ? 'h' : 'n';
-        const mot = (o) => G.motif(name, c, o, 46);
+        const seq = M.range(0, n - 1).map((i): GeoOrient => (refl && i % 2 ? 'h' : 'n'));
+        const a: GeoOrient = refl && n % 2 ? 'h' : 'n';
+        const mot = (o: GeoOrient): string => G.motif(name, c, o, 46);
         return {
           prompt: refl
             ? 'Cette frise est faite par <b>réflexion</b> (comme dans un miroir). Quel motif vient ensuite ?'
             : 'Dans cette frise, on fait <b>glisser</b> le motif. Quel motif vient ensuite ?',
           input: 'choice',
-          choices: shuffle(['n', 'h', 'v', 'r']).map((o) => ({ label: G.motif(name, c, o, 64), value: o })),
+          choices: shuffle<GeoOrient>(['n', 'h', 'v', 'r']).map((o) => ({ label: G.motif(name, c, o, 64), value: o })),
           answer: a,
           viz: friseViz(seq.map(mot), {
             axes: refl,
@@ -2305,7 +2550,7 @@
       const kinds = shuffle(FRISE_KINDS),
         cols = shuffle(FRISE_COLORS);
       const sameShape = lvl > 0 && Math.random() < 0.35; // même figure, couleurs différentes
-      const it = {};
+      const it: Record<string, FriseItem> = {};
       letters.forEach(
         (L, i) => (it[L] = { k: sameShape ? kinds[0] : kinds[i], c: sameShape ? cols[i] : Math.random() < 0.5 ? cols[i] : cols[0] }),
       );
@@ -2316,16 +2561,16 @@
       const opts = letters.map((L) => ({ v: L, it: it[L] }));
       // intrus : une figure qui n'est pas dans la frise
       const used = new Set(letters.map((L) => it[L].k + it[L].c));
-      let intr;
+      let intr: FriseItem | undefined;
       for (let g = 0; g < 50; g++) {
-        const x = { k: pick(FRISE_KINDS), c: pick(FRISE_COLORS) };
+        const x: FriseItem = { k: pick(FRISE_KINDS), c: pick(FRISE_COLORS) };
         if (!used.has(x.k + x.c)) {
           intr = x;
           break;
         }
       }
       if (intr && opts.length < 4) opts.push({ v: 'X', it: intr });
-      const nameIt = (x) => `${G.FIG[x.k].un}`;
+      const nameIt = (x: FriseItem): string => `${G.FIG[x.k].un}`;
       return {
         prompt: 'Quelle figure vient <b>ensuite</b> dans la frise ?',
         input: 'choice',

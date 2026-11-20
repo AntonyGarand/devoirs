@@ -9,7 +9,10 @@ Guide de style vivant : ouvrir le site → Parents → 🎨 Guide de style (`#/s
 ## 1. Architecture
 
 ```
-index.html                    coquille + liste des scripts (une section par matière)
+index.html                    coquille + liste des scripts compilés js/**/*.js (une section par matière)
+types/*.d.ts                  types globaux du cadre (MApi, Question, registres, services, composants)
+sw/sw.ts                      service worker (compilé en dist/sw.js; liste hors ligne remplie à la compilation)
+scripts/build.ts, dev.ts      compilation tsrs → dist/ ; serveur de développement
 css/ds/tokens.css             jetons : couleurs, espacements, tailles de texte, cible tactile, couleurs des matières
 css/ds/components.css         boutons, cartes, encadrés (callout), étiquettes, pastilles, étoiles
 css/ds/ui.css                 onglets, stepper, mots illustrés, cartes-éclair, lecture, démarche, cartes de matière
@@ -18,26 +21,26 @@ css/ds/formats.css            styles de chaque format de question
 css/ds/viz.css                visuels mathématiques partagés (cadres de dix, base 10, droite numérique)
 css/ds/extra.css              formats et composants ajoutés, jetons de classes de mots (--cls-*) et de marques (--mk-*)
 css/ds/layout.css             en-tête, accueil, tableaux de bord, pages Apprendre, parents, petits écrans
-js/core.js                    utilitaires, progression, registre matières → domaines → habiletés, révision
-js/services.js                voix (M.voices, M.say séquences/langues, M.sayHtml), réglages, données parent (M.userData),
+js/core.ts                    utilitaires, progression, registre matières → domaines → habiletés, révision
+js/services.ts                voix (M.voices, M.say séquences/langues, M.sayHtml), réglages, données parent (M.userData),
                               outils parents, données partagées (M.registerData), dessins (M.art), texte (M.people, M.fr, M.typo),
                               progression par élément (M.progress.item, M.pickWeighted), disponibilité (M.skillStatus), M.lint
-js/formats.js                 bibliothèque des formats de questions (M.registerFormat)
-js/session.js                 carte-question (M.renderQuestion) et série de questions (M.runSession)
-js/ui.js, js/ui-extra.js       composants d'interface (M.ui.*)
-js/viz.js, js/viz-extra.js     visuels (M.viz.* : cadres de dix, base 10, droite, modèle en barres, ligne du temps, plan)
-js/styleguide.js              guide de style vivant + un exemple par format (M.FORMAT_SAMPLES)
-js/selftest.js                auto-test navigateur (#/test) : résout chaque exemple, ouvre chaque habileté et page
+js/formats.ts                 bibliothèque des formats de questions (M.registerFormat)
+js/session.ts                 carte-question (M.renderQuestion) et série de questions (M.runSession)
+js/ui.ts, js/ui-extra.ts       composants d'interface (M.ui.*)
+js/viz.ts, js/viz-extra.ts     visuels (M.viz.* : cadres de dix, base 10, droite, modèle en barres, ligne du temps, plan)
+js/styleguide.ts              guide de style vivant + un exemple par format (M.FORMAT_SAMPLES)
+js/selftest.ts                auto-test navigateur (#/test) : résout chaque exemple, ouvre chaque habileté et page
 js/<matière>/subject.js       M.registerSubject + M.registerDomain
 js/<matière>/skills/*.js      habiletés (générateurs de questions)
 js/<matière>/learn/*.js       pages Apprendre
 js/<matière>/data/*.js        données (listes de mots, textes) — optionnel
-tools/check-skills.js         vérification automatique (node)
-tools/check-dupes.js          habiletés / niveaux qui ont peu de questions distinctes (node)
+tools/check-skills.ts         vérification automatique (node)
+tools/check-dupes.ts          habiletés / niveaux qui ont peu de questions distinctes (node)
 ```
 
-Pas de modules ES ni de compilation : chaque fichier est un IIFE qui utilise `window.M`, et le site fonctionne en `file://`
-comme sur GitHub Pages. Ordre de chargement : cadre → `subject.js` → `skills/` → `learn/` → `app.js` (`styleguide.js` et `selftest.js` sont chargés à la demande par `#/style` et `#/test`). Après un changement de fichiers : `node tools/gen-sw.js` (liste hors ligne de `sw.js`).
+Le code est en TypeScript (strict), compilé par tsrs (`npm run build`) dans `dist/` avec la même arborescence. Pas de modules ES :
+chaque fichier est un script classique (un IIFE qui utilise `window.M`), et `dist/` fonctionne en `file://` comme sur GitHub Pages. Ordre de chargement : cadre → `subject.js` → `skills/` → `learn/` → `app.js` (`styleguide.js` et `selftest.js` sont chargés à la demande par `#/style` et `#/test`). La liste hors ligne du service worker est remplie par la compilation.
 
 ### Types (TypeScript)
 
@@ -57,8 +60,7 @@ interface QuestionExtras { _sc?: ScMeta }        // champ privé ajouté aux que
 interface DataRegistry { 'fr.mots': Mot[] }      // M.registerData / M.data
 ```
 
-`types/subjects-todo.d.ts` contient les membres propres aux matières encore typés `any` : chaque matière y retire ses
-lignes quand elle les déclare. `M.registerSkill<QuestionOf<'choice'>>({ … })` précise le type de `gen()` et de `check(q)`.
+`M.registerSkill<QuestionOf<'choice'>>({ … })` précise le type de `gen()` et de `check(q)`.
 Dans le DOM : `M.$` retourne `null` si l'élément manque (`M.$('.x', el)!` seulement pour un élément qu'on vient de
 rendre), `M.closest(e, '.btn')` remplace `e.target.closest('.btn')`, et `Number(b.dataset.i)` remplace `+b.dataset.i`.
 
@@ -84,8 +86,8 @@ Champs facultatifs d'une habileté :
 - `needs: ['speech:en' | 'speech:fr']` — exige une voix; sinon l'habileté est verrouillée avec la raison.
 - `available: () => true | 'raison'` — ex. « Demande à un adulte d'ajouter ta liste de mots ».
 - `parentNote: 'html'` — note affichée sur la page Parents (aussi sur domaines et pages Apprendre).
-- `check(q)` / `lint(q)` — contrôles de sens propres à l'habileté, exécutés par `tools/check-skills.js` (retourner un message = erreur).
-- **Jamais deux fois la même question** dans une série ni dans un mini-quiz : `M.qSig(q)` (empreinte de la question entière, fonctions et ordre des listes d'objets ignorés) et `M.genUnique(make, seen, {avoid})`. Si le niveau de l'enfant n'a plus de question nouvelle, la série emprunte aux niveaux voisins, puis se raccourcit plutôt que de répéter. « Encore ! » / « Recommencer » évitent la ronde précédente si possible. `tools/check-dupes.js` liste les niveaux à enrichir.
+- `check(q)` / `lint(q)` — contrôles de sens propres à l'habileté, exécutés par `tools/check-skills.ts` (retourner un message = erreur).
+- **Jamais deux fois la même question** dans une série ni dans un mini-quiz : `M.qSig(q)` (empreinte de la question entière, fonctions et ordre des listes d'objets ignorés) et `M.genUnique(make, seen, {avoid})`. Si le niveau de l'enfant n'a plus de question nouvelle, la série emprunte aux niveaux voisins, puis se raccourcit plutôt que de répéter. « Encore ! » / « Recommencer » évitent la ronde précédente si possible. `tools/check-dupes.ts` liste les niveaux à enrichir.
   Une matière peut définir `lint(q, skill)` (ex. anglais : pas de format `text`) et `cheers: [{ text, lang }]` (encouragements dans sa langue).
 
 **`gen({ lvl })`** : retourne une question; `lvl` = 0, 1 ou 2 selon la maîtrise (★). `gen` **ne touche jamais au DOM**
@@ -150,7 +152,7 @@ Règles communes :
 - **Distracteurs plausibles** (erreurs typiques), jamais farfelus.
 - `text` : exiger l'orthographe exacte (accents compris) sauf si l'habileté ne porte pas sur l'orthographe (`accents:false`).
 - `steps` : pour la résolution de problèmes, suivre la démarche (§ 7) et terminer par une **phrase-réponse**.
-- Ajouter un format = l'enregistrer dans `formats.js` avec `validate`, l'ajouter à `M.FORMAT_SAMPLES`, le documenter ici.
+- Ajouter un format = l'enregistrer dans `formats.ts` avec `validate`, l'ajouter à `M.FORMAT_SAMPLES`, le documenter ici.
 
 ## 5. Composants d'interface (`M.ui`)
 
@@ -180,15 +182,15 @@ Règles communes :
 | `M.viz.timeline(spec)`                                           | Ligne du temps SVG (événements et graduations `data-hot`)                                                                                                                                                            |
 | `M.viz.plan(spec)`                                               | Plan/carte vue d'oiseau : lieux `data-hot` en tuiles en relief, légende qui fait sauter le lieu, quadrillage lettre-chiffre, rose des vents animée. `ground: 'grass'                                                 | 'floor'                                   | 'tiles'`, `water`, `decor`(arbres et fleurs dessinés, jamais en emoji),`alive` (autos sur les rues, nuages qui passent) |
 | `M.art.register(name, fn, emoji) / M.art.html(name)`             | Dessins SVG partagés (avec repli emoji)                                                                                                                                                                              |
-| `js/art-lib.js` : `pl-*`, `ciel-*`; `M.art.svg(name, {x,y,w,h})` | Bibliothèque d'illustrations (bâtiments, mobilier, Soleil, Terre, Lune) dans un style commun; `M.art.svg` imbrique un dessin dans un autre SVG. Préférer un dessin à un emoji pour tout symbole de plan ou de scène. |
+| `js/art-lib.ts` : `pl-*`, `ciel-*`; `M.art.svg(name, {x,y,w,h})` | Bibliothèque d'illustrations (bâtiments, mobilier, Soleil, Terre, Lune) dans un style commun; `M.art.svg` imbrique un dessin dans un autre SVG. Préférer un dessin à un emoji pour tout symbole de plan ou de scène. |
 | `M.SC.svg.terre / ombre / arbre / erable`, `M.SC.earthAngle`     | Scènes du ciel (sciences) : la Terre tourne sans être redessinée, ciel selon l'heure, saisons animées                                                                                                                |
 
-Services (`services.js`) : `M.voices.status(lang)`, `M.say(text|segments, opts) → Promise`, `M.sayHtml(html)`, `M.settings`,
+Services (`services.ts`) : `M.voices.status(lang)`, `M.say(text|segments, opts) → Promise`, `M.sayHtml(html)`, `M.settings`,
 `M.userData.get/set(ns, key)` (+ `fixture` pour les tests), `M.registerParentTool({id,subject,title,icon,render})`,
-`M.registerData(id, value)` / `M.data[id]`, `M.people.pick()` → `{n, f, il, Il, e, ami, un}`, `M.fr` (élision et contraction : `de`, `a`, `que`, `ne`, `je`, `le`, `el`, `elides`; aussi `nb`, `fill`, `cap`, `uncap` — voir l'en-tête de `js/services.js`), `M.typo` (espaces insécables, affichage seulement : la voix reçoit le texte d'origine),
+`M.registerData(id, value)` / `M.data[id]`, `M.people.pick()` → `{n, f, il, Il, e, ami, un}`, `M.fr` (élision et contraction : `de`, `a`, `que`, `ne`, `je`, `le`, `el`, `elides`; aussi `nb`, `fill`, `cap`, `uncap` — voir l'en-tête de `js/services.ts`), `M.typo` (espaces insécables, affichage seulement : la voix reçoit le texte d'origine),
 `M.typo`, `M.tokenize(text)`, `M.progress.item(skill, key).record(ok)`, `M.pickWeighted(items, keyFn, skill)`, `M.lint.noPrivate`.
 
-### Voix préenregistrée (`js/clips.js`, `audio/`)
+### Voix préenregistrée (`js/clips.ts`, `audio/`)
 
 `M.say` essaie d'abord un enregistrement (`audio/<id>.mp3`, liste dans `audio/index.js`), sinon la voix de l'appareil.
 Une phrase absente qui contient des nombres est recollée à partir de morceaux (« 57 » + « plus » + « 30 » + « égale combien »),
@@ -199,9 +201,9 @@ Après avoir ajouté ou modifié du texte lu à voix haute :
 
 ```
 cd tools && npm i            # une seule fois (jsdom)
-node tools/tts-collect.js    # → tools/tts/phrases.json : toutes les phrases que l'app peut lire
-node tools/tts-bake.js       # synthétise ce qui manque (audio.cpp local), met audio/index.js à jour
-node tools/tts-bake.js --prune   # retire les enregistrements qui ne servent plus
+npm run tts:collect         # → tools/tts/phrases.json : toutes les phrases que l'app peut lire
+npm run tts:bake            # synthétise ce qui manque (audio.cpp local), met audio/index.js à jour
+npm run tts:bake -- --prune     # retire les enregistrements qui ne servent plus
 ```
 
 Voix : français = OmniVoice avec clonage (`VOICE_FR`, défaut `antony_bws`, dans `audiocpp/voices`); anglais = Kokoro
@@ -244,20 +246,20 @@ spécifiques. Les boutons, cartes, couleurs et espacements viennent toujours des
 
 ## 8. Ajouter une matière : liste de contrôle
 
-1. `js/<matière>/subject.js` : `M.registerSubject` + domaines (`M.registerDomain`).
+1. `js/<matière>/subject.ts` : `M.registerSubject` + domaines (`M.registerDomain`).
 2. Habiletés dans `js/<matière>/skills/`, pages dans `js/<matière>/learn/`, données dans `js/<matière>/data/`.
-3. Ajouter les `<script>` dans `index.html` (section de la matière, avant `app.js`), puis `node tools/gen-sw.js`.
-4. `node tools/check-skills.js` → OK (`--only fr-` pour une matière).
+3. Ajouter les `<script src="js/…/x.js">` (nom compilé) dans `index.html` (section de la matière, avant `app.js`), puis `npm run dev` pour essayer.
+4. `npm run check` → OK (`node tools/check-skills.ts --only fr-` pour une matière, après `npm run build`).
 5. Navigateur : ouvrir `#/test` (auto-test) → ✅; vérifier les pages à 390 px et 1100 px; aucune erreur de console.
-   Sans aperçu intégré : `python -m http.server` puis Chrome sans tête, p. ex.
-   `chrome --headless=new --screenshot=out.png --window-size=1100,1400 "http://localhost:8000/#/matiere/francais"`.
-6. Mettre à jour `docs/curriculum.md`.
+   Sans aperçu intégré : `npm run dev` (bons types MIME, service worker inclus) puis Chrome sans tête, p. ex.
+   `chrome --headless=new --screenshot=out.png --window-size=1100,1400 "http://localhost:8080/#/matiere/francais"`.
+6. Mettre à jour `docs/curriculum.md` (`npm run curriculum`).
 
-### Musique d'ambiance (`js/music.js`)
+### Musique d'ambiance (`js/music.ts`)
 
 Générée en direct avec Web Audio (aucun fichier) : nappe, basse, arpèges de marimba, petite mélodie de boîte à musique et
 shaker, sur une progression d'accords de 8 mesures qui change à chaque section. Le routeur choisit l'humeur
 (`M.music.mood('jeu' | 'calme', matière)`) : _jeu_ à l'accueil et dans Apprendre, _calme_ en pratique et en révision;
 chaque matière a sa tonalité. La musique baisse pendant la voix (`M.say` → `speaking`) et devient presque muette pendant
 une question d'écoute (`focus`). Bouton 🎵 dans l'en-tête, volume dans Parents (réglages `music`, `musicVol`).
-Pour écouter sans navigateur : `node tools/music-preview.js jeu maths 45 sortie.wav`.
+Pour écouter sans navigateur : `npm run build && node tools/music-preview.ts jeu maths 45 sortie.wav`.

@@ -49,15 +49,16 @@
             ${SC.castor("Deux côtés <b>différents</b> (N et S) s'attirent. Deux côtés <b>pareils</b> (N et N, ou S et S) se repoussent.")}`,
         }) +
         M.ui.section({ icon: '✅', title: '4. Vérifie ta compréhension', body: '<div class="sc-dm-quiz"></div>' });
-      const $ = (s) => M.$(s, el);
+      const $ = <E extends Element = HTMLElement>(s: string): E => M.$<E>(s, el)!; // élément qu'on vient de rendre
 
       /* 2. labo */
-      const pred = {},
-        res = {};
+      const pred: Record<string, boolean> = {},
+        res: Record<string, boolean> = {};
+      const obj = (id: string): ScObjet => SC.must(SC.objet(id), 'objet ' + id);
       let busy = false;
       const draw = () => {
         $('.sc-dm-lab').innerHTML = LAB.map((id) => {
-          const o = SC.objet(id),
+          const o = obj(id),
             p = pred[id],
             r = res[id];
           return `<div class="sc-lab-item ${r ? (o.magnet ? 'yes' : 'no') : ''}" data-id="${id}"><span class="sc-big">${SC.pic(o, 44)}</span>${SC.cap(o.nom)}
@@ -67,11 +68,11 @@
         $('.sc-dm-log').innerHTML =
           done
             .map((id) => {
-              const o = SC.objet(id);
+              const o = obj(id);
               return `<tr><td>${SC.cap(o.nom)}</td><td>${pred[id] ? '✔ attiré' : '✖ pas attiré'}</td><td>${o.magnet ? '🧲 attiré' : '😶 pas attiré'} ${pred[id] === o.magnet ? '👀' : '😮'}</td></tr>`;
             })
             .join('') || '<tr><td colspan="3" class="muted">Pas encore d\'essai.</td></tr>';
-        const surprises = done.filter((id) => pred[id] !== SC.objet(id).magnet).length;
+        const surprises = done.filter((id) => pred[id] !== obj(id).magnet).length;
         $('.sc-dm-concl').innerHTML =
           done.length === LAB.length
             ? `💬 <b>Je conclus</b> : l'aimant attire les objets en <b>fer</b> ou en <b>acier</b>. La canette est en aluminium : c'est un métal, mais elle n'est pas attirée ! Tu as eu ${surprises} ${M.plural(surprises, 'surprise')} : c'est comme ça qu'on apprend. 🌱`
@@ -84,20 +85,20 @@
         SC.svg.aimantU(150, 90) +
         '<text x="150" y="170" text-anchor="middle" font-size="16" font-weight="800">Choisis un objet 👉</text></svg></div>';
       $('.sc-dm-lab').onclick = async (e) => {
-        const it = e.target.closest('.sc-lab-item');
+        const it = M.closest(e, '.sc-lab-item');
         if (!it || busy) return;
-        const id = it.dataset.id;
-        const pb = e.target.closest('[data-p]');
+        const id = String(it.dataset.id);
+        const pb = M.closest(e, '[data-p]');
         if (pb) {
           pred[id] = pb.dataset.p === '1';
           M.sfx.tap();
           draw();
           return;
         }
-        if (e.target.closest('[data-go]')) {
+        if (M.closest(e, '[data-go]')) {
           busy = true;
           try {
-            await SC.sim.aimant($('.sc-dm-stage'), SC.objet(id));
+            await SC.sim.aimant($('.sc-dm-stage'), obj(id));
           } finally {
             busy = false;
           }

@@ -35,14 +35,14 @@
     `);
   } catch (e) {}
 
-  const sayBtn = (cls) => `<button class="btn icon me-say ${cls || ''}" title="Écouter">🔊</button>`;
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const sayBtn = (cls?: string): string => `<button class="btn icon me-say ${cls || ''}" title="Écouter">🔊</button>`;
+  const clamp = (v: number, a: number, b: number): number => Math.max(a, Math.min(b, v));
 
   /* =====================================================================
      Page 1 — Mesurer des longueurs
      ===================================================================== */
   /* Empreinte de pied horizontale (talon à gauche) de longueur w */
-  function footSvg(x, y, w, color) {
+  function footSvg(x: number, y: number, w: number, color: string): string {
     const r = w / 2 - 3;
     let s = `<ellipse cx="${x + w / 2 - 4}" cy="${y + 18}" rx="${r - 4}" ry="13" fill="${color}"/>`;
     const toes = [
@@ -57,7 +57,7 @@
     });
     return s;
   }
-  function feetSection(sec) {
+  function feetSection(sec: HTMLElement): void {
     const K = 4,
       X0 = 20,
       TL = 120; // 4 px par cm, table de 120 cm
@@ -66,24 +66,32 @@
     const table =
       `<rect x="${X0}" y="20" width="${TL * K}" height="22" rx="4" fill="#b07a46" stroke="#7a4f27" stroke-width="2"/>` +
       `<rect x="${X0 + 14}" y="42" width="14" height="40" fill="#8c5c30"/><rect x="${X0 + TL * K - 28}" y="42" width="14" height="40" fill="#8c5c30"/>`;
-    const host = M.$('.me-feet', sec);
-    const st = M.$('.viz-status', sec);
-    const draw = (inner) => {
+    const host = M.$('.me-feet', sec)!;
+    const st = M.$('.viz-status', sec)!;
+    const draw = (inner?: string): void => {
       host.innerHTML = X.svg(W, H, table + `<g class="me-fg">${inner || ''}</g>`, { max: W });
     };
     draw();
-    const modes = {
+    interface FeetMode {
+      w: number;
+      c: string;
+      who: string;
+      n: number;
+      unit: string;
+    }
+    const modes: Record<string, FeetMode> = {
       papa: { w: 30, c: '#118ab2', who: 'les pieds de papa', n: 4, unit: 'pieds' },
       leo: { w: 20, c: '#ef476f', who: 'les pieds de Léo', n: 6, unit: 'pieds' },
     };
-    const results = {};
-    async function run(k) {
+    const results: Record<string, number | boolean> = {};
+    async function run(k: string): Promise<void> {
       const alive = X.claim(host);
       if (k === 'cm') {
         draw();
         const g = M.$('.me-fg', host);
+        if (!g) return;
         for (let i = 0; i <= 12; i++) {
-          if (!g || !(await X.wait(alive, 120))) return;
+          if (!(await X.wait(alive, 120))) return;
           X.addSvg(
             g,
             `<line x1="${X0 + i * 40}" y1="96" x2="${X0 + i * 40}" y2="${i % 5 === 0 ? 116 : 108}" stroke="#2b2d42" stroke-width="2"/>` +
@@ -119,33 +127,33 @@
         (results.papa && results.leo ? " Papa trouve 4, Léo trouve 6… mais c'est la même table ! 🤔" : '');
       M.say(`Avec ${m.who}, la table mesure ${m.n} pieds.`);
     }
-    M.$('.me-feet-btns', sec).onclick = (e) => {
-      const b = e.target.closest('button[data-k]');
+    M.$('.me-feet-btns', sec)!.onclick = (e) => {
+      const b = M.closest(e, 'button[data-k]');
       if (b) {
         M.sfx.tap();
-        run(b.dataset.k);
+        void run(b.dataset.k ?? '');
       }
     };
   }
 
   /* --- Règle manipulable --- */
-  function rulerSection(sec) {
+  function rulerSection(sec: HTMLElement): void {
     const RX = 26,
       PX = 40,
       RN = 15,
       RY = 74;
     const W = RX * 2 + RN * PX,
       H = RY + 64;
-    const host = M.$('.me-rul', sec),
-      out = M.$('.me-rul-out', sec);
+    const host = M.$('.me-rul', sec)!,
+      out = M.$('.me-rul-out', sec)!;
     let s = 0,
       L = 6,
       count = false;
     const color = '#9b5de5';
     host.innerHTML = X.svg(W, H, X.rulerSvg(RX, RY, RN, PX) + '<g class="me-cnt"></g><g class="me-objg"></g>', { max: W });
-    const svgEl = M.$('svg', host),
-      og = M.$('.me-objg', host),
-      cg = M.$('.me-cnt', host);
+    const svgEl = M.$('svg', host)!,
+      og = M.$<SVGGElement>('.me-objg', host)!,
+      cg = M.$<SVGGElement>('.me-cnt', host)!;
     svgEl.style.touchAction = 'none';
     function draw() {
       const x = RX + s * PX,
@@ -170,17 +178,17 @@
           : `Le crayon va de <b>${s}</b> à <b>${s + L}</b> : ${s + L} − ${s} = <b>${L} cm</b>.`;
     }
     draw();
-    let mode = null,
+    let mode: 'size' | 'move' | null = null,
       grab = 0;
-    const cmAt = (e) => {
+    const cmAt = (e: PointerEvent): number | null => {
       const p = X.svgPoint(svgEl, e);
       return p ? (p.x - RX) / PX : null;
     };
     svgEl.addEventListener('pointerdown', (e) => {
       const c = cmAt(e);
       if (c == null) return;
-      if (e.target.closest('.me-handle')) mode = 'size';
-      else if (e.target.closest('.me-body')) {
+      if (M.closest(e, '.me-handle')) mode = 'size';
+      else if (M.closest(e, '.me-body')) {
         mode = 'move';
         grab = c - s;
       } else return;
@@ -214,8 +222,8 @@
     };
     svgEl.addEventListener('pointerup', stop);
     svgEl.addEventListener('pointercancel', stop);
-    M.$('.me-rul-btns', sec).onclick = (e) => {
-      const b = e.target.closest('button[data-a]');
+    M.$('.me-rul-btns', sec)!.onclick = (e) => {
+      const b = M.closest(e, 'button[data-a]');
       if (!b) return;
       const a = b.dataset.a;
       if (a === 'left') s = Math.max(0, s - 1);
@@ -240,9 +248,9 @@
   }
 
   /* --- 10 cm = 1 dm ; 10 dm = 1 m --- */
-  function dmSection(sec) {
-    const host = M.$('.me-dm', sec),
-      st = M.$('.me-dm-out', sec);
+  function dmSection(sec: HTMLElement): void {
+    const host = M.$('.me-dm', sec)!,
+      st = M.$('.me-dm-out', sec)!;
     const CW = 34;
     let n = 0;
     function draw() {
@@ -257,8 +265,8 @@
       st.innerHTML = n === 10 ? '🎉 Bravo ! <b>10 centimètres = 1 décimètre</b>.' : `${n} ${M.plural(n, 'centimètre')}`;
     }
     draw();
-    M.$('.me-dm-btns', sec).onclick = async (e) => {
-      const b = e.target.closest('button[data-a]');
+    M.$('.me-dm-btns', sec)!.onclick = async (e) => {
+      const b = M.closest(e, 'button[data-a]');
       if (!b) return;
       if (b.dataset.a === 'add') {
         if (n < 10) {
@@ -274,18 +282,19 @@
         n = 0;
         M.sfx.tap();
         draw();
-      } else if (b.dataset.a === 'm') showMeter();
+      } else if (b.dataset.a === 'm') void showMeter();
     };
-    const mHost = M.$('.me-m', sec),
-      mOut = M.$('.me-m-out', sec);
+    const mHost = M.$('.me-m', sec)!,
+      mOut = M.$('.me-m-out', sec)!;
     async function showMeter() {
       const alive = X.claim(mHost);
       const R = 56,
         x0 = 10;
       mHost.innerHTML = X.svg(x0 * 2 + R * 10, 80, '<g class="me-mg"></g>', { max: 640 });
-      const g = M.$('.me-mg', mHost);
+      const g = M.$<SVGGElement>('.me-mg', mHost);
+      if (!g) return;
       for (let i = 0; i < 10; i++) {
-        if (!g || !(await X.wait(alive, 260))) return;
+        if (!(await X.wait(alive, 260))) return;
         let s = '';
         for (let j = 0; j < 10; j++)
           s += `<rect x="${x0 + i * R + j * (R / 10)}" y="10" width="${R / 10}" height="26" fill="${(i + j) % 2 ? '#3fd3a7' : '#06a77d'}"/>`;
@@ -376,21 +385,21 @@
         </div>
         <div class="callout">🦫 <b>Défi :</b> trouve dans ta maison un objet qui mesure environ <b>1 cm</b>, un autre d'environ <b>1 dm</b> et un autre d'environ <b>1 m</b>. Mesure-les pour vérifier !</div>
       </section>`;
-      feetSection(M.$('.me-s1', el));
-      rulerSection(M.$('.me-s2', el));
-      dmSection(M.$('.me-s3', el));
-      const est = M.$('.me-est', el);
-      const flip = (t) => {
+      feetSection(M.$('.me-s1', el)!);
+      rulerSection(M.$('.me-s2', el)!);
+      dmSection(M.$('.me-s3', el)!);
+      const est = M.$('.me-est', el)!;
+      const flip = (t: HTMLElement): void => {
         t.classList.toggle('open');
         M.sfx.tap();
-        if (t.classList.contains('open')) M.say(t.dataset.say);
+        if (t.classList.contains('open')) void M.say(t.dataset.say);
       };
       est.onclick = (e) => {
-        const t = e.target.closest('.me-reveal');
+        const t = M.closest(e, '.me-reveal');
         if (t) flip(t);
       };
       est.onkeydown = (e) => {
-        const t = e.target.closest('.me-reveal');
+        const t = M.closest(e, '.me-reveal');
         if (t && (e.key === 'Enter' || e.key === ' ')) {
           e.preventDefault();
           flip(t);
@@ -411,13 +420,13 @@
     intro:
       "L'horloge a deux aiguilles. La petite aiguille montre les heures. La grande aiguille montre les minutes. Joue avec l'horloge pour apprendre à lire l'heure !",
     render(el) {
-      const keyTimes = [
+      const keyTimes: [number, number, string][] = [
         [3, 0, 'heure juste'],
         [3, 15, 'et quart'],
         [3, 30, 'et demie'],
         [3, 45, 'moins le quart'],
       ];
-      const day = [
+      const day: [number, number, string, string][] = [
         [7, 0, '⏰', 'Je me lève'],
         [8, 0, '🏫', "L'école commence"],
         [11, 30, '🥪', 'Le dîner'],
@@ -485,9 +494,9 @@
       </section>`;
 
       /* Horloge à manipuler */
-      const hp = M.$('.me-hp', el);
-      let cur = [3, 0];
-      const w = X.clockWidget(M.$('.me-hw', el), {
+      const hp = M.$('.me-hp', el)!;
+      let cur: [number, number] = [3, 0];
+      const w = X.clockWidget(M.$('.me-hw', el)!, {
         t: 3 * 60,
         ring: true,
         size: 300,
@@ -497,46 +506,46 @@
           hp.textContent = X.phrase(h, m) + '.';
         },
       });
-      M.$('.me-hsay', el).onclick = () => M.say(X.phrase(cur[0], cur[1]));
-      const mins = M.$('.me-hw .me-mins', el);
-      M.$('.me-hq', el).onclick = (e) => {
-        if (e.target.closest('.me-htog')) {
+      M.$('.me-hsay', el)!.onclick = () => M.say(X.phrase(cur[0], cur[1]));
+      const mins = M.$<SVGGElement>('.me-hw .me-mins', el);
+      M.$('.me-hq', el)!.onclick = (e) => {
+        if (M.closest(e, '.me-htog')) {
           if (mins) mins.style.display = mins.style.display === 'none' ? '' : 'none';
           M.sfx.tap();
           return;
         }
-        const b = e.target.closest('button[data-m]');
+        const b = M.closest(e, 'button[data-m]');
         if (!b) return;
         const t = w.get();
-        w.set(Math.floor(t / 60) * 60 + +b.dataset.m);
+        w.set(Math.floor(t / 60) * 60 + Number(b.dataset.m));
         M.sfx.tap();
         M.say(X.phrase(cur[0], cur[1]));
       };
 
       /* Moments clés */
-      M.$('.me-hk', el).onclick = (e) => {
-        const b = e.target.closest('button[data-i]');
+      M.$('.me-hk', el)!.onclick = (e) => {
+        const b = M.closest(e, 'button[data-i]');
         if (!b) return;
-        const [h, m] = keyTimes[+b.dataset.i];
+        const [h, m] = keyTimes[Number(b.dataset.i)];
         M.say(X.phrase(h, m));
       };
 
       /* Ma journée (24 h) */
-      const dp = M.$('.me-dp', el),
-        dx = M.$('.me-dx', el),
-        dwHost = M.$('.me-dw', el);
+      const dp = M.$('.me-dp', el)!,
+        dx = M.$('.me-dx', el)!,
+        dwHost = M.$('.me-dw', el)!;
       const dw = X.clockWidget(dwHost, { t: 7 * 60, day: true, buttons: [], size: 240 });
-      const showDay = (h, m) => {
+      const showDay = (h: number, m: number): void => {
         dp.textContent = X.phrase(h, m, true) + '.';
         dx.textContent = h > 12 ? `${X.fmt(h, m)}, c'est ${X.fmt(h - 12, m)} ${h < 18 ? "de l'après-midi" : 'du soir'}.` : '';
       };
       showDay(7, 0);
-      const dayStrip = M.$('.me-day', el);
+      const dayStrip = M.$('.me-day', el)!;
       dayStrip.onclick = async (e) => {
-        const b = e.target.closest('.me-tile');
+        const b = M.closest(e, '.me-tile');
         if (!b) return;
         M.$$('.me-tile', dayStrip).forEach((x) => x.classList.toggle('on', x === b));
-        const [h, m, , t] = day[+b.dataset.i];
+        const [h, m, , t] = day[Number(b.dataset.i)];
         const alive = X.claim(dwHost);
         M.say(`${t}. ${X.phrase(h, m, true)}.`);
         await dw.animateTo(h * 60 + m, alive, 'auto');
@@ -544,10 +553,10 @@
       };
 
       /* Une heure qui passe */
-      const hrHost = M.$('.me-hrw', el),
-        hrOut = M.$('.me-hrout', el);
+      const hrHost = M.$('.me-hrw', el)!,
+        hrOut = M.$('.me-hrout', el)!;
       hrHost.innerHTML = X.clockSvg(2, 0, { size: 240 });
-      M.$('.me-hrgo', el).onclick = async () => {
+      M.$('.me-hrgo', el)!.onclick = async () => {
         const alive = X.claim(hrHost);
         X.setHands(hrHost, 120);
         hrOut.textContent = '2 h…';
@@ -580,15 +589,16 @@
     ['🌨️ Les premiers flocons de neige'],
     ['🎄 Noël (25 décembre)', "❄️ L'hiver commence (vers le 21 décembre)"],
   ];
-  const SEASON_COL = { printemps: '#bfeec0', été: '#ffe08a', automne: '#ffc49b', hiver: '#cfe8ff' };
+  const SEASON_COL: Record<string, string> = { printemps: '#bfeec0', été: '#ffe08a', automne: '#ffc49b', hiver: '#cfe8ff' };
   const MAB = ['janv.', 'févr.', 'mars', 'avril', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
-  const seasonOf = (mo) => X.SEASONS.find((s) => s.months.includes(mo));
-  function wheelSvg(cur) {
+  /** Saison d'un mois (chaque mois 0–11 est dans une saison). */
+  const seasonOf = (mo: number): MesureSeason => X.SEASONS.find((s) => s.months.includes(mo))!;
+  function wheelSvg(cur: number): string {
     const C = 170,
       R1 = 158,
       R0 = 62,
-      rad = (d) => ((d - 90) * Math.PI) / 180;
-    const pt = (r, d) => `${(C + r * Math.cos(rad(d))).toFixed(1)},${(C + r * Math.sin(rad(d))).toFixed(1)}`;
+      rad = (d: number): number => ((d - 90) * Math.PI) / 180;
+    const pt = (r: number, d: number): string => `${(C + r * Math.cos(rad(d))).toFixed(1)},${(C + r * Math.sin(rad(d))).toFixed(1)}`;
     let s = '';
     for (let i = 0; i < 12; i++) {
       const a0 = i * 30,
@@ -655,8 +665,8 @@
       </section>`;
 
       /* Semaine */
-      const wk = M.$('.me-week', el),
-        wp = M.$('.me-wp', el);
+      const wk = M.$('.me-week', el)!,
+        wp = M.$('.me-wp', el)!;
       let cur = td;
       const drawWeek = () => {
         const y = (cur + 6) % 7,
@@ -676,35 +686,35 @@
       };
       drawWeek();
       wk.onclick = (e) => {
-        const t = e.target.closest('.me-tile');
+        const t = M.closest(e, '.me-tile');
         if (!t) return;
-        cur = +t.dataset.i;
+        cur = Number(t.dataset.i);
         M.sfx.tap();
         drawWeek();
         M.say(M.text(wp.innerHTML));
       };
-      M.$('.me-wsay', el).onclick = () => M.say(M.text(wp.innerHTML));
+      M.$('.me-wsay', el)!.onclick = () => M.say(M.text(wp.innerHTML));
 
       /* Roue des mois */
-      const wh = M.$('.me-wh', el),
-        panel = M.$('.me-mpanel', el);
-      const showMonth = (mo, speak) => {
+      const wh = M.$('.me-wh', el)!,
+        panel = M.$('.me-mpanel', el)!;
+      const showMonth = (mo: number, speak: boolean): void => {
         wh.innerHTML = wheelSvg(mo);
         const se = seasonOf(mo);
         panel.innerHTML = `<h3>${X.cap(X.MONTHS[mo])} ${se.em}</h3><div>${mo + 1}<sup>${mo ? 'e' : 'er'}</sup> mois de l'année · saison : <b>${se.id}</b>${mo === tm ? " · <b>c'est ce mois-ci !</b>" : ''}</div><ul>${MONTH_EVENTS[mo].map((x) => `<li>${x}</li>`).join('')}</ul>`;
-        if (speak) M.say(`${X.MONTHS[mo]}. ${M.text(MONTH_EVENTS[mo].join('. ')).replace(/[^\p{L}\p{N}\s.,'’()-]/gu, '')}`);
+        if (speak) void M.say(`${X.MONTHS[mo]}. ${M.text(MONTH_EVENTS[mo].join('. ')).replace(/[^\p{L}\p{N}\s.,'’()-]/gu, '')}`);
       };
       showMonth(tm, false);
       wh.onclick = (e) => {
-        const p = e.target.closest('.seg');
+        const p = M.closest<SVGPathElement>(e, '.seg');
         if (!p) return;
         M.sfx.tap();
-        showMonth(+p.dataset.m, true);
+        showMonth(Number(p.dataset.m), true);
       };
 
       /* Calendrier du mois */
-      const box = M.$('.me-calbox', el),
-        cp = M.$('.me-cp', el);
+      const box = M.$('.me-calbox', el)!,
+        cp = M.$('.me-cp', el)!;
       let vy = ty,
         vm = tm,
         lastSay = '';
@@ -715,18 +725,18 @@
       };
       drawCal();
       box.onclick = (e) => {
-        const c = e.target.closest('td[data-d]');
+        const c = M.closest(e, 'td[data-d]');
         if (!c) return;
-        const d = +c.dataset.d,
-          col = +c.dataset.c;
+        const d = Number(c.dataset.d),
+          col = Number(c.dataset.c);
         X.calMark(box, col, d);
         const isToday = vy === ty && vm === tm && d === tdate;
         cp.innerHTML = `${isToday ? "Aujourd'hui, le" : 'Le'} ${X.dateHtml(d)} ${X.MONTHS[vm]} ${vy}, c'est un <b>${X.DAYS[col]}</b>.`;
         lastSay = `${isToday ? "Aujourd'hui, le" : 'Le'} ${X.dateSay(d)} ${X.MONTHS[vm]} ${vy}, c'est un ${X.DAYS[col]}.`;
         M.sfx.tap();
-        M.say(lastSay);
+        void M.say(lastSay);
       };
-      M.$('.me-prev', el).onclick = () => {
+      M.$('.me-prev', el)!.onclick = () => {
         vm--;
         if (vm < 0) {
           vm = 11;
@@ -735,7 +745,7 @@
         M.sfx.tap();
         drawCal();
       };
-      M.$('.me-next', el).onclick = () => {
+      M.$('.me-next', el)!.onclick = () => {
         vm++;
         if (vm > 11) {
           vm = 0;
@@ -744,7 +754,7 @@
         M.sfx.tap();
         drawCal();
       };
-      M.$('.me-now', el).onclick = () => {
+      M.$('.me-now', el)!.onclick = () => {
         vy = ty;
         vm = tm;
         M.sfx.tap();
@@ -752,7 +762,7 @@
         const c = M.$(`td[data-d="${tdate}"]`, box);
         if (c) c.click();
       };
-      M.$('.me-csay', el).onclick = () => M.say(lastSay || 'Touche une date du calendrier.');
+      M.$('.me-csay', el)!.onclick = () => M.say(lastSay || 'Touche une date du calendrier.');
     },
   });
 })();

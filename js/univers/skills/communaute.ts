@@ -3,19 +3,28 @@
    us-familles · us-lieux-metiers · us-animaux
    R7 : toutes les familles sont valides; on compte, on nomme, on observe.
    ===================================================================== */
+interface UsApi {
+  /** Arbre de famille fictif (SVG, zones data-hot = ids). plain : sans l'étoile de Léo. */
+  treeSvg(opts?: { plain?: boolean }): string;
+}
+
 (function () {
   'use strict';
   const M = window.M;
   const U = M.us;
   const D = 'us-communaute';
   /** « à l'épicerie », « au parc », « à la clinique » */
-  const aLe = (nom) => nom.replace(/^le /, 'au ').replace(/^(la |l')/, 'à $1');
+  const aLe = (nom: string) => nom.replace(/^le /, 'au ').replace(/^(la |l')/, 'à $1');
 
   /** Arbre de famille fictif (SVG). */
   U.treeSvg = function (opts = {}) {
     const A = U.d('familles').arbre;
-    const by = (id) => A.gens.find((g) => g.id === id);
-    const mid = (ids) => {
+    const by = (id: string) => {
+      const g = A.gens.find((x) => x.id === id);
+      if (!g) throw new Error('arbre : personne inconnue ' + id);
+      return g;
+    };
+    const mid = (ids: string[]) => {
       const gs = ids.map(by);
       return { x: gs.reduce((a, g) => a + g.x, 0) / gs.length, y: gs[0].y };
     };

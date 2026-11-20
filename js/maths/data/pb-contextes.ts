@@ -12,11 +12,95 @@
    Variables : {P} prénom, {il} {Il} pronom, {d} {c} {f} {a} {b} {t} nombres, {n} réponse.
    Règles : phrases ≤ 12 mots, chiffres seulement pour les données, « ? » à la fin de la question.
    ===================================================================== */
+
+/** Contexte commun (additif, groupes, deux étapes). */
+interface PbCtx {
+  id: string;
+  emoji: string;
+  /** Unité au pluriel. */
+  u: string;
+  /** Mot-intrus pour la phrase-réponse. */
+  uX?: string;
+  /** Plausibilité : valeur maximale. */
+  max: number;
+  /** Comparaison (contextes additifs seulement). */
+  cmp?: PbCmpTpl;
+}
+/** Ajout / retrait : d = début, c = changement, f = fin; *0 = sans nombre; q* = question; r* = phrase-réponse. */
+interface PbMoveTpl {
+  d: string;
+  d0: string;
+  c: string;
+  c0: string;
+  f: string;
+  qf: string;
+  qc: string;
+  qd: string;
+  rf: string;
+  rc: string;
+  rd: string;
+}
+/** Réunion (partie-partie-tout). */
+interface PbUnionTpl {
+  a: string;
+  b: string;
+  t: string;
+  a2: string;
+  b0: string;
+  qt: string;
+  qb: string;
+  rt: string;
+  rb: string;
+}
+/** Comparaison : verbe au présent (singulier, pluriel), unité (phrase, après « de plus »). */
+interface PbCmpTpl {
+  v: string;
+  vp: string;
+  U: string;
+  u: string;
+}
+interface PbAddCtx extends PbCtx {
+  uX: string;
+  aj?: PbMoveTpl;
+  re?: PbMoveTpl;
+  un?: PbUnionTpl;
+}
+/** Groupes égaux / partage : objets, contenant, contenants, préposition. */
+interface PbGroupData {
+  emoji: string;
+  u: string;
+  box: string;
+  boxes: string;
+  prep: string;
+}
+/** Deux étapes : début, événement qui ajoute (up), qui enlève (down), moments (c1, c2). */
+interface PbDeuxCtx extends PbCtx {
+  uX: string;
+  start: string;
+  up: string;
+  down: string;
+  c1: string;
+  c2: string;
+  q: string;
+  q1: string;
+  r: string;
+}
+interface PbContextes {
+  ADD: PbAddCtx[];
+  GROUPS: PbGroupData[];
+  DEUX: PbDeuxCtx[];
+  /** Données inutiles : avec une personne ({P}…) ou sans. */
+  DISTRACT: { person: string[]; none: string[] };
+}
+interface DataRegistry {
+  'pb-contextes': PbContextes;
+}
+
 (function () {
   'use strict';
   const M = window.M;
 
-  const ADD = [
+  const ADD: PbAddCtx[] = [
     {
       id: 'peche',
       emoji: '🐟',
@@ -833,7 +917,7 @@
   ];
 
   /* Groupes égaux / partage : [emoji, objets, contenant, contenants, préposition] */
-  const GROUPS = [
+  const GROUPS: PbGroupData[] = [
     { emoji: '🍪', u: 'biscuits', box: 'assiette', boxes: 'assiettes', prep: 'Sur' },
     { emoji: '🍎', u: 'pommes', box: 'sac', boxes: 'sacs', prep: 'Dans' },
     { emoji: '🥚', u: 'œufs', box: 'boîte', boxes: 'boîtes', prep: 'Dans' },
@@ -846,7 +930,7 @@
   ];
 
   /* Deux étapes : début, événement qui ajoute (up), qui enlève (down), moments (c1, c2) */
-  const DEUX = [
+  const DEUX: PbDeuxCtx[] = [
     {
       id: 'autobus2',
       emoji: '🚌',
@@ -940,7 +1024,7 @@
   ];
 
   /* Données inutiles (pb-inutiles, pb-donnees lvl 2) : x = nombre sans rapport */
-  const DISTRACT = {
+  const DISTRACT: PbContextes['DISTRACT'] = {
     person: [
       '{P} a {x} ans.',
       'Le chien de {P} a {x} ans.',

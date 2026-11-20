@@ -10,10 +10,11 @@
   if (!M.art) return;
   const O = '#2b2d42';
   const st = `stroke="${O}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"`;
-  const V = (body) =>
+  const V = (body: string) =>
     `<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">${body}</svg>`;
-  const R = (name, emoji, fn) => M.art.register(name, () => V(fn()), emoji);
-  const shine = (x, y, w, r = 2) => `<rect x="${x}" y="${y}" width="${w}" height="4" rx="${r}" fill="#fff" opacity=".6"/>`;
+  const R = (name: string, emoji: string, fn: () => string) => M.art.register(name, () => V(fn()), emoji);
+  const shine = (x: number, y: number, w: number, r = 2) =>
+    `<rect x="${x}" y="${y}" width="${w}" height="4" rx="${r}" fill="#fff" opacity=".6"/>`;
 
   R(
     'mu-tambour',

@@ -1,11 +1,24 @@
 /* Univers social — paysages (GHEC A.3) : éléments naturels / humains, plans d'eau et relief.
    Dessins SVG maison (M.art) avec repli emoji. */
+
+interface UsPaysages {
+  elements: { nom: string; emoji: string; kind: 'naturel' | 'humain' }[];
+  /** Plans d'eau et relief (dessins us-…). */
+  mots: { id: string; nom: string; art: string; def: string }[];
+  faits: UsFait[];
+  /** Situation t, bonne réponse ok, distracteurs d. */
+  ailleurs: { t: string; ok: string; d: string[] }[];
+}
+interface DataRegistry {
+  'us-paysages': UsPaysages;
+}
+
 (function () {
   'use strict';
   const M = window.M;
-  const svg = (inner) => `<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">${inner}</svg>`;
+  const svg = (inner: string) => `<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">${inner}</svg>`;
   const SKY = '<rect width="100" height="100" rx="10" fill="#dff3fb"/>';
-  const GRASS = (y) => `<rect y="${y}" width="100" height="${100 - y}" fill="#9bd38b"/>`;
+  const GRASS = (y: number) => `<rect y="${y}" width="100" height="${100 - y}" fill="#9bd38b"/>`;
   M.art.register(
     'us-fleuve',
     () =>

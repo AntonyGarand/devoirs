@@ -15,7 +15,7 @@
     { id: 'peau', t: '🥁 Avec une peau tendue', soft: '#fde6f1' },
     { id: 'graines', t: '🌰 Avec des graines dedans', soft: '#eef7dc' },
   ];
-  const evsOf = (x) =>
+  const evsOf = (x: MuInstrument) =>
     x.id === 'xylophone'
       ? MU.tune(140, { inst: 'xylo', notes: [0, 2, 4, 7, 9, 7, 4, 0] })
       : x.id === 'maracas'
@@ -52,7 +52,8 @@
             ${M.ui.callout('Ta <b>voix</b> peut <b>chanter</b> (une chanson, une comptine) ou faire des <b>effets vocaux</b> : le vent « chhhh », un chat « miaou », un tonnerre « boum ! ». Essaie !', { tone: 'tip' })}`,
         }) +
         M.ui.section({ icon: '✅', title: '4. Vérifie ta compréhension', body: '<div class="mu-quiz"></div>' });
-      const $ = (s) => M.$(s, el);
+      // éléments rendus juste au-dessus (el.innerHTML) : jamais null
+      const $ = <E extends Element = HTMLElement>(s: string) => M.$<E>(s, el)!;
 
       /* 1. familles */
       $('.mu-fams').innerHTML = FAM.map(
@@ -67,9 +68,9 @@
             .join('')}</div></div>`,
       ).join('');
       $('.mu-fams').onclick = (e) => {
-        const b = e.target.closest('.mu-card');
+        const b = M.closest(e, '.mu-card');
         if (!b) return;
-        const x = MU.instById[b.dataset.id];
+        const x = MU.instById[String(b.dataset.id)];
         M.$$('.mu-card', $('.mu-fams')).forEach((c) => c.classList.toggle('on', c === b));
         b.classList.remove('hit');
         void b.offsetWidth;
@@ -90,9 +91,9 @@
           `<button class="mu-card mu-qual-card" data-i="${i}" data-q="${q.x.qualite}">${M.art.html(q.x.art, { size: 64, alt: q.x.nom })}<span>${q.t} : ${q.x.nom}</span>${waveSvg}</button>`,
       ).join('');
       $('.mu-qual').onclick = (e) => {
-        const b = e.target.closest('.mu-card');
+        const b = M.closest(e, '.mu-card');
         if (!b) return;
-        const q = QUAL[+b.dataset.i];
+        const q = QUAL[Number(b.dataset.i)];
         b.classList.remove('vib');
         void b.offsetWidth;
         b.classList.add('vib');
@@ -105,7 +106,7 @@
           (c) => `<button class="mu-card" data-id="${c.id}"><span class="mu-big">${c.icon}</span><span>${c.nom}</span></button>`,
         ).join('') + `<button class="mu-card mu-body-rhythm"><span class="mu-big">👏🦶👏🫰</span><span>Un petit rythme</span></button>`;
       $('.mu-body').onclick = (e) => {
-        const b = e.target.closest('.mu-card');
+        const b = M.closest(e, '.mu-card');
         if (!b) return;
         b.classList.remove('hit');
         void b.offsetWidth;
@@ -115,6 +116,7 @@
             ['mains', 'pieds', 'mains', 'doigts', 'mains', 'pieds', 'mains', 'doigts'].map((inst, i) => ({ t: i * 0.42, inst, vel: 0.9 })),
           );
         const c = MU.CORPS.find((x) => x.id === b.dataset.id);
+        if (!c) return; // chaque carte (sauf le petit rythme) a le data-id d'un geste
         MU.play([0, 0.45, 0.9].map((t) => ({ t, inst: c.inst, vel: 0.9 })));
       };
 

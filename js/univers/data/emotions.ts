@@ -1,5 +1,24 @@
 /* Univers social — émotions (CCQ : considérer des émotions).
    valence : + agréable, − désagréable, 0 neutre. R3 : les distracteurs ont une valence différente de la réponse. */
+
+interface UsEmotion {
+  id: string;
+  emoji: string;
+  /** Avec l'article : 'la joie'. */
+  nom: string;
+  /** [masculin, féminin] */
+  adj: [string, string];
+  valence: '+' | '−' | '0';
+  /** Émotion de base (niveau 0). */
+  base?: boolean;
+  /** Indices visibles (« Léa … »). */
+  reactions: string[];
+  note: string;
+}
+interface DataRegistry {
+  'us-emotions': UsEmotion[];
+}
+
 (function () {
   'use strict';
   const M = window.M;
