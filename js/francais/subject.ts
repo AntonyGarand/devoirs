@@ -26,7 +26,7 @@ interface FrancaisApi {}
       { text: 'Super !', lang: 'fr-CA' },
       { text: 'Bien lu !', lang: 'fr-CA' },
       { text: 'Excellent !', lang: 'fr-CA' },
-      { text: 'Tu es un as des mots !', lang: 'fr-CA' },
+      { text: 'Tu es un champion des mots !', lang: 'fr-CA' },
       { text: 'Bien écrit !', lang: 'fr-CA' },
       { text: 'Wow, bien joué !', lang: 'fr-CA' },
       { text: 'Génial !', lang: 'fr-CA' },

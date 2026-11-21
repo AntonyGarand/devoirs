@@ -264,7 +264,7 @@
     'Super !',
     'Excellent !',
     'Wow, bien joué !',
-    'Tu es un as !',
+    'Tu es un champion !',
     'Génial !',
     'Champion !',
     'Parfait !',
